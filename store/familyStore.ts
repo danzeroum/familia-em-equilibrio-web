@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { supabase } from '@/lib/supabase'
 import type { Family, Profile } from '@/types/database'
 
 interface FamilyStore {
@@ -15,29 +16,28 @@ interface FamilyStore {
   getMemberById: (id: string) => Profile | undefined
   getMemberColor: (id: string) => string
 }
-currentFamily: null,
 
-setFamily: (family) => set({ family, currentFamily: family }),
-
-reload: async () => {
-  const { family } = get()
-  if (!family) return
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('family_id', family.id)
-  if (data) set({ members: data })
-},
 export const useFamilyStore = create<FamilyStore>((set, get) => ({
   family: null,
+  currentFamily: null,
   members: [],
   currentUser: null,
   isLoading: true,
 
-  setFamily: (family) => set({ family }),
+  setFamily: (family) => set({ family, currentFamily: family }),
   setMembers: (members) => set({ members }),
   setCurrentUser: (user) => set({ currentUser: user }),
   setLoading: (isLoading) => set({ isLoading }),
+
+  reload: async () => {
+    const { family } = get()
+    if (!family) return
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('family_id', family.id)
+    if (data) set({ members: data })
+  },
 
   getMemberById: (id) => get().members.find((m) => m.id === id),
 
