@@ -20,11 +20,19 @@ export default function CasaPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="🏠 Casa"
-        subtitle="Guarda-roupa e itens da casa"
-        action={{ label: '+ Item', onClick: () => { setSelected(null); setSheetOpen(true) } }}
-      />
+        <PageHeader
+           emoji="🏠"
+           title="Casa"
+           description="Guarda-roupa e itens da casa"
+           action={
+             <button
+               className="text-sm text-teal-600 font-medium hover:underline"
+               onClick={() => { setSelected(null); setSheetOpen(true) }}
+             >
+               + Item
+             </button>
+           }
+         />
 
       {/* Alertas de reposição */}
       {alerts.length > 0 && (
