@@ -3,10 +3,11 @@ import type { Family, Profile } from '@/types/database'
 
 interface FamilyStore {
   family: Family | null
+  currentFamily: Family | null
   members: Profile[]
   currentUser: Profile | null
   isLoading: boolean
-
+  reload: () => Promise<void>
   setFamily: (family: Family) => void
   setMembers: (members: Profile[]) => void
   setCurrentUser: (user: Profile) => void
@@ -14,7 +15,19 @@ interface FamilyStore {
   getMemberById: (id: string) => Profile | undefined
   getMemberColor: (id: string) => string
 }
+currentFamily: null,
 
+setFamily: (family) => set({ family, currentFamily: family }),
+
+reload: async () => {
+  const { family } = get()
+  if (!family) return
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('family_id', family.id)
+  if (data) set({ members: data })
+},
 export const useFamilyStore = create<FamilyStore>((set, get) => ({
   family: null,
   members: [],
