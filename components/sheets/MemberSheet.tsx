@@ -15,10 +15,14 @@ export function MemberSheet({ open, onClose, member }: Props) {
   const set = (k: keyof Profile, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   async function save() {
+    const { family } = useFamilyStore.getState()
     if (form.id) {
       await supabase.from('profiles').update(form).eq('id', form.id)
     } else {
-      await supabase.from('profiles').insert(form as any)
+      await supabase.from('profiles').insert({ 
+      ...form, 
+      family_id: family?.id   // ← ESSENCIAL
+    } as any)
     }
     await reload?.()
     onClose()
