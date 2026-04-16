@@ -29,11 +29,19 @@ export default function FamiliaPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="👨‍👩‍👧 Família"
-        subtitle="Membros e contatos de emergência"
-        action={{ label: '+ Membro', onClick: () => { setSelectedMember(null); setMemberOpen(true) } }}
-      />
+     <PageHeader
+       emoji="👨‍👩‍👧"
+       title="Família"
+       description="Membros e contatos de emergência"
+       action={
+         <button
+           className="text-sm text-teal-600 font-medium hover:underline"
+           onClick={() => { setSelectedMember(null); setMemberOpen(true) }}
+         >
+           + Membro
+         </button>
+       }
+     />
 
       {/* Cards dos membros */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
