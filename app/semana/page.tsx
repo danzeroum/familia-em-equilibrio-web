@@ -32,12 +32,20 @@ export default function SemanaPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="📅 Semana"
-        subtitle="Tarefas e check-in emocional"
-        action={{ label: '+ Tarefa', onClick: () => { setSelectedTask(null); setTaskOpen(true) } }}
-      />
+    <div className="space-y-6">     
+     <PageHeader
+       emoji="📅"
+       title="Semana"
+       description="Tarefas e check-in emocional"
+       action={
+         <button
+           className="text-sm text-teal-600 font-medium hover:underline"
+           onClick={() => { setSelectedTask(null); setTaskOpen(true) }}
+         >
+           + Tarefa
+         </button>
+       }
+     />
 
       {/* Check-in emocional por membro */}
       <div className="rounded-xl border bg-white overflow-hidden">
