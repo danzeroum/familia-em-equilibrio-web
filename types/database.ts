@@ -105,6 +105,9 @@ export interface Database {
           storage_location: string | null
           notes: string | null
           is_active: boolean
+          action_description: string | null
+          action_date: string | null
+          item_condition: 'ok' | 'broken' | 'missing' | 'needs_check'
           created_at: string | null
         }
         Insert: Omit<Database['public']['Tables']['medications']['Row'], 'id' | 'created_at'>
@@ -197,6 +200,9 @@ export interface Database {
           season_alert_days: number
           last_checked_at: string | null
           notes: string | null
+          action_description: string | null
+          action_date: string | null
+          responsible_id: string | null
           created_at: string | null
         }
         Insert: Omit<Database['public']['Tables']['wardrobe_items']['Row'], 'id' | 'created_at'>
@@ -221,11 +227,29 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['shopping_items']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['shopping_items']['Insert']>
       }
+      home_maintenance: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          emoji: string | null
+          frequency_label: string
+          frequency_days: number
+          responsible_id: string | null
+          last_done_at: string | null
+          next_due_at: string | null
+          status: 'ok' | 'due_soon' | 'overdue' | 'done'
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['home_maintenance']['Row'], 'id' | 'created_at' | 'next_due_at'>
+        Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
+      }
     }
   }
 }
 
-// Tipos derivados para uso nos componentes
 export type Family = Database['public']['Tables']['families']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Bill = Database['public']['Tables']['bills']['Row']
@@ -238,6 +262,7 @@ export type EmergencyContact = Database['public']['Tables']['emergency_contacts'
 export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
 export type WardrobeItem = Database['public']['Tables']['wardrobe_items']['Row']
 export type ShoppingItem = Database['public']['Tables']['shopping_items']['Row']
+export type HomeMaintenance = Database['public']['Tables']['home_maintenance']['Row']
 
 export interface ChecklistItem {
   id: string
