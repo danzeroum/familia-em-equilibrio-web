@@ -550,7 +550,7 @@ export default function TarefasPage() {
         )}
       </div>
 
-      <TaskSheet open={taskOpen} onClose={() => setTaskOpen(false)} task={selectedTask} onSave={upsert} />
+      <TaskSheet open={taskOpen} onClose={() => setTaskOpen(false)} task={selectedTask} onSave={upsert} members={members} />
       <CheckinSheet open={checkinOpen} onClose={() => setCheckinOpen(false)} onSave={addCheckin} familyId={currentFamily?.id ?? ''} />
       <EventSheet
         open={eventOpen}
