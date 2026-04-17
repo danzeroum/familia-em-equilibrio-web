@@ -558,6 +558,7 @@ export default function TarefasPage() {
         event={selectedEvent}
         onSave={upsertEvent}
         familyId={currentFamily?.id ?? ''}
+        members={members}
       />
     </div>
   )
