@@ -84,6 +84,20 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['savings_goals']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['savings_goals']['Insert']>
       }
+      budget_goals: {
+        Row: {
+          id: string
+          family_id: string
+          category: string
+          monthly_limit: number
+          icon: string | null
+          color_hex: string | null
+          alert_pct: number
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['budget_goals']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['budget_goals']['Insert']>
+      }
       tasks: {
         Row: {
           id: string
@@ -274,6 +288,7 @@ export type Family = Database['public']['Tables']['families']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Bill = Database['public']['Tables']['bills']['Row']
 export type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
+export type BudgetGoal = Database['public']['Tables']['budget_goals']['Row']
 export type Task = Database['public']['Tables']['tasks']['Row']
 export type Medication = Database['public']['Tables']['medications']['Row']
 export type MedicationLog = Database['public']['Tables']['medication_logs']['Row']

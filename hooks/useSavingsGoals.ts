@@ -5,6 +5,41 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { SavingsGoal } from '@/types/database'
 
+/** Para uma meta, calcula a mensagem motivacional de economia diária */
+export function getMotivationalMessage(goal: SavingsGoal, monthlySavings: number): string | null {
+  if (goal.is_completed) return null
+  const remaining = goal.target_amount - goal.current_amount
+  if (remaining <= 0 || !goal.deadline) return null
+
+  const daysLeft = Math.ceil(
+    (new Date(goal.deadline).getTime() - Date.now()) / 86400000
+  )
+  if (daysLeft <= 0) return null
+
+  // Quanto por mês precisa guardar para chegar lá a tempo
+  const monthsLeft = daysLeft / 30
+  const neededPerMonth = remaining / monthsLeft
+
+  // Se já está poupando o suficiente
+  const currency = goal.currency ?? 'BRL'
+  const symbol = currency === 'GBP' ? '£' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$'
+
+  if (monthlySavings >= neededPerMonth) {
+    return `✅ No ritmo certo! Poupando ${symbol}${monthlySavings.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês chega lá em ${Math.ceil(remaining / monthlySavings)} mês${Math.ceil(remaining / monthlySavings) !== 1 ? 'es' : ''}.`
+  }
+
+  // R$ 100 a mais = quantos dias a menos até a meta
+  const daysGainedPer100 = monthlySavings > 0
+    ? (100 / (remaining / daysLeft))
+    : null
+
+  if (daysGainedPer100 && daysGainedPer100 >= 1) {
+    return `💡 Cada ${symbol}100 economizado hoje = ${Math.round(daysGainedPer100)} dia${Math.round(daysGainedPer100) !== 1 ? 's' : ''} mais perto desta viagem.`
+  }
+
+  return `📋 Precisa de ${symbol}${neededPerMonth.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês para chegar lá a tempo.`
+}
+
 export function useSavingsGoals() {
   const { familyId } = useFamilyStore()
   const [goals, setGoals] = useState<SavingsGoal[]>([])
@@ -39,10 +74,7 @@ export function useSavingsGoals() {
     const newAmount = Math.min(goal.current_amount + amount, goal.target_amount)
     await supabase
       .from('savings_goals')
-      .update({
-        current_amount: newAmount,
-        is_completed: newAmount >= goal.target_amount,
-      })
+      .update({ current_amount: newAmount, is_completed: newAmount >= goal.target_amount })
       .eq('id', id)
     await load()
   }
