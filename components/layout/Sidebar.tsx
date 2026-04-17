@@ -11,16 +11,18 @@ import {
   Home,
   Heart,
   Wallet,
+  Tag,
   ChevronRight,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/',         label: 'Painel',   icon: LayoutDashboard, emoji: '🎯' },
-  { href: '/familia',  label: 'Família',  icon: Users,           emoji: '👨‍👩‍👧‍👦' },
-  { href: '/semana',   label: 'Semana',   icon: CalendarDays,    emoji: '📅' },
-  { href: '/casa',     label: 'Casa',     icon: Home,            emoji: '🏠' },
-  { href: '/saude',    label: 'Saúde',    icon: Heart,           emoji: '🩺' },
-  { href: '/agenda',   label: 'Agenda',   icon: Wallet,          emoji: '💰' },
+  { href: '/',            label: 'Painel',      icon: LayoutDashboard, emoji: '🎯' },
+  { href: '/familia',     label: 'Família',     icon: Users,           emoji: '👨‍👩‍👧‍👦' },
+  { href: '/semana',      label: 'Semana',      icon: CalendarDays,    emoji: '📅' },
+  { href: '/casa',        label: 'Casa',        icon: Home,            emoji: '🏠' },
+  { href: '/saude',       label: 'Saúde',       icon: Heart,           emoji: '🩺' },
+  { href: '/agenda',      label: 'Agenda',      icon: Wallet,          emoji: '💰' },
+  { href: '/categorias',  label: 'Categorias',  icon: Tag,             emoji: '🏷️' },
 ]
 
 export function Sidebar() {
@@ -41,7 +43,7 @@ export function Sidebar() {
       </div>
 
       {/* Navegação */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href ||
             (item.href !== '/' && pathname.startsWith(item.href))
