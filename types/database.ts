@@ -55,7 +55,8 @@ export interface Database {
           due_date: string | null
           status: 'pending' | 'paid' | 'auto_debit' | 'overdue'
           is_recurring: boolean
-          category: 'fixed' | 'variable' | 'emergency' | 'savings'
+          category: string | null
+          payment_method: string | null
           domain_id: number | null
           created_by: string | null
           paid_at: string | null
@@ -63,6 +64,25 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['bills']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['bills']['Insert']>
+      }
+      savings_goals: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          description: string | null
+          target_amount: number
+          current_amount: number
+          currency: string
+          deadline: string | null
+          icon: string | null
+          color_hex: string | null
+          is_completed: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['savings_goals']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['savings_goals']['Insert']>
       }
       tasks: {
         Row: {
@@ -253,6 +273,7 @@ export interface Database {
 export type Family = Database['public']['Tables']['families']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Bill = Database['public']['Tables']['bills']['Row']
+export type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
 export type Task = Database['public']['Tables']['tasks']['Row']
 export type Medication = Database['public']['Tables']['medications']['Row']
 export type MedicationLog = Database['public']['Tables']['medication_logs']['Row']
