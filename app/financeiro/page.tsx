@@ -1,15 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useFamilyStore } from '@/store/familyStore'
 import { useBills } from '@/hooks/useBills'
-import { useFamilyEvents } from '@/hooks/useFamilyEvents'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BillSheet } from '@/components/sheets/BillSheet'
-import { EventSheet } from '@/components/sheets/EventSheet'
-import { formatDate } from '@/lib/utils'
-import type { Bill, FamilyEvent } from '@/types/database'
+import type { Bill } from '@/types/database'
 
 const METHOD_LABEL: Record<string, string> = {
   credit_card: '💳 Crédito',
@@ -21,21 +17,14 @@ const METHOD_LABEL: Record<string, string> = {
 }
 
 export default function FinanceiroPage() {
-  const { currentFamily } = useFamilyStore()
   const { bills, totalMonthly, updateStatus, upsert: upsertBill, remove: removeBill } = useBills()
-  const { events, upsert: upsertEvent, toggleDone, remove: removeEvent } = useFamilyEvents(currentFamily?.id ?? null)
 
   const [billOpen, setBillOpen] = useState(false)
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
-  const [eventOpen, setEventOpen] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<FamilyEvent | null>(null)
   const [monthlyIncome, setMonthlyIncome] = useState(0)
 
   const paidTotal = bills
     .filter(b => b.status === 'paid' || b.status === 'auto_debit')
-    .reduce((s, b) => s + (b.amount ?? 0), 0)
-  const pendingTotal = bills
-    .filter(b => b.status === 'pending')
     .reduce((s, b) => s + (b.amount ?? 0), 0)
   const balance = monthlyIncome - totalMonthly
 
@@ -44,7 +33,7 @@ export default function FinanceiroPage() {
       <PageHeader
         emoji="💰"
         title="Financeiro"
-        description="Contas, eventos e prazos financeiros"
+        description="Contas e prazos financeiros da família"
       />
 
       {/* Resumo financeiro */}
@@ -148,71 +137,7 @@ export default function FinanceiroPage() {
         )}
       </div>
 
-      {/* Eventos e prazos */}
-      <div className="rounded-xl border bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b flex items-center justify-between">
-          <h2 className="font-semibold">📅 Eventos e prazos</h2>
-          <button
-            className="text-sm text-teal-600 font-medium hover:underline"
-            onClick={() => { setSelectedEvent(null); setEventOpen(true) }}
-          >
-            + Adicionar
-          </button>
-        </div>
-        {events.length === 0 ? (
-          <EmptyState title="Nenhum evento" description="Cadastre datas importantes, viagens, consultas e aniversários." />
-        ) : (
-          <ul className="divide-y">
-            {events.map(e => (
-              <li
-                key={e.id}
-                className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 ${e.is_done ? 'opacity-50' : ''}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!e.is_done}
-                  onChange={() => toggleDone(e.id, !!e.is_done)}
-                  className="w-4 h-4 accent-teal-600"
-                />
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${e.is_done ? 'line-through text-gray-400' : ''}`}>
-                    {e.title}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {formatDate(e.event_date)}
-                    {e.daysLeft !== null && (
-                      <> &middot; {e.daysLeft < 0 ? `${Math.abs(e.daysLeft)}d atrás` : `em ${e.daysLeft}d`}</>
-                    )}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="text-xs text-gray-400 hover:text-gray-600"
-                    onClick={() => { setSelectedEvent(e); setEventOpen(true) }}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="text-xs text-red-400 hover:text-red-600"
-                    onClick={() => removeEvent(e.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
       <BillSheet open={billOpen} onClose={() => setBillOpen(false)} bill={selectedBill} onSave={upsertBill} />
-      <EventSheet
-        open={eventOpen}
-        onClose={() => setEventOpen(false)}
-        event={selectedEvent}
-        onSave={upsertEvent}
-        familyId={currentFamily?.id ?? ''}
-      />
     </div>
   )
 }
