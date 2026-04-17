@@ -9,6 +9,12 @@ import { MemberSheet } from '@/components/sheets/MemberSheet'
 import { EmergencyContactSheet } from '@/components/sheets/EmergencyContactSheet'
 import type { Profile, EmergencyContact } from '@/types/database'
 
+const ROLE_LABEL: Record<string, string> = {
+  adult: '\ud83d\udc64 Adulto',
+  child: '\ud83d\udc66 Crian\u00e7a',
+  pet:   '\ud83d\udc3e Pet',
+}
+
 export default function FamiliaPage() {
   const { currentFamily, members } = useFamilyStore()
   const { contacts, upsert: upsertContact, remove: removeContact } = useEmergencyContacts(currentFamily?.id ?? null)
@@ -18,21 +24,12 @@ export default function FamiliaPage() {
   const [contactOpen, setContactOpen] = useState(false)
   const [selectedContact, setSelectedContact] = useState<EmergencyContact | null>(null)
 
-  const memberColors: Record<string, string> = {
-    blue: 'bg-blue-100 text-blue-700',
-    green: 'bg-green-100 text-green-700',
-    pink: 'bg-pink-100 text-pink-700',
-    yellow: 'bg-yellow-100 text-yellow-700',
-    purple: 'bg-purple-100 text-purple-700',
-    orange: 'bg-orange-100 text-orange-700',
-  }
-
   return (
     <div className="space-y-6">
      <PageHeader
-       emoji="👨‍👩‍👧"
-       title="Família"
-       description="Membros e contatos de emergência"
+       emoji="\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67"
+       title="Fam\u00edlia"
+       description="Membros e contatos de emerg\u00eancia"
        action={
          <button
            className="text-sm text-teal-600 font-medium hover:underline"
@@ -47,7 +44,7 @@ export default function FamiliaPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {members.length === 0 ? (
           <div className="col-span-full">
-            <EmptyState title="Nenhum membro" description="Adicione os membros da família para começar." />
+            <EmptyState title="Nenhum membro" description="Adicione os membros da fam\u00edlia para come\u00e7ar." />
           </div>
         ) : (
           members.map(m => (
@@ -57,31 +54,34 @@ export default function FamiliaPage() {
               onClick={() => { setSelectedMember(m); setMemberOpen(true) }}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${memberColors[m.color ?? 'blue'] ?? 'bg-gray-100 text-gray-700'}`}>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg text-white"
+                  style={{ backgroundColor: m.color_hex ?? '#4A90D9' }}
+                >
                   {(m.nickname ?? m.name).charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <p className="font-semibold">{m.nickname ?? m.name}</p>
-                  <p className="text-xs text-gray-400">{m.member_type === 'adult' ? '👤 Adulto' : m.member_type === 'child' ? '👦 Criança' : '🐾 Pet'}</p>
+                  <p className="text-xs text-gray-400">{ROLE_LABEL[m.role ?? 'adult'] ?? '\ud83d\udc64 Adulto'}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-1 text-xs text-gray-500">
-                {m.birthdate && <span>🎂 {m.birthdate}</span>}
-                {m.blood_type && <span>🩸 {m.blood_type}</span>}
-                {m.weight_kg && <span>⚖️ {m.weight_kg}kg</span>}
-                {m.height_cm && <span>📏 {m.height_cm}cm</span>}
-                {m.school && <span className="col-span-2">🏫 {m.school}</span>}
-                {m.health_plan && <span className="col-span-2">🏥 {m.health_plan}</span>}
+                {m.birth_date && <span>\ud83c\udf82 {m.birth_date}</span>}
+                {m.blood_type && <span>\ud83e\ude78 {m.blood_type}</span>}
+                {m.weight_kg && <span>\u2696\ufe0f {m.weight_kg}kg</span>}
+                {m.height_cm && <span>\ud83d\udccf {m.height_cm}cm</span>}
+                {m.school_or_company && <span className="col-span-2">\ud83c\udfeb {m.school_or_company}</span>}
+                {m.health_plan_name && <span className="col-span-2">\ud83c\udfe5 {m.health_plan_name}</span>}
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Contatos de emergência */}
+      {/* Contatos de emerg\u00eancia */}
       <div className="rounded-xl border bg-white overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
-          <h2 className="font-semibold">🚨 Contatos de emergência</h2>
+          <h2 className="font-semibold">\ud83d\udea8 Contatos de emerg\u00eancia</h2>
           <button
             className="text-sm text-teal-600 font-medium hover:underline"
             onClick={() => { setSelectedContact(null); setContactOpen(true) }}
@@ -90,14 +90,14 @@ export default function FamiliaPage() {
           </button>
         </div>
         {contacts.length === 0 ? (
-          <EmptyState title="Sem contatos" description="Adicione contatos para situações de emergência." />
+          <EmptyState title="Sem contatos" description="Adicione contatos para situa\u00e7\u00f5es de emerg\u00eancia." />
         ) : (
           <ul className="divide-y">
             {contacts.map(c => (
               <li key={c.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
                 <div>
                   <p className="font-medium">{c.name} {c.is_primary && <span className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full ml-1">Principal</span>}</p>
-                  <p className="text-sm text-gray-500">{c.relationship} · {c.phone}</p>
+                  <p className="text-sm text-gray-500">{c.relationship} \u00b7 {c.phone}</p>
                 </div>
                 <div className="flex gap-2">
                   <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => { setSelectedContact(c); setContactOpen(true) }}>Editar</button>
