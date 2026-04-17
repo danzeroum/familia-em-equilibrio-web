@@ -60,7 +60,9 @@ export function useFamilyEvents(familyId: string | null) {
       const { error } = await supabase.from('family_events').update(updateFields).eq('id', id)
       if (error) throw error
     } else {
-      const { error } = await supabase.from('family_events').insert(payload as any)
+      const { data: { user } } = await supabase.auth.getUser()
+      const insertPayload = { ...payload, created_by: user?.id }
+      const { error } = await supabase.from('family_events').insert(insertPayload as any)
       if (error) throw error
     }
     await load()
