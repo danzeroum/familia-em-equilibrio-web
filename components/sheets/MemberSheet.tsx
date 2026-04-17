@@ -28,11 +28,13 @@ export function MemberSheet({ open, onClose, member }: Props) {
     const { family } = useFamilyStore.getState()
 
     if (form.id) {
+      // Edição: atualiza pelo id existente
       const { error } = await supabase.from('profiles').update(form).eq('id', form.id)
       if (error) { console.error('[MemberSheet] UPDATE ERRO:', error); alert('Erro ao salvar: ' + error.message) }
     } else {
-      const newId = crypto.randomUUID()
-      const { error } = await supabase.from('profiles').insert({ ...form, id: newId, family_id: family?.id } as any)
+      // Criação: omite o id — banco gera UUID automaticamente via gen_random_uuid()
+      const { id: _omit, ...rest } = form as any
+      const { error } = await supabase.from('profiles').insert({ ...rest, family_id: family?.id })
       if (error) { console.error('[MemberSheet] INSERT ERRO:', error); alert('Erro ao criar: ' + error.message) }
     }
 
@@ -186,7 +188,7 @@ export function MemberSheet({ open, onClose, member }: Props) {
                 </Row>
                 <Row label="Nº Carteirinha">
                   <input className="input-base" value={form.health_plan_number ?? ''} onChange={e => f('health_plan_number', e.target.value)} />
-              </Row>
+                </Row>
                 <Row label="Plano ativo">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={form.health_plan_active ?? false} onChange={e => f('health_plan_active', e.target.checked)} className="w-4 h-4 accent-teal-600" />
