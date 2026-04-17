@@ -13,91 +13,67 @@ import type { Task } from '@/types/database'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-/** Retorna o domingo da semana que contém `ref` */
-function startOfWeek(ref: Date): Date {
-  const d = new Date(ref)
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - d.getDay()) // domingo = 0
-  return d
+const WEEKDAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+const WEEKDAYS_LONG  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
+const MONTHS_PT      = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const MONTHS_SHORT   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const HOURS          = Array.from({length:18},(_,i)=>i+6) // 06h–23h
+
+const PRIORITY_DOT: Record<string,string> = {
+  high:'bg-red-500', medium:'bg-yellow-400', low:'bg-green-400',
+  '3':'bg-red-500',  '2':'bg-yellow-400',    '1':'bg-green-400',
 }
 
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setDate(r.getDate() + n)
-  return r
+function dayOnly(d: Date) { const r=new Date(d); r.setHours(0,0,0,0); return r }
+function addDays(d: Date, n: number) { const r=new Date(d); r.setDate(r.getDate()+n); return r }
+function toISO(d: Date) { return d.toISOString().slice(0,10) }
+function sameDay(a: Date, b: Date) {
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate()
+}
+function startOfWeek(d: Date) { const r=dayOnly(d); r.setDate(r.getDate()-r.getDay()); return r }
+function getDaysInMonth(y: number, m: number) { return new Date(y,m+1,0).getDate() }
+
+type ViewType = 'dia' | 'semana' | 'mes' | 'ano' | 'lista'
+
+// ─── NavBar ────────────────────────────────────────────────────────────────
+function NavBar({ label, onPrev, onNext, onToday, showToday }: {
+  label: string; onPrev:()=>void; onNext:()=>void; onToday:()=>void; showToday: boolean
+}) {
+  return (
+    <div className="px-4 py-2 border-b flex items-center justify-between bg-gray-50">
+      <button onClick={onPrev} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 text-gray-500 transition-colors text-xl font-light">‹</button>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-gray-700">{label}</span>
+        {showToday && (
+          <button onClick={onToday} className="text-xs text-teal-600 hover:text-teal-700 font-medium border border-teal-200 rounded px-1.5 py-0.5">Hoje</button>
+        )}
+      </div>
+      <button onClick={onNext} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 text-gray-500 transition-colors text-xl font-light">›</button>
+    </div>
+  )
 }
 
-function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
-const WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const WEEKDAY_LONG  = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-
-// ─── componente principal ────────────────────────────────────────────────────
-
+// ════════════════════════════════════════════════════════════════════════════
 export default function SemanaPage() {
   const { currentFamily, members } = useFamilyStore()
   const { tasks, isLoading, upsert, complete, remove } = useTasks()
   const { addCheckin, weekMoodAverage } = useEmotionalCheckins(currentFamily?.id ?? null)
 
-  const [taskOpen, setTaskOpen]       = useState(false)
+  const [taskOpen, setTaskOpen]         = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [checkinOpen, setCheckinOpen] = useState(false)
-  const [view, setView]               = useState<'lista' | 'agenda'>('lista')
-  const [weekOffset, setWeekOffset]   = useState(0) // semanas relativas a hoje
+  const [checkinOpen, setCheckinOpen]   = useState(false)
+  const [view, setView]                 = useState<ViewType>('semana')
+  const [offset, setOffset]             = useState(0)
 
   const adults = members.filter(m => (m as any).role === 'adult')
+  const today  = useMemo(() => dayOnly(new Date()), [])
 
-  // semana exibida
-  const weekStart = useMemo(() => {
-    const base = new Date()
-    base.setDate(base.getDate() + weekOffset * 7)
-    return startOfWeek(base)
-  }, [weekOffset])
-
-  const weekDays = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
-    [weekStart]
-  )
-
-  const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
-
-  // label do período: "13 a 19 de abr"
-  const weekLabel = useMemo(() => {
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
-    const fmt = (d: Date) => d.toLocaleDateString('pt-BR', opts).replace('.', '')
-    return `${fmt(weekStart)} – ${fmt(weekDays[6])}`
-  }, [weekStart, weekDays])
-
-  // ── mapa dia → tarefas ──
-  const tasksByDay = useMemo(() => {
-    const map: Record<string, Task[]> = {}
-    weekDays.forEach(d => { map[toISODate(d)] = [] })
-
-    tasks.forEach(t => {
-      const due = (t as any).due_date as string | null
-      if (!due) return
-      if (map[due]) map[due].push(t)
-    })
-    // ordena por hora dentro de cada dia
-    Object.values(map).forEach(arr =>
-      arr.sort((a, b) => ((a as any).due_time ?? '').localeCompare((b as any).due_time ?? ''))
-    )
-    return map
-  }, [tasks, weekDays])
-
-  // tarefas sem data (só aparecem na lista)
-  const noDateTasks = useMemo(() => tasks.filter(t => !(t as any).due_date), [tasks])
-
-  // ── ações ──
-  function openNew() { setSelectedTask(null); setTaskOpen(true) }
+  function openNew(prefill?: Partial<Task>) { setSelectedTask(prefill as Task ?? null); setTaskOpen(true) }
   function openEdit(t: Task) { setSelectedTask(t); setTaskOpen(true) }
+  function switchView(v: ViewType) { setView(v); setOffset(0) }
 
   function handleComplete(t: Task) {
-    if (t.status !== 'done') {
-      complete(t.id, t.requires_supervision ? adults[0]?.id : undefined)
-    }
+    if (t.status !== 'done') complete(t.id, t.requires_supervision ? adults[0]?.id : undefined)
   }
 
   const memberName = (id: string | null | undefined) => {
@@ -115,46 +91,46 @@ export default function SemanaPage() {
     return '😢'
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // sub-componente: card de tarefa (reutilizado em ambas as views)
-  // ─────────────────────────────────────────────────────────────────────────
+  // tarefas por dia
+  const tasksForDay = (day: Date) =>
+    tasks.filter(t => {
+      const due = (t as any).due_date as string | null
+      if (!due) return false
+      return sameDay(dayOnly(new Date(due)), day)
+    }).sort((a,b) => ((a as any).due_time??'').localeCompare((b as any).due_time??''))
+
+  const noDateTasks = tasks.filter(t => !(t as any).due_date)
+
+  // ─── TaskCard ───────────────────────────────────────────────────────────
   function TaskCard({ t, compact = false }: { t: Task; compact?: boolean }) {
     const checklist = Array.isArray(t.checklist) ? t.checklist : []
-    const doneCk    = checklist.filter(i => i.done).length
-    const overdue   = (t as any).due_date && new Date((t as any).due_date) < today && t.status !== 'done'
-    const time      = (t as any).due_time ? (t as any).due_time.slice(0, 5) : null
-
-    const priorityDot: Record<string, string> = { '1': 'bg-green-400', '2': 'bg-yellow-400', '3': 'bg-red-500' }
-    const dot = priorityDot[String((t as any).priority)] ?? 'bg-gray-300'
+    const doneCk    = checklist.filter((i:any) => i.done).length
+    const overdue   = (t as any).due_date && dayOnly(new Date((t as any).due_date)) < today && t.status !== 'done'
+    const time      = (t as any).due_time ? (t as any).due_time.slice(0,5) : null
+    const dot       = PRIORITY_DOT[String((t as any).priority)] ?? 'bg-gray-300'
 
     if (compact) {
-      // versão compacta para agenda
       return (
         <div
           onClick={() => openEdit(t)}
-          className={`rounded-lg px-2 py-1.5 cursor-pointer border text-xs leading-tight
-            ${t.status === 'done'
-              ? 'bg-gray-50 border-gray-200 opacity-60'
-              : overdue
-              ? 'bg-red-50 border-red-200'
-              : 'bg-white border-gray-200 hover:border-teal-400 hover:shadow-sm'}
-            transition-all`}
+          className={`rounded-lg px-2 py-1.5 cursor-pointer border text-xs leading-tight transition-all
+            ${t.status==='done' ? 'bg-gray-50 border-gray-200 opacity-60'
+              : overdue         ? 'bg-red-50 border-red-200'
+              : 'bg-white border-gray-200 hover:border-teal-400 hover:shadow-sm'}`}
         >
           <div className="flex items-center gap-1.5">
             <button
               onClick={e => { e.stopPropagation(); handleComplete(t) }}
               className={`w-3.5 h-3.5 rounded-full border flex-shrink-0 flex items-center justify-center
-                ${t.status === 'done' ? 'bg-teal-500 border-teal-500' : 'border-gray-300 hover:border-teal-400'}`}
+                ${t.status==='done' ? 'bg-teal-500 border-teal-500' : 'border-gray-300 hover:border-teal-400'}`}
             >
-              {t.status === 'done' && (
+              {t.status==='done' && (
                 <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
                   <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
             </button>
-            <span className={`font-medium truncate ${t.status === 'done' ? 'line-through text-gray-400' : ''}`}>
-              {t.title}
-            </span>
+            <span className={`font-medium truncate ${t.status==='done' ? 'line-through text-gray-400' : ''}`}>{t.title}</span>
             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
           </div>
           {(time || memberName(t.assigned_to)) && (
@@ -163,155 +139,146 @@ export default function SemanaPage() {
               {memberName(t.assigned_to)}
             </p>
           )}
+          {checklist.length > 0 && (
+            <p className={`mt-0.5 pl-5 text-[10px] ${doneCk===checklist.length?'text-green-500':'text-gray-400'}`}>
+              ✓ {doneCk}/{checklist.length}
+            </p>
+          )}
         </div>
       )
     }
 
-    // versão lista
+    // lista
     return (
       <li className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
-        <input
-          type="checkbox"
-          checked={t.status === 'done'}
-          onChange={() => handleComplete(t)}
-          className="w-4 h-4 accent-teal-600 flex-shrink-0"
-        />
+        <input type="checkbox" checked={t.status==='done'} onChange={()=>handleComplete(t)}
+          className="w-4 h-4 accent-teal-600 flex-shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium truncate ${t.status === 'done' ? 'line-through text-gray-400' : ''}`}>
-            {t.title}
-          </p>
+          <p className={`text-sm font-medium truncate ${t.status==='done'?'line-through text-gray-400':''}`}>{t.title}</p>
           <p className="text-xs text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
             {memberName(t.assigned_to) && <span>{memberName(t.assigned_to)}</span>}
-            {(t as any).due_date && (
-              <span>📅 {formatTaskDateTime((t as any).due_date, (t as any).due_time)}</span>
-            )}
+            {(t as any).due_date && <span>📅 {formatTaskDateTime((t as any).due_date,(t as any).due_time)}</span>}
             {overdue && <span className="text-red-500 font-medium">Atrasada</span>}
             {t.requires_supervision && <span>👤 Requer adulto</span>}
-            {checklist.length > 0 && (
-              <span className={doneCk === checklist.length ? 'text-green-500' : ''}>
-                ✅ {doneCk}/{checklist.length}
-              </span>
-            )}
+            {checklist.length>0 && <span className={doneCk===checklist.length?'text-green-500':''}>✅ {doneCk}/{checklist.length}</span>}
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => openEdit(t)}>Editar</button>
-          <button className="text-xs text-red-400 hover:text-red-600" onClick={() => remove(t.id)}>×</button>
+          <button className="text-xs text-gray-400 hover:text-gray-600" onClick={()=>openEdit(t)}>Editar</button>
+          <button className="text-xs text-red-400 hover:text-red-600" onClick={()=>remove(t.id)}>×</button>
         </div>
       </li>
     )
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW: AGENDA
-  // ─────────────────────────────────────────────────────────────────────────
-  function AgendaView() {
+  // ─── VIEW: DIA ─────────────────────────────────────────────────────────────
+  function ViewDia() {
+    const currentDay = addDays(today, offset)
+    const isToday    = sameDay(currentDay, today)
+    const dayTasks   = tasksForDay(currentDay)
+    const withTime   = dayTasks.filter(t => (t as any).due_time)
+    const noTime     = dayTasks.filter(t => !(t as any).due_time)
+    const nowHour    = new Date().getHours()
+    const label      = isToday
+      ? 'Hoje — ' + currentDay.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})
+      : currentDay.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})
+
     return (
       <div className="rounded-xl border bg-white overflow-hidden">
-        {/* navegação de semana */}
-        <div className="px-4 py-3 border-b flex items-center justify-between gap-2">
-          <button
-            onClick={() => setWeekOffset(w => w - 1)}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-            aria-label="Semana anterior"
-          >
-            ‹
-          </button>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-gray-700">{weekLabel}</p>
-            {weekOffset !== 0 && (
-              <button
-                onClick={() => setWeekOffset(0)}
-                className="text-xs text-teal-600 hover:underline"
-              >
-                Hoje
-              </button>
-            )}
+        <NavBar label={label} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
+
+        {/* Dia todo */}
+        {noTime.length>0 && (
+          <div className="px-3 py-2 border-b bg-teal-50/40 flex flex-wrap gap-1 items-center">
+            <span className="text-[10px] text-teal-700 font-semibold uppercase tracking-wide mr-1">Dia todo</span>
+            {noTime.map(t=><div key={t.id} className="max-w-[200px]"><TaskCard t={t} compact/></div>)}
           </div>
-          <button
-            onClick={() => setWeekOffset(w => w + 1)}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-            aria-label="Próxima semana"
-          >
-            ›
-          </button>
+        )}
+
+        {/* Slots de hora */}
+        <div className="overflow-y-auto max-h-[480px] divide-y">
+          {HOURS.map(h => {
+            const slotTasks = withTime.filter(t => {
+              const [th] = ((t as any).due_time??'').split(':').map(Number)
+              return th === h
+            })
+            const isCurrentHour = isToday && nowHour === h
+            return (
+              <div key={h} className={`flex min-h-[52px] ${isCurrentHour?'bg-teal-50':''}`}>
+                <div className="w-14 flex-shrink-0 text-[11px] text-gray-400 font-medium pt-2 pl-3 select-none">
+                  {String(h).padStart(2,'0')}:00
+                </div>
+                <div className="flex-1 p-1.5 flex flex-col gap-1">
+                  {slotTasks.map(t=><TaskCard key={t.id} t={t} compact/>)}
+                </div>
+                <button
+                  onClick={()=>openNew({ due_date: toISO(currentDay), due_time: `${String(h).padStart(2,'0')}:00` } as any)}
+                  className="w-6 flex-shrink-0 text-gray-200 hover:text-teal-400 text-sm self-start pt-1.5 transition-colors"
+                  title={`Nova tarefa às ${h}h`}
+                >+</button>
+              </div>
+            )
+          })}
         </div>
 
-        {/* grid de dias — scroll horizontal em mobile */}
+        {dayTasks.length===0 && (
+          <div className="p-10 text-center text-gray-400 text-sm">Nenhuma tarefa para este dia.</div>
+        )}
+      </div>
+    )
+  }
+
+  // ─── VIEW: SEMANA ───────────────────────────────────────────────────────────
+  function ViewSemana() {
+    const weekStart = addDays(startOfWeek(today), offset*7)
+    const weekDays  = Array.from({length:7},(_,i)=>addDays(weekStart,i))
+    const end       = weekDays[6]
+    const fmt       = (d:Date)=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})
+    const label     = `${fmt(weekStart)} – ${fmt(end)}`
+
+    return (
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <NavBar label={label} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
         <div className="overflow-x-auto">
           <div className="grid grid-cols-7 min-w-[560px]">
             {/* cabeçalho */}
-            {weekDays.map((d, i) => {
-              const isToday = toISODate(d) === toISODate(today)
-              const isPast  = d < today
+            {weekDays.map((d,i)=>{
+              const isToday2 = sameDay(d,today)
+              const isPast   = d<today && !isToday2
+              const hasTasks = tasksForDay(d).some(t=>t.status!=='done')
               return (
-                <div
-                  key={i}
-                  className={`px-2 py-2 border-b border-r last:border-r-0 text-center
-                    ${isToday ? 'bg-teal-50' : 'bg-gray-50'}`}
-                >
-                  <p className={`text-xs font-medium uppercase tracking-wide
-                    ${isToday ? 'text-teal-700' : isPast ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {WEEKDAY_SHORT[i]}
-                  </p>
-                  <p className={`text-lg font-bold leading-tight
-                    ${isToday
-                      ? 'text-teal-600'
-                      : isPast ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {d.getDate()}
-                  </p>
-                  {/* bolinha indicadora */}
-                  {tasksByDay[toISODate(d)]?.some(t => t.status !== 'done') && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400 mx-auto mt-0.5" />
-                  )}
+                <div key={i} className={`px-2 py-2 border-b border-r last:border-r-0 text-center ${isToday2?'bg-teal-50':'bg-gray-50'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${isToday2?'text-teal-700':isPast?'text-gray-400':'text-gray-500'}`}>{WEEKDAYS_SHORT[i]}</p>
+                  <p className={`text-lg font-bold leading-tight ${isToday2?'text-teal-600':isPast?'text-gray-300':'text-gray-700'}`}>{d.getDate()}</p>
+                  <div className={`w-1.5 h-1.5 rounded-full mx-auto mt-0.5 ${hasTasks?(isToday2?'bg-teal-400':'bg-gray-400'):'bg-transparent'}`}/>
                 </div>
               )
             })}
-
-            {/* células de tarefas */}
-            {weekDays.map((d, i) => {
-              const key  = toISODate(d)
-              const day  = tasksByDay[key] ?? []
-              const isToday = key === toISODate(today)
+            {/* células */}
+            {weekDays.map((d,i)=>{
+              const isToday2 = sameDay(d,today)
+              const dt = tasksForDay(d)
               return (
-                <div
-                  key={i}
-                  className={`border-r last:border-r-0 p-1.5 min-h-[120px] align-top
-                    ${isToday ? 'bg-teal-50/40' : ''}`}
-                >
+                <div key={i} className={`border-r last:border-r-0 p-1.5 min-h-[140px] ${isToday2?'bg-teal-50/30':''}`}>
                   <div className="space-y-1">
-                    {day.map(t => <TaskCard key={t.id} t={t} compact />)}
-                    {day.length === 0 && (
-                      <p className="text-xs text-gray-300 text-center pt-4">—</p>
-                    )}
+                    {dt.map(t=><TaskCard key={t.id} t={t} compact/>)}
+                    {dt.length===0 && <p className="text-xs text-gray-300 text-center pt-4">—</p>}
                   </div>
-                  {/* botão rápido de nova tarefa no dia */}
                   <button
-                    onClick={() => {
-                      setSelectedTask({ due_date: key } as any)
-                      setTaskOpen(true)
-                    }}
+                    onClick={()=>openNew({due_date:toISO(d)} as any)}
                     className="mt-1 w-full text-xs text-gray-300 hover:text-teal-500 hover:bg-teal-50 rounded py-0.5 transition-colors"
-                    title={`Nova tarefa em ${WEEKDAY_LONG[i]}`}
-                  >
-                    +
-                  </button>
+                    title={`Nova tarefa em ${WEEKDAYS_LONG[i]}`}
+                  >+</button>
                 </div>
               )
             })}
           </div>
         </div>
-
-        {/* tarefas sem data */}
-        {noDateTasks.length > 0 && (
+        {noDateTasks.length>0 && (
           <div className="border-t px-4 py-3">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Sem data</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Sem data</p>
             <div className="flex flex-wrap gap-1.5">
-              {noDateTasks.map(t => (
-                <div key={t.id} className="max-w-[200px]">
-                  <TaskCard t={t} compact />
-                </div>
-              ))}
+              {noDateTasks.map(t=><div key={t.id} className="max-w-[200px]"><TaskCard t={t} compact/></div>)}
             </div>
           </div>
         )}
@@ -319,49 +286,172 @@ export default function SemanaPage() {
     )
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // VIEW: LISTA
-  // ─────────────────────────────────────────────────────────────────────────
-  function ListView() {
-    const unassigned = tasks.filter(t => !t.assigned_to)
+  // ─── VIEW: MÊS ────────────────────────────────────────────────────────────
+  function ViewMes() {
+    const monthDate   = new Date(today.getFullYear(), today.getMonth()+offset, 1)
+    const yr          = monthDate.getFullYear()
+    const mi          = monthDate.getMonth()
+    const dInM        = getDaysInMonth(yr,mi)
+    const firstDow    = new Date(yr,mi,1).getDay()
+    const label       = `${MONTHS_PT[mi]} ${yr}`
+
+    const cells: (Date|null)[] = [
+      ...Array(firstDow).fill(null),
+      ...Array.from({length:dInM},(_,i)=>new Date(yr,mi,i+1))
+    ]
+    while(cells.length%7!==0) cells.push(null)
+
+    return (
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <NavBar label={label} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
+        <div className="grid grid-cols-7 border-b">
+          {WEEKDAYS_SHORT.map(d=>(
+            <div key={d} className="text-center text-[10px] font-semibold text-gray-400 uppercase py-1.5">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 divide-x">
+          {cells.map((day,i)=>{
+            if(!day) return <div key={i} className="border-b bg-gray-50/40 min-h-[80px]"/>
+            const isToday2 = sameDay(day,today)
+            const isPast   = day<today && !isToday2
+            const dt = tasksForDay(day)
+            const visible = dt.slice(0,3)
+            const extra   = dt.length-visible.length
+            return (
+              <div key={i} className={`border-b min-h-[80px] flex flex-col p-0.5 ${isToday2?'bg-teal-50':isPast?'bg-gray-50/40':'bg-white'}`}>
+                <div className={`text-[11px] font-bold self-end w-5 h-5 flex items-center justify-center rounded-full mb-0.5
+                  ${isToday2?'bg-teal-600 text-white':'text-gray-500'}`}>{day.getDate()}</div>
+                <div className="space-y-0.5 flex-1 overflow-hidden">
+                  {visible.map(t=><TaskCard key={t.id} t={t} compact/>)}
+                  {extra>0 && <div className="text-[10px] text-gray-400 font-medium pl-1">+{extra} mais</div>}
+                </div>
+                <button
+                  onClick={()=>openNew({due_date:toISO(day)} as any)}
+                  className="text-[10px] text-gray-300 hover:text-teal-500 transition-colors mt-0.5"
+                  title="Nova tarefa"
+                >+</button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // ─── VIEW: ANO (heatmap) ────────────────────────────────────────────────────────
+  const dayCountMap = useMemo(()=>{
+    const map: Record<string,number>={}
+    tasks.forEach(t=>{
+      if(!(t as any).due_date) return
+      const key=(t as any).due_date.slice(0,10)
+      map[key]=(map[key]??0)+1
+    })
+    return map
+  },[tasks])
+
+  function heatColor(n:number){
+    if(n===0) return 'bg-gray-100'
+    if(n===1) return 'bg-teal-200'
+    if(n===2) return 'bg-teal-300'
+    if(n<=4)  return 'bg-teal-500'
+    return 'bg-teal-700'
+  }
+
+  function ViewAno() {
+    const anoYear = today.getFullYear()+offset
+    return (
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <NavBar label={String(anoYear)} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+          {MONTHS_SHORT.map((mName,mIdx)=>{
+            const dInM   = getDaysInMonth(anoYear,mIdx)
+            const firstD = new Date(anoYear,mIdx,1).getDay()
+            const cells: (number|null)[] = [...Array(firstD).fill(null),...Array.from({length:dInM},(_,i)=>i+1)]
+            while(cells.length%7!==0) cells.push(null)
+            return (
+              <div key={mIdx}>
+                <p className="text-xs font-semibold text-gray-600 mb-1.5">{mName}</p>
+                <div className="grid grid-cols-7 gap-px">
+                  {WEEKDAYS_SHORT.map(d=>(
+                    <div key={d} className="text-[8px] text-gray-300 text-center">{d[0]}</div>
+                  ))}
+                  {cells.map((day,ci)=>{
+                    if(!day) return <div key={ci}/>
+                    const key=`${anoYear}-${String(mIdx+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                    const cnt=dayCountMap[key]??0
+                    const isT=today.getFullYear()===anoYear && today.getMonth()===mIdx && today.getDate()===day
+                    return (
+                      <div
+                        key={ci}
+                        title={cnt>0?`${day}/${mIdx+1}: ${cnt} tarefa${cnt>1?'s':''}`:`${day}/${mIdx+1}`}
+                        onClick={()=>{
+                          const d=new Date(anoYear,mIdx,day)
+                          switchView('dia')
+                          setOffset(Math.round((d.getTime()-today.getTime())/(1000*60*60*24)))
+                        }}
+                        className={`w-full aspect-square rounded-sm cursor-pointer hover:opacity-70 transition-opacity ${isT?'ring-1 ring-teal-600':''} ${heatColor(cnt)}`}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="px-4 pb-4 flex items-center gap-2 text-[10px] text-gray-400">
+          <span>Menos</span>
+          {['bg-gray-100','bg-teal-200','bg-teal-300','bg-teal-500','bg-teal-700'].map(c=>(
+            <span key={c} className={`w-3 h-3 rounded-sm ${c}`}/>
+          ))}
+          <span>Mais tarefas</span>
+          <span className="ml-4 text-gray-300">• Clique em um dia para abrir visão diária</span>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── VIEW: LISTA ────────────────────────────────────────────────────────────
+  function ViewLista() {
+    const unassigned = tasks.filter(t=>!t.assigned_to)
     return (
       <>
-        {unassigned.length > 0 && (
+        {unassigned.length>0 && (
           <div className="rounded-xl border bg-white overflow-hidden">
             <div className="px-4 py-3 border-b bg-gray-50">
               <h3 className="font-semibold text-gray-500">📋 Sem responsável</h3>
             </div>
-            <ul className="divide-y">
-              {unassigned.map(t => <TaskCard key={t.id} t={t} />)}
-            </ul>
+            <ul className="divide-y">{unassigned.map(t=><TaskCard key={t.id} t={t}/>)}</ul>
           </div>
         )}
-
-        {members.map(m => {
-          const mt = tasks.filter(t => t.assigned_to === m.id)
-          if (mt.length === 0) return null
+        {members.map(m=>{
+          const mt=tasks.filter(t=>t.assigned_to===m.id)
+          if(mt.length===0) return null
           return (
             <div key={m.id} className="rounded-xl border bg-white overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50">
-                <h3 className="font-semibold">{(m as any).nickname ?? (m as any).name}</h3>
+                <h3 className="font-semibold">{(m as any).nickname??(m as any).name}</h3>
               </div>
-              <ul className="divide-y">
-                {mt.map(t => <TaskCard key={t.id} t={t} />)}
-              </ul>
+              <ul className="divide-y">{mt.map(t=><TaskCard key={t.id} t={t}/>)}</ul>
             </div>
           )
         })}
-
-        {tasks.length === 0 && !isLoading && (
-          <EmptyState title="Nenhuma tarefa" description="Adicione tarefas para a semana." />
+        {tasks.length===0 && !isLoading && (
+          <EmptyState title="Nenhuma tarefa" description="Adicione tarefas para a semana."/>
         )}
       </>
     )
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─── toggle config ───────────────────────────────────────────────────────────
+  const VIEWS: {key:ViewType; label:string}[] = [
+    {key:'dia',    label:'Dia'},
+    {key:'semana', label:'Semana'},
+    {key:'mes',    label:'Mês'},
+    {key:'ano',    label:'Ano'},
+    {key:'lista',  label:'Lista'},
+  ]
+
+  // ─── render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       <PageHeader
@@ -369,25 +459,23 @@ export default function SemanaPage() {
         title="Semana"
         description="Tarefas e check-in emocional"
         action={
-          <div className="flex items-center gap-2">
-            {/* toggle Lista / Agenda */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* toggle de views */}
             <div className="flex rounded-lg border overflow-hidden text-sm">
-              <button
-                onClick={() => setView('lista')}
-                className={`px-3 py-1.5 transition-colors ${view === 'lista' ? 'bg-teal-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-              >
-                ☰ Lista
-              </button>
-              <button
-                onClick={() => setView('agenda')}
-                className={`px-3 py-1.5 border-l transition-colors ${view === 'agenda' ? 'bg-teal-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-              >
-                🗓 Agenda
-              </button>
+              {VIEWS.map(v=>(
+                <button
+                  key={v.key}
+                  onClick={()=>switchView(v.key)}
+                  className={`px-3 py-1.5 border-r last:border-r-0 transition-colors
+                    ${view===v.key ? 'bg-teal-600 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                >
+                  {v.label}
+                </button>
+              ))}
             </div>
             <button
               className="text-sm text-teal-600 font-medium hover:underline"
-              onClick={openNew}
+              onClick={()=>openNew()}
             >
               + Tarefa
             </button>
@@ -399,42 +487,41 @@ export default function SemanaPage() {
       <div className="rounded-xl border bg-white overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <h2 className="font-semibold">💚 Check-in emocional — semana atual</h2>
-          <button
-            className="text-sm text-teal-600 font-medium hover:underline"
-            onClick={() => setCheckinOpen(true)}
-          >
+          <button className="text-sm text-teal-600 font-medium hover:underline" onClick={()=>setCheckinOpen(true)}>
             + Registrar
           </button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
-          {members.map(m => {
-            const avg = weekMoodAverage(m.id)
+          {members.map(m=>{
+            const avg=weekMoodAverage(m.id)
             return (
               <div key={m.id} className="rounded-lg border p-3 text-center">
                 <p className="text-2xl">{moodEmoji(avg)}</p>
-                <p className="text-sm font-medium mt-1">{(m as any).nickname ?? (m as any).name}</p>
-                <p className="text-xs text-gray-400">
-                  {avg !== null ? `${avg.toFixed(1)}/5` : 'Sem registro'}
-                </p>
+                <p className="text-sm font-medium mt-1">{(m as any).nickname??(m as any).name}</p>
+                <p className="text-xs text-gray-400">{avg!==null?`${avg.toFixed(1)}/5`:'Sem registro'}</p>
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* view principal */}
-      {view === 'agenda' ? <AgendaView /> : <ListView />}
+      {/* Views */}
+      {view==='dia'    && <ViewDia/>}
+      {view==='semana' && <ViewSemana/>}
+      {view==='mes'    && <ViewMes/>}
+      {view==='ano'    && <ViewAno/>}
+      {view==='lista'  && <ViewLista/>}
 
       <TaskSheet
         open={taskOpen}
-        onClose={() => { setTaskOpen(false); setSelectedTask(null) }}
+        onClose={()=>{ setTaskOpen(false); setSelectedTask(null) }}
         task={selectedTask}
         onSave={upsert}
         members={members}
       />
       <CheckinSheet
         open={checkinOpen}
-        onClose={() => setCheckinOpen(false)}
+        onClose={()=>setCheckinOpen(false)}
         onSave={addCheckin}
         members={members}
       />
