@@ -4,17 +4,42 @@ import { useEffect } from 'react'
 import { useFamilyStore } from '@/store/familyStore'
 import { useRadarItems } from '@/hooks/useRadarItems'
 import { useBills } from '@/hooks/useBills'
+import { useTasks } from '@/hooks/useTasks'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate } from '@/lib/utils'
 
 export default function PainelPage() {
-  const { currentFamily } = useFamilyStore()
+  const { currentFamily, members } = useFamilyStore()
   const { items, counts, isLoading } = useRadarItems(currentFamily?.id ?? null)
   const { bills, totalMonthly } = useBills()
+  const { tasks } = useTasks()
+
+  // Tarefas pendentes com due_date nos próximos 7 dias (ou sem data)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const in7 = new Date(today)
+  in7.setDate(today.getDate() + 7)
+
+  const weekTasks = tasks.filter(t => {
+    if (t.status === 'done') return false
+    if (!t.due_date) return true
+    const d = new Date(t.due_date)
+    return d <= in7
+  }).sort((a, b) => {
+    if (!a.due_date) return 1
+    if (!b.due_date) return -1
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+  })
 
   const focusDo = items.filter(i => i.priority === 'urgent' || i.priority === 'overdue').slice(0, 3)
+
+  const memberName = (id: string | null) => {
+    if (!id) return null
+    const m = members.find(m => m.id === id)
+    return m?.nickname ?? m?.name ?? null
+  }
 
   return (
     <div className="space-y-6">
@@ -45,6 +70,38 @@ export default function PainelPage() {
           </ul>
         </div>
       )}
+
+      {/* Tarefas da semana */}
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b flex items-center justify-between">
+          <h2 className="font-semibold">📅 Tarefas da semana</h2>
+          <span className="text-sm text-gray-500">{weekTasks.length} pendentes</span>
+        </div>
+        {weekTasks.length === 0 ? (
+          <div className="p-6 text-center text-gray-400 text-sm">Nenhuma tarefa pendente para os próximos 7 dias.</div>
+        ) : (
+          <ul className="divide-y">
+            {weekTasks.map(t => {
+              const isOverdue = t.due_date && new Date(t.due_date) < today
+              return (
+                <li key={t.id} className="px-4 py-3 flex items-center gap-3">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOverdue ? 'bg-red-500' : 'bg-teal-500'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.title}</p>
+                    <p className="text-xs text-gray-400">
+                      {memberName(t.assigned_to) ?? 'Sem responsável'}
+                      {t.due_date && ` · ${formatDate(t.due_date)}`}
+                    </p>
+                  </div>
+                  {isOverdue && (
+                    <span className="text-xs font-semibold text-red-500 flex-shrink-0">Atrasada</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
 
       {/* Radar table */}
       <div className="rounded-xl border bg-white overflow-hidden">
