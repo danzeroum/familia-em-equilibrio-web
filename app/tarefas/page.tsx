@@ -58,7 +58,7 @@ function NavBar({ label, onPrev, onNext, onToday, showToday }: {
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function TarefasPage() {
-  const { currentFamily, members } = useFamilyStore()
+  const { currentFamily, members, currentUser } = useFamilyStore()
   const { tasks, isLoading, upsert, complete, remove } = useTasks()
   const { addCheckin, weekMoodAverage } = useEmotionalCheckins(currentFamily?.id ?? null)
   const { events, upsert: upsertEvent, toggleDone, remove: removeEvent } = useFamilyEvents(currentFamily?.id ?? null)
@@ -71,7 +71,6 @@ export default function TarefasPage() {
   const [eventOpen, setEventOpen]       = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<FamilyEvent | null>(null)
 
-  const adults = members.filter(m => (m as any).role === 'adult')
   const today  = useMemo(() => dayOnly(new Date()), [])
 
   function openNew(prefill?: Partial<Task>) { setSelectedTask(prefill as Task ?? null); setTaskOpen(true) }
@@ -79,7 +78,7 @@ export default function TarefasPage() {
   function switchView(v: ViewType) { setView(v); setOffset(0) }
 
   function handleComplete(t: Task) {
-    if (t.status !== 'done') complete(t.id, t.requires_supervision ? adults[0]?.id : undefined)
+    if (t.status !== 'done') complete(t.id, t.requires_supervision ? currentUser?.id : undefined)
   }
 
   const memberName = (id: string | null | undefined) => {
