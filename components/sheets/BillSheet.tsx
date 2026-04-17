@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useFamilyStore } from '@/store/familyStore'
 import type { Bill } from '@/types/database'
 import { SlideOver, Field, SaveCancel } from './_shared'
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function BillSheet({ open, onClose, bill, onSave }: Props) {
+  const { members } = useFamilyStore()
   const [form, setForm] = useState<Partial<Bill>>({})
 
   useEffect(() => {
@@ -34,6 +36,22 @@ export function BillSheet({ open, onClose, bill, onSave }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Valor (R$)" type="number" value={String(form.amount ?? '')} onChange={v => set('amount', parseFloat(v))} placeholder="0,00" />
         <Field label="Dia de vencimento" type="number" value={String(form.due_day ?? '')} onChange={v => set('due_day', parseInt(v))} placeholder="Ex: 10" />
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-600 block mb-1">👤 Responsável</label>
+        <select
+          className="input-base"
+          value={form.assigned_to ?? ''}
+          onChange={e => set('assigned_to', e.target.value || null)}
+        >
+          <option value="">— Sem responsável —</option>
+          {members.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.nickname ?? m.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
