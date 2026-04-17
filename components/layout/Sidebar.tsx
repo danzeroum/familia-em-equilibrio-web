@@ -7,7 +7,7 @@ import { useFamilyStore } from '@/store/familyStore'
 import {
   LayoutDashboard,
   Users,
-  CalendarDays,
+  CheckSquare,
   Home,
   Heart,
   Wallet,
@@ -18,11 +18,11 @@ import {
 const NAV_ITEMS = [
   { href: '/',             label: 'Painel',      icon: LayoutDashboard, emoji: '🎯' },
   { href: '/familia',      label: 'Família',     icon: Users,           emoji: '👨‍👩‍👧‍👦' },
-  { href: '/semana',       label: 'Semana',       icon: CalendarDays,    emoji: '📅' },
-  { href: '/casa',         label: 'Casa',         icon: Home,            emoji: '🏠' },
-  { href: '/saude',        label: 'Saúde',        icon: Heart,           emoji: '🩺' },
-  { href: '/financeiro',   label: 'Financeiro',   icon: Wallet,          emoji: '💰' },
-  { href: '/categorias',   label: 'Categorias',   icon: Tag,             emoji: '🏷️' },
+  { href: '/tarefas',      label: 'Tarefas',     icon: CheckSquare,     emoji: '✅' },
+  { href: '/casa',         label: 'Casa',        icon: Home,            emoji: '🏠' },
+  { href: '/saude',        label: 'Saúde',       icon: Heart,           emoji: '🩺' },
+  { href: '/financeiro',   label: 'Financeiro',  icon: Wallet,          emoji: '💰' },
+  { href: '/categorias',   label: 'Categorias',  icon: Tag,             emoji: '🏷️' },
 ]
 
 export function Sidebar() {
