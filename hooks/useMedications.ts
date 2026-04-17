@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { daysUntil, getMedicationStatus } from '@/lib/utils'
-import type { Medication, MedicationLog } from '@/types/database'
+import type { Medication } from '@/types/database'
 
 export interface MedicationWithStatus extends Medication {
   statusLabel: string
@@ -22,7 +22,9 @@ export function useMedications(profileId?: string) {
     let query = supabase.from('medications').select('*').eq('is_active', true)
     if (profileId) query = query.eq('profile_id', profileId)
 
-    const { data } = await query
+    const { data, error } = await query
+    if (error) console.error('[useMedications] load error:', error)
+
     const enriched = (data ?? []).map((m) => {
       const s = getMedicationStatus(m.expiry_date, m.stock_quantity, m.minimum_stock)
       return {
@@ -37,10 +39,23 @@ export function useMedications(profileId?: string) {
   }
 
   async function upsert(med: Partial<Medication> & { name: string }) {
-    if (med.id) {
-      await supabase.from('medications').update(med).eq('id', med.id)
+    // Garante que profile_id nunca seja string vazia (violaria a RLS)
+    const payload = {
+      ...med,
+      profile_id: med.profile_id || null,
+    }
+
+    let error: any
+    if (payload.id) {
+      ({ error } = await supabase.from('medications').update(payload).eq('id', payload.id))
     } else {
-      await supabase.from('medications').insert(med as any)
+      ({ error } = await supabase.from('medications').insert(payload as any))
+    }
+
+    if (error) {
+      console.error('[useMedications] upsert error:', error)
+      alert(`Erro ao salvar: ${error.message}`)
+      return
     }
     await load()
   }
@@ -53,7 +68,8 @@ export function useMedications(profileId?: string) {
   }
 
   async function remove(id: string) {
-    await supabase.from('medications').update({ is_active: false }).eq('id', id)
+    const { error } = await supabase.from('medications').update({ is_active: false }).eq('id', id)
+    if (error) console.error('[useMedications] remove error:', error)
     await load()
   }
 

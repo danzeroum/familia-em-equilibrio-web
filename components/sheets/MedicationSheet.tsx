@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import type { Medication, Profile } from '@/types/database'
 import { SlideOver, Field, SaveCancel } from './_shared'
+import { useFamilyStore } from '@/store/familyStore'
 
 interface Props {
   open: boolean
@@ -12,17 +13,26 @@ interface Props {
 }
 
 export function MedicationSheet({ open, onClose, medication, onSave, members }: Props) {
+  const { currentUser } = useFamilyStore()
   const [form, setForm] = useState<Partial<Medication>>({})
 
   useEffect(() => {
-    setForm(medication ?? { stock_quantity: 0, minimum_stock: 2, is_active: true })
+    setForm(medication ?? { stock_quantity: 1, minimum_stock: 1, is_active: true })
   }, [medication, open])
 
   const set = (k: keyof Medication, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   async function save() {
     if (!form.name?.trim()) { alert('Nome é obrigatório'); return }
-    await onSave(form)
+
+    // RLS exige profile_id válido — usa o usuário logado como fallback
+    const profileId = form.profile_id?.trim() || currentUser?.id
+    if (!profileId) {
+      alert('Não foi possível identificar o perfil. Selecione um membro.')
+      return
+    }
+
+    await onSave({ ...form, profile_id: profileId })
     onClose()
   }
 
@@ -35,9 +45,9 @@ export function MedicationSheet({ open, onClose, medication, onSave, members }: 
       <div>
         <label className="text-sm text-gray-600 block mb-1">Membro</label>
         <select className="input-base" value={form.profile_id ?? ''} onChange={e => set('profile_id', e.target.value)}>
-          <option value="">— Família —</option>
+          <option value="">— Usuário atual —</option>
           {members.map(m => (
-            <option key={m.id} value={m.id}>{m.nickname ?? m.name}</option>
+            <option key={m.id} value={m.id}>{(m as any).nickname ?? (m as any).name}</option>
           ))}
         </select>
       </div>
@@ -49,9 +59,9 @@ export function MedicationSheet({ open, onClose, medication, onSave, members }: 
             <option value="">—</option>
             <option value="comprimido">Comprimido</option>
             <option value="capsula">Cápsula</option>
-            <option value="liquido">Líquido</option>
+            <option value="liquid">Líquido</option>
             <option value="pomada">Pomada</option>
-            <option value="gotas">Gotas</option>
+            <option value="drops">Gotas</option>
             <option value="injetavel">Injetável</option>
           </select>
         </div>
@@ -59,8 +69,8 @@ export function MedicationSheet({ open, onClose, medication, onSave, members }: 
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Estoque atual" type="number" value={String(form.stock_quantity ?? 0)} onChange={v => set('stock_quantity', parseInt(v) || 0)} />
-        <Field label="Estoque mínimo" type="number" value={String(form.minimum_stock ?? 2)} onChange={v => set('minimum_stock', parseInt(v) || 1)} />
+        <Field label="Estoque atual" type="number" value={String(form.stock_quantity ?? 1)} onChange={v => set('stock_quantity', parseInt(v) || 0)} />
+        <Field label="Estoque mínimo" type="number" value={String(form.minimum_stock ?? 1)} onChange={v => set('minimum_stock', parseInt(v) || 1)} />
       </div>
 
       <Field label="Validade" type="date" value={form.expiry_date ?? ''} onChange={v => set('expiry_date', v)} />
