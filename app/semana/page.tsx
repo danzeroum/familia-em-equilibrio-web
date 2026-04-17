@@ -20,7 +20,7 @@ export default function SemanaPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [checkinOpen, setCheckinOpen] = useState(false)
 
-  const adults = members.filter(m => m.member_type === 'adult')
+  const adults = members.filter(m => m.role === 'adult')
 
   const moodEmoji = (avg: number | null) => {
     if (avg === null) return '—'
@@ -31,27 +31,81 @@ export default function SemanaPage() {
     return '😢'
   }
 
-  return (
-    <div className="space-y-6">     
-     <PageHeader
-       emoji="📅"
-       title="Semana"
-       description="Tarefas e check-in emocional"
-       action={
-         <button
-           className="text-sm text-teal-600 font-medium hover:underline"
-           onClick={() => { setSelectedTask(null); setTaskOpen(true) }}
-         >
-           + Tarefa
-         </button>
-       }
-     />
+  function TaskItem({ t }: { t: Task }) {
+    const checklist = Array.isArray(t.checklist) ? t.checklist : []
+    const done = checklist.filter(i => i.done).length
+    return (
+      <li className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
+        <input
+          type="checkbox"
+          checked={t.status === 'done'}
+          onChange={() => {
+            if (t.status !== 'done') {
+              const validator = adults[0]?.id
+              complete(t.id, t.requires_supervision ? validator : undefined)
+            }
+          }}
+          className="w-4 h-4 accent-teal-600"
+        />
+        <div className="flex-1">
+          <p className={`text-sm font-medium ${t.status === 'done' ? 'line-through text-gray-400' : ''}`}>
+            {t.title}
+          </p>
+          <p className="text-xs text-gray-400 flex items-center gap-2">
+            {t.due_date && formatDate(t.due_date)}
+            {t.requires_supervision && ' · 👤 Requer adulto'}
+            {checklist.length > 0 && (
+              <span className={done === checklist.length ? 'text-green-500' : ''}>
+                · ✅ {done}/{checklist.length}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="text-xs text-gray-400 hover:text-gray-600"
+            onClick={() => { setSelectedTask(t); setTaskOpen(true) }}
+          >
+            Editar
+          </button>
+          <button
+            className="text-xs text-red-400 hover:text-red-600"
+            onClick={() => remove(t.id)}
+          >
+            ×
+          </button>
+        </div>
+      </li>
+    )
+  }
 
-      {/* Check-in emocional por membro */}
+  // Tarefas sem responsável atribuído
+  const unassignedTasks = tasks.filter(t => !t.assigned_to)
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        emoji="📅"
+        title="Semana"
+        description="Tarefas e check-in emocional"
+        action={
+          <button
+            className="text-sm text-teal-600 font-medium hover:underline"
+            onClick={() => { setSelectedTask(null); setTaskOpen(true) }}
+          >
+            + Tarefa
+          </button>
+        }
+      />
+
+      {/* Check-in emocional */}
       <div className="rounded-xl border bg-white overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <h2 className="font-semibold">💚 Check-in emocional — semana atual</h2>
-          <button className="text-sm text-teal-600 font-medium hover:underline" onClick={() => setCheckinOpen(true)}>
+          <button
+            className="text-sm text-teal-600 font-medium hover:underline"
+            onClick={() => setCheckinOpen(true)}
+          >
             + Registrar
           </button>
         </div>
@@ -62,12 +116,26 @@ export default function SemanaPage() {
               <div key={m.id} className="rounded-lg border p-3 text-center">
                 <p className="text-2xl">{moodEmoji(avg)}</p>
                 <p className="text-sm font-medium mt-1">{m.nickname ?? m.name}</p>
-                <p className="text-xs text-gray-400">{avg !== null ? `${avg.toFixed(1)}/5` : 'Sem registro'}</p>
+                <p className="text-xs text-gray-400">
+                  {avg !== null ? `${avg.toFixed(1)}/5` : 'Sem registro'}
+                </p>
               </div>
             )
           })}
         </div>
       </div>
+
+      {/* Tarefas sem responsável */}
+      {unassignedTasks.length > 0 && (
+        <div className="rounded-xl border bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b bg-gray-50">
+            <h3 className="font-semibold text-gray-500">📋 Sem responsável</h3>
+          </div>
+          <ul className="divide-y">
+            {unassignedTasks.map(t => <TaskItem key={t.id} t={t} />)}
+          </ul>
+        </div>
+      )}
 
       {/* Tarefas por membro */}
       {members.map(m => {
@@ -79,32 +147,7 @@ export default function SemanaPage() {
               <h3 className="font-semibold">{m.nickname ?? m.name}</h3>
             </div>
             <ul className="divide-y">
-              {memberTasks.map(t => (
-                <li key={t.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={t.status === 'done'}
-                    onChange={() => {
-                      if (t.status !== 'done') {
-                        const validator = adults[0]?.id
-                        complete(t.id, t.requires_adult_validation ? validator : undefined)
-                      }
-                    }}
-                    className="w-4 h-4 accent-teal-600"
-                  />
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${t.status === 'done' ? 'line-through text-gray-400' : ''}`}>{t.title}</p>
-                    <p className="text-xs text-gray-400">
-                      {t.due_date && formatDate(t.due_date)}
-                      {t.requires_adult_validation && ' · 👤 Requer adulto'}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => { setSelectedTask(t); setTaskOpen(true) }}>Editar</button>
-                    <button className="text-xs text-red-400 hover:text-red-600" onClick={() => remove(t.id)}>×</button>
-                  </div>
-                </li>
-              ))}
+              {memberTasks.map(t => <TaskItem key={t.id} t={t} />)}
             </ul>
           </div>
         )
@@ -114,8 +157,19 @@ export default function SemanaPage() {
         <EmptyState title="Nenhuma tarefa" description="Adicione tarefas para a semana." />
       )}
 
-      <TaskSheet open={taskOpen} onClose={() => setTaskOpen(false)} task={selectedTask} onSave={upsert} members={members} />
-      <CheckinSheet open={checkinOpen} onClose={() => setCheckinOpen(false)} onSave={addCheckin} members={members} />
+      <TaskSheet
+        open={taskOpen}
+        onClose={() => setTaskOpen(false)}
+        task={selectedTask}
+        onSave={upsert}
+        members={members}
+      />
+      <CheckinSheet
+        open={checkinOpen}
+        onClose={() => setCheckinOpen(false)}
+        onSave={addCheckin}
+        members={members}
+      />
     </div>
   )
 }
