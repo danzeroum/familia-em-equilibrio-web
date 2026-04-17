@@ -10,20 +10,58 @@ export function MemberSheet({ open, onClose, member }: Props) {
   const { reload } = useFamilyStore()
   const [form, setForm] = useState<Partial<Profile>>({})
 
-  useEffect(() => { setForm(member ?? {}) }, [member])
+  useEffect(() => {
+    console.log('[MemberSheet] member recebido:', member)
+    setForm(member ?? {})
+  }, [member])
 
   const set = (k: keyof Profile, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   async function save() {
-    const { family } = useFamilyStore.getState()
-    if (form.id) {
-      await supabase.from('profiles').update(form).eq('id', form.id)
-    } else {
-      await supabase.from('profiles').insert({ 
-      ...form, 
-      family_id: family?.id   // ← ESSENCIAL
-    } as any)
+    console.log('[MemberSheet] save() chamado')
+    console.log('[MemberSheet] form atual:', form)
+
+    const { family, currentUser } = useFamilyStore.getState()
+    console.log('[MemberSheet] family do store:', family)
+    console.log('[MemberSheet] currentUser do store:', currentUser)
+
+    // Verificar sessão
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    console.log('[MemberSheet] sessão auth:', sessionData?.session?.user?.id)
+    if (sessionError) console.error('[MemberSheet] erro na sessão:', sessionError)
+
+    if (!form.name) {
+      console.warn('[MemberSheet] Nome obrigatório não preenchido')
+      alert('Nome é obrigatório')
+      return
     }
+
+    if (form.id) {
+      // UPDATE
+      console.log('[MemberSheet] executando UPDATE no id:', form.id)
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(form)
+        .eq('id', form.id)
+        .select()
+      console.log('[MemberSheet] UPDATE resultado:', { data, error })
+      if (error) console.error('[MemberSheet] UPDATE ERRO:', { message: error.message, code: error.code, details: error.details, hint: error.hint })
+    } else {
+      // INSERT
+      const payload = {
+        ...form,
+        family_id: family?.id,
+      }
+      console.log('[MemberSheet] executando INSERT com payload:', payload)
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(payload as any)
+        .select()
+      console.log('[MemberSheet] INSERT resultado:', { data, error })
+      if (error) console.error('[MemberSheet] INSERT ERRO:', { message: error.message, code: error.code, details: error.details, hint: error.hint })
+    }
+
+    console.log('[MemberSheet] chamando reload()')
     await reload?.()
     onClose()
   }
@@ -42,13 +80,13 @@ export function MemberSheet({ open, onClose, member }: Props) {
           <Field label="Apelido" value={form.nickname ?? ''} onChange={v => set('nickname', v)} />
           <div>
             <label className="text-sm text-gray-600">Tipo</label>
-            <select className="input-base" value={form.member_type ?? 'adult'} onChange={e => set('member_type', e.target.value)}>
+            <select className="input-base" value={form.role ?? 'adult'} onChange={e => set('role', e.target.value)}>
               <option value="adult">👤 Adulto</option>
               <option value="child">👦 Criança</option>
               <option value="pet">🐾 Pet</option>
             </select>
           </div>
-          <Field label="Data de nascimento" type="date" value={form.birthdate ?? ''} onChange={v => set('birthdate', v)} />
+          <Field label="Data de nascimento" type="date" value={form.birth_date ?? ''} onChange={v => set('birth_date', v)} />
           <Field label="Peso (kg)" type="number" value={String(form.weight_kg ?? '')} onChange={v => set('weight_kg', parseFloat(v))} />
           <Field label="Altura (cm)" type="number" value={String(form.height_cm ?? '')} onChange={v => set('height_cm', parseFloat(v))} />
           <div>
@@ -58,14 +96,12 @@ export function MemberSheet({ open, onClose, member }: Props) {
               {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
-          <Field label="Escola / Trabalho" value={form.school ?? ''} onChange={v => set('school', v)} />
-          <Field label="Plano de saúde" value={form.health_plan ?? ''} onChange={v => set('health_plan', v)} />
+          <Field label="Escola / Trabalho" value={form.school_or_company ?? ''} onChange={v => set('school_or_company', v)} />
+          <Field label="Plano de saúde" value={form.health_plan_name ?? ''} onChange={v => set('health_plan_name', v)} />
           <Field label="Passaporte" value={form.passport_number ?? ''} onChange={v => set('passport_number', v)} />
           <div>
             <label className="text-sm text-gray-600">Cor</label>
-            <select className="input-base" value={form.color ?? 'blue'} onChange={e => set('color', e.target.value)}>
-              {['blue','green','pink','yellow','purple','orange'].map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <input type="color" value={form.color_hex ?? '#4A90D9'} onChange={e => set('color_hex', e.target.value)} className="h-10 w-full rounded cursor-pointer" />
           </div>
         </div>
         <div className="mt-6 flex gap-3">

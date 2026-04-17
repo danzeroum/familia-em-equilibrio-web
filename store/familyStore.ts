@@ -24,18 +24,40 @@ export const useFamilyStore = create<FamilyStore>((set, get) => ({
   currentUser: null,
   isLoading: true,
 
-  setFamily: (family) => set({ family, currentFamily: family }),
-  setMembers: (members) => set({ members }),
-  setCurrentUser: (user) => set({ currentUser: user }),
+  setFamily: (family) => {
+    console.log('[familyStore] setFamily:', family)
+    set({ family, currentFamily: family })
+  },
+
+  setMembers: (members) => {
+    console.log('[familyStore] setMembers:', members)
+    set({ members })
+  },
+
+  setCurrentUser: (user) => {
+    console.log('[familyStore] setCurrentUser:', user)
+    set({ currentUser: user })
+  },
+
   setLoading: (isLoading) => set({ isLoading }),
 
   reload: async () => {
     const { family } = get()
-    if (!family) return
-    const { data } = await supabase
+    console.log('[familyStore] reload() - family:', family)
+
+    if (!family) {
+      console.warn('[familyStore] reload() abortado: family é null')
+      return
+    }
+
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('family_id', family.id)
+
+    console.log('[familyStore] reload() resultado:', { data, error })
+    if (error) console.error('[familyStore] reload() ERRO:', { message: error.message, code: error.code, details: error.details, hint: error.hint })
+
     if (data) set({ members: data })
   },
 
