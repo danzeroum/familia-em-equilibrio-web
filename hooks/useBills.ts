@@ -105,10 +105,10 @@ export function useBills() {
     if (payload.assigned_to === '') payload.assigned_to = null
 
     if (payload.id) {
-      await supabase.from('bills').update(bill).eq('id', bill.id)
+      await supabase.from('bills').update(payload).eq('id', payload.id)
     } else {
-      await supabase.from('bills').insert(bill as any)
-    }
+      await supabase.from('bills').insert(payload as any)
+  }
     await load()
   }
 
