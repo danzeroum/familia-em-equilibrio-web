@@ -8,9 +8,9 @@ import { useHomeMaintenance } from '@/hooks/useHomeMaintenance'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { WardrobeSheet } from '@/components/sheets/WardrobeSheet'
 import { MaintenanceSheet } from '@/components/sheets/MaintenanceSheet'
-import type { WardrobeItem, Medication, HomeMaintenance } from '@/types/database'
+import type { WardrobeItem, HomeMaintenance } from '@/types/database'
 
-// ─── helpers ───────────────────────────────────────────────────────────────
+// ─── helpers ──────────────────────────────────────────────────────────────────
 const SEASON_LABEL: Record<string, string> = { summer: '☀️ Verão', winter: '❄️ Inverno', all: '🔄 Todas' }
 const WARDROBE_STATUS: Record<string, { label: string; cls: string }> = {
   fitting:  { label: '✅ Serve',    cls: 'bg-green-100 text-green-700' },
@@ -20,7 +20,7 @@ const WARDROBE_STATUS: Record<string, { label: string; cls: string }> = {
 }
 
 function situationBadge(qty: number, min: number): { label: string; cls: string } {
-  if (qty >= min) return { label: '🟢 OK', cls: 'bg-green-100 text-green-700' }
+  if (qty >= min) return { label: '🟢 OK',    cls: 'bg-green-100 text-green-700' }
   if (qty > 0)    return { label: '🟡 Baixo', cls: 'bg-yellow-100 text-yellow-700' }
   return            { label: '🔴 Falta', cls: 'bg-red-100 text-red-700' }
 }
@@ -44,34 +44,30 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleDateString('pt-BR')
 }
 
-// ─── tab types ──────────────────────────────────────────────────────────────
 type Tab = 'vestuario' | 'medicamentos' | 'manutencao'
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function CasaPage() {
   const { members } = useFamilyStore()
-  const wardrobe = useWardrobe()
-  const medications = useMedications()
+  const wardrobe    = useWardrobe()
+  const { medications, isLoading: medLoading } = useMedications()
   const maintenance = useHomeMaintenance()
 
   const [tab, setTab] = useState<Tab>('vestuario')
   const [filterMember, setFilterMember] = useState<string>('all')
 
-  // wardrobe sheet
   const [wardrobeOpen, setWardrobeOpen] = useState(false)
   const [selectedWardrobe, setSelectedWardrobe] = useState<WardrobeItem | null>(null)
 
-  // maintenance sheet
   const [maintOpen, setMaintOpen] = useState(false)
   const [selectedMaint, setSelectedMaint] = useState<HomeMaintenance | null>(null)
 
-  // derived
   const filteredWardrobe = filterMember === 'all'
     ? wardrobe.items
     : wardrobe.items.filter(i => i.profile_id === filterMember)
 
   const wardrobeAlerts = wardrobe.items.filter(i => i.needsRestock).length
-  const medAlerts = medications.items.filter(i =>
+  const medAlerts = medications.filter(i =>
     (i.stock_quantity < (i.minimum_stock ?? 1)) ||
     (i.expiry_date && Math.ceil((new Date(i.expiry_date).getTime() - Date.now()) / 86400000) <= 30)
   ).length
@@ -83,9 +79,9 @@ export default function CasaPage() {
   }
 
   const TABS = [
-    { id: 'vestuario' as Tab,    label: '🧥 Vestuário',       alerts: wardrobeAlerts },
+    { id: 'vestuario'    as Tab, label: '🧥 Vestuário',              alerts: wardrobeAlerts },
     { id: 'medicamentos' as Tab, label: '💊 Med. & Primeiros Socorros', alerts: medAlerts },
-    { id: 'manutencao' as Tab,   label: '🛠️ Manutenção',     alerts: maintAlerts },
+    { id: 'manutencao'   as Tab, label: '🛠️ Manutenção',             alerts: maintAlerts },
   ]
 
   return (
@@ -105,35 +101,38 @@ export default function CasaPage() {
         }
       />
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <div className="flex gap-1 border-b">
         {TABS.map(t => (
           <button key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t.id ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+              tab === t.id
+                ? 'border-teal-600 text-teal-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
             {t.label}
             {t.alerts > 0 && (
-              <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{t.alerts}</span>
+              <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
+                {t.alerts}
+              </span>
             )}
           </button>
         ))}
       </div>
 
-      {/* ══════════════════════════════════════════════════════
-          BLOCO A — VESTUÁRIO
-      ══════════════════════════════════════════════════════ */}
+      {/* ══ BLOCO A — VESTUÁRIO ══ */}
       {tab === 'vestuario' && (
         <div className="space-y-4">
-          {/* Filtro membro */}
           <div className="flex gap-2 flex-wrap">
             {[{ id: 'all', label: 'Todos' }, ...members.map(m => ({ id: m.id, label: m.nickname ?? m.name }))].map(opt => (
               <button key={opt.id}
                 onClick={() => setFilterMember(opt.id)}
                 className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                  filterMember === opt.id ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-200 text-gray-600 hover:border-teal-400'
+                  filterMember === opt.id
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'border-gray-200 text-gray-600 hover:border-teal-400'
                 }`}>
                 {opt.label}
               </button>
@@ -156,7 +155,7 @@ export default function CasaPage() {
                     <tr>
                       <th className="px-4 py-3 text-left">🏷️ Item</th>
                       <th className="px-4 py-3 text-left">👤 Membro</th>
-                      <th className="px-4 py-3 text-left">📦 Qtd / Mínimo</th>
+                      <th className="px-4 py-3 text-left">📦 Qtd / Mín</th>
                       <th className="px-4 py-3 text-left">🚦 Situação</th>
                       <th className="px-4 py-3 text-left">🌤️ Estação</th>
                       <th className="px-4 py-3 text-left">🔘 Status</th>
@@ -169,7 +168,7 @@ export default function CasaPage() {
                   <tbody className="divide-y">
                     {filteredWardrobe.map(i => {
                       const sit = situationBadge(i.quantity, i.minimum_quantity ?? 1)
-                      const st = WARDROBE_STATUS[i.status] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
+                      const st  = WARDROBE_STATUS[i.status] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
                       return (
                         <tr key={i.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3 font-medium text-gray-800">{i.item_type}</td>
@@ -207,9 +206,7 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════
-          BLOCO B — MEDICAMENTOS & PRIMEIROS SOCORROS
-      ══════════════════════════════════════════════════════ */}
+      {/* ══ BLOCO B — MEDICAMENTOS & PRIMEIROS SOCORROS ══ */}
       {tab === 'medicamentos' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -218,9 +215,9 @@ export default function CasaPage() {
           </div>
 
           <div className="rounded-xl border bg-white overflow-hidden">
-            {medications.isLoading ? (
+            {medLoading ? (
               <div className="p-8 text-center text-gray-400">Carregando...</div>
-            ) : medications.items.length === 0 ? (
+            ) : medications.length === 0 ? (
               <div className="p-10 text-center">
                 <p className="text-3xl mb-2">💊</p>
                 <p className="text-gray-500 font-medium">Nenhum medicamento cadastrado</p>
@@ -242,11 +239,11 @@ export default function CasaPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {medications.items.map(i => {
+                    {medications.map(i => {
                       const sit = situationBadge(i.stock_quantity ?? 0, i.minimum_stock ?? 1)
                       const exp = expiryBadge(i.expiry_date)
                       const condMap: Record<string, string> = {
-                        ok: '✅ OK', broken: '❌ Quebrado', missing: '⚠️ Falta', needs_check: '🔍 Verificar'
+                        ok: '✅ OK', broken: '❌ Quebrado', missing: '⚠️ Falta', needs_check: '🔍 Verificar',
                       }
                       const cond = condMap[(i as any).item_condition ?? 'ok'] ?? '✅ OK'
                       return (
@@ -277,9 +274,7 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════
-          BLOCO C — MANUTENÇÃO PROGRAMADA
-      ══════════════════════════════════════════════════════ */}
+      {/* ══ BLOCO C — MANUTENÇÃO PROGRAMADA ══ */}
       {tab === 'manutencao' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -310,9 +305,7 @@ export default function CasaPage() {
                       const badge = maintenanceBadge(i.alertLevel, i.daysRemaining)
                       return (
                         <tr key={i.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 font-medium text-gray-800">
-                            {i.emoji} {i.title}
-                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-800">{i.emoji} {i.title}</td>
                           <td className="px-4 py-3 text-gray-500">{i.frequency_label}</td>
                           <td className="px-4 py-3 text-gray-600">{getMemberName(i.responsible_id)}</td>
                           <td className="px-4 py-3 text-gray-500">{formatDate(i.last_done_at)}</td>
@@ -320,7 +313,9 @@ export default function CasaPage() {
                           <td className="px-4 py-3 text-gray-600">
                             {i.daysRemaining !== null ? (
                               <span className={i.daysRemaining < 0 ? 'text-red-600 font-semibold' : ''}>
-                                {i.daysRemaining < 0 ? `${Math.abs(i.daysRemaining)}d atrás` : `${i.daysRemaining}d`}
+                                {i.daysRemaining < 0
+                                  ? `${Math.abs(i.daysRemaining)}d atrás`
+                                  : `${i.daysRemaining}d`}
                               </span>
                             ) : '—'}
                           </td>
@@ -350,7 +345,7 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ── Sheets ── */}
+      {/* Sheets */}
       <WardrobeSheet
         open={wardrobeOpen}
         onClose={() => setWardrobeOpen(false)}
