@@ -82,6 +82,7 @@ export interface Database {
           priority: 1 | 2 | 3
           visible_from: string | null
           completed_at: string | null
+          checklist: ChecklistItem[] | null
           created_at: string | null
         }
         Insert: Omit<Database['public']['Tables']['tasks']['Row'], 'id' | 'created_at'>
@@ -237,3 +238,9 @@ export type EmergencyContact = Database['public']['Tables']['emergency_contacts'
 export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
 export type WardrobeItem = Database['public']['Tables']['wardrobe_items']['Row']
 export type ShoppingItem = Database['public']['Tables']['shopping_items']['Row']
+
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+}

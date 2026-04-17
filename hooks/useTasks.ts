@@ -21,16 +21,28 @@ export function useTasks(filters?: { assignedTo?: string; status?: Task['status'
     if (filters?.status) query = query.eq('status', filters.status)
 
     const { data } = await query
-    setTasks(data ?? [])
+    setTasks((data ?? []).map(t => ({
+      ...t,
+      checklist: Array.isArray(t.checklist) ? t.checklist : [],
+    })))
     setIsLoading(false)
   }
 
   async function upsert(task: Partial<Task> & { title: string }) {
-    if (task.id) {
-      await supabase.from('tasks').update(task).eq('id', task.id)
-    } else {
-      await supabase.from('tasks').insert(task as any)
+    const payload = {
+      ...task,
+      checklist: task.checklist ?? [],
     }
+    if (payload.id) {
+      await supabase.from('tasks').update(payload).eq('id', payload.id)
+    } else {
+      await supabase.from('tasks').insert(payload as any)
+    }
+    await load()
+  }
+
+  async function updateChecklist(id: string, checklist: Task['checklist']) {
+    await supabase.from('tasks').update({ checklist }).eq('id', id)
     await load()
   }
 
@@ -48,5 +60,5 @@ export function useTasks(filters?: { assignedTo?: string; status?: Task['status'
     await load()
   }
 
-  return { tasks, isLoading, upsert, complete, remove, reload: load }
+  return { tasks, isLoading, upsert, complete, remove, reload: load, updateChecklist }
 }

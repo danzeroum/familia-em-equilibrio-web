@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import type { Task, Profile } from '@/types/database'
+import type { Task, Profile, ChecklistItem } from '@/types/database'
 import { SlideOver, Field, SaveCancel } from './_shared'
 import { useCategoryStore } from '@/store/categoryStore'
 
@@ -12,28 +12,56 @@ interface Props {
   members: Profile[]
 }
 
+function newItem(text = ''): ChecklistItem {
+  return { id: crypto.randomUUID(), text, done: false }
+}
+
 export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
   const { categories, load: loadCategories } = useCategoryStore()
   const [form, setForm] = useState<Partial<Task & Record<string, any>>>({})
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([])
+  const [newText, setNewText] = useState('')
 
   useEffect(() => { loadCategories() }, [])
 
   useEffect(() => {
-    setForm(task ?? { priority: 'medium', status: 'pending', recurrence: 'none' })
+    const base = task ?? { priority: 'medium', status: 'pending', recurrence: 'none' }
+    setForm(base)
+    setChecklist(Array.isArray((base as any).checklist) ? (base as any).checklist : [])
+    setNewText('')
   }, [task, open])
 
   const f = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }))
 
+  function addItem() {
+    const text = newText.trim()
+    if (!text) return
+    setChecklist(prev => [...prev, newItem(text)])
+    setNewText('')
+  }
+
+  function toggleItem(id: string) {
+    setChecklist(prev => prev.map(i => i.id === id ? { ...i, done: !i.done } : i))
+  }
+
+  function removeItem(id: string) {
+    setChecklist(prev => prev.filter(i => i.id !== id))
+  }
+
+  function updateItemText(id: string, text: string) {
+    setChecklist(prev => prev.map(i => i.id === id ? { ...i, text } : i))
+  }
+
   async function save() {
     if (!form.title?.trim()) { alert('Título é obrigatório'); return }
-    await onSave(form)
+    await onSave({ ...form, checklist })
     onClose()
   }
 
   if (!open) return null
 
-  // Grupos de categorias
   const groups = Array.from(new Set(categories.map(c => c.group_name))).sort()
+  const done = checklist.filter(i => i.done).length
 
   return (
     <SlideOver title={task ? 'Editar tarefa' : 'Nova tarefa'} onClose={onClose}>
@@ -96,7 +124,7 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
         </select>
       </div>
 
-      {/* Prazo + Prioridade lado a lado */}
+      {/* Prazo + Prioridade */}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Prazo" type="date" value={form.due_date ?? ''} onChange={v => f('due_date', v)} />
         <div>
@@ -138,6 +166,82 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
           value={form.notes ?? ''}
           onChange={e => f('notes', e.target.value)}
         />
+      </div>
+
+      {/* ───── CHECKLIST ───── */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm text-gray-600 font-medium">
+            ✅ Checklist
+            {checklist.length > 0 && (
+              <span className="ml-2 text-xs text-gray-400">{done}/{checklist.length}</span>
+            )}
+          </label>
+          {checklist.length > 0 && done === checklist.length && (
+            <span className="text-xs text-green-600 font-medium">Tudo feito! 🎉</span>
+          )}
+        </div>
+
+        {/* Barra de progresso */}
+        {checklist.length > 0 && (
+          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
+            <div
+              className="bg-teal-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${checklist.length ? (done / checklist.length) * 100 : 0}%` }}
+            />
+          </div>
+        )}
+
+        {/* Itens existentes */}
+        {checklist.length > 0 && (
+          <ul className="space-y-1.5 mb-3">
+            {checklist.map(item => (
+              <li key={item.id} className="flex items-center gap-2 group">
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={() => toggleItem(item.id)}
+                  className="w-4 h-4 accent-teal-600 shrink-0"
+                />
+                <input
+                  type="text"
+                  value={item.text}
+                  onChange={e => updateItemText(item.id, e.target.value)}
+                  className={`flex-1 text-sm bg-transparent border-b border-transparent focus:border-gray-300 outline-none py-0.5 ${
+                    item.done ? 'line-through text-gray-400' : 'text-gray-700'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeItem(item.id)}
+                  className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity text-lg leading-none"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Adicionar novo item */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newText}
+            onChange={e => setNewText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } }}
+            placeholder="+ Adicionar item..."
+            className="flex-1 input-base text-sm"
+          />
+          <button
+            type="button"
+            onClick={addItem}
+            disabled={!newText.trim()}
+            className="px-3 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       {/* Validação adulto */}
