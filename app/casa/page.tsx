@@ -5,10 +5,13 @@ import { useFamilyStore } from '@/store/familyStore'
 import { useWardrobe } from '@/hooks/useWardrobe'
 import { useMedications } from '@/hooks/useMedications'
 import { useHomeMaintenance } from '@/hooks/useHomeMaintenance'
+import { useShoppingItems } from '@/hooks/useShoppingItems'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { WardrobeSheet } from '@/components/sheets/WardrobeSheet'
 import { MaintenanceSheet } from '@/components/sheets/MaintenanceSheet'
-import type { WardrobeItem, HomeMaintenance } from '@/types/database'
+import { ShoppingSheet } from '@/components/sheets/ShoppingSheet'
+import type { WardrobeItem, HomeMaintenance, ShoppingItem } from '@/types/database'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const SEASON_LABEL: Record<string, string> = { summer: '☀️ Verão', winter: '❄️ Inverno', all: '🔄 Todas' }
@@ -44,14 +47,15 @@ function formatDate(d: string | null) {
   return new Date(d).toLocaleDateString('pt-BR')
 }
 
-type Tab = 'vestuario' | 'medicamentos' | 'manutencao'
+type Tab = 'vestuario' | 'medicamentos' | 'manutencao' | 'compras'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function CasaPage() {
-  const { members } = useFamilyStore()
+  const { members, authUser } = useFamilyStore()
   const wardrobe    = useWardrobe()
   const { medications, isLoading: medLoading } = useMedications()
   const maintenance = useHomeMaintenance()
+  const shopping    = useShoppingItems()
 
   const [tab, setTab] = useState<Tab>('vestuario')
   const [filterMember, setFilterMember] = useState<string>('all')
@@ -61,6 +65,9 @@ export default function CasaPage() {
 
   const [maintOpen, setMaintOpen] = useState(false)
   const [selectedMaint, setSelectedMaint] = useState<HomeMaintenance | null>(null)
+
+  const [shoppingOpen, setShoppingOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null)
 
   const filteredWardrobe = filterMember === 'all'
     ? wardrobe.items
@@ -72,16 +79,31 @@ export default function CasaPage() {
     (i.expiry_date && Math.ceil((new Date(i.expiry_date).getTime() - Date.now()) / 86400000) <= 30)
   ).length
   const maintAlerts = maintenance.items.filter(i => i.alertLevel !== 'ok').length
+  const shoppingAlerts = shopping.items.filter(i => i.status === 'running_out').length
 
   const getMemberName = (id: string | null) => {
     if (!id) return 'Família'
     return members.find(m => m.id === id)?.nickname ?? members.find(m => m.id === id)?.name ?? '—'
   }
 
+  // Shopping helpers
+  const runningOut     = shopping.items.filter(i => i.status === 'running_out')
+  const needed         = shopping.items.filter(i => i.status === 'needed')
+  const boughtRecurring = shopping.items.filter(i => i.status === 'bought' && i.is_recurring)
+
+  const handleToggleBuy = (item: ShoppingItem) => {
+    if (item.status === 'needed' || item.status === 'running_out') {
+      shopping.updateStatus(item.id, 'bought', authUser?.id)
+    } else {
+      shopping.updateStatus(item.id, 'needed')
+    }
+  }
+
   const TABS = [
-    { id: 'vestuario'    as Tab, label: '🧥 Vestuário',              alerts: wardrobeAlerts },
+    { id: 'vestuario'    as Tab, label: '🧥 Vestuário',                alerts: wardrobeAlerts },
     { id: 'medicamentos' as Tab, label: '💊 Med. & Primeiros Socorros', alerts: medAlerts },
-    { id: 'manutencao'   as Tab, label: '🛠️ Manutenção',             alerts: maintAlerts },
+    { id: 'manutencao'   as Tab, label: '🛠️ Manutenção',              alerts: maintAlerts },
+    { id: 'compras'      as Tab, label: '🛒 Compras',                  alerts: shoppingAlerts },
   ]
 
   return (
@@ -97,16 +119,19 @@ export default function CasaPage() {
           ) : tab === 'manutencao' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setSelectedMaint(null); setMaintOpen(true) }}>+ Manutenção</button>
+          ) : tab === 'compras' ? (
+            <button className="text-sm text-teal-600 font-medium hover:underline"
+              onClick={() => { setSelectedItem(null); setShoppingOpen(true) }}>+ Produto</button>
           ) : null
         }
       />
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b overflow-x-auto">
         {TABS.map(t => (
           <button key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               tab === t.id
                 ? 'border-teal-600 text-teal-700'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -345,6 +370,84 @@ export default function CasaPage() {
         </div>
       )}
 
+      {/* ══ BLOCO D — COMPRAS ══ */}
+      {tab === 'compras' && (
+        <div className="space-y-6">
+          {shopping.isLoading ? (
+            <div className="p-8 text-center text-gray-400">Carregando...</div>
+          ) : shopping.items.length === 0 ? (
+            <EmptyState title="Lista Vazia" description="Adicione os produtos que estão a acabar em casa." />
+          ) : (
+            <>
+              {/* SECÇÃO 1: Urgentes */}
+              {runningOut.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <h3 className="text-yellow-800 font-semibold mb-3">⚠️ A Acabar (Prioridade)</h3>
+                  <div className="space-y-2">
+                    {runningOut.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-white p-3 rounded shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
+                          <div>
+                            <p className="font-medium">{i.name}</p>
+                            {i.quantity && <p className="text-xs text-gray-500">{i.quantity}</p>}
+                          </div>
+                        </div>
+                        <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECÇÃO 2: A Comprar */}
+              {needed.length > 0 && (
+                <div>
+                  <h3 className="text-gray-700 font-medium mb-3">A Comprar</h3>
+                  <div className="space-y-2">
+                    {needed.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-white border p-3 rounded">
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
+                          <div>
+                            <p className="font-medium text-gray-800">{i.name}</p>
+                            {i.quantity && <p className="text-xs text-gray-500">{i.quantity}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                          <button onClick={() => shopping.remove(i.id)} className="text-red-400 text-sm hover:text-red-600">×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECÇÃO 3: Recorrentes em Stock */}
+              {boughtRecurring.length > 0 && (
+                <div className="opacity-70">
+                  <h3 className="text-gray-500 font-medium mb-3 text-sm">🔄 Recorrentes em Stock (Comprados)</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {boughtRecurring.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border p-2 rounded text-sm">
+                        <span className="text-gray-500 line-through">{i.name}</span>
+                        <button
+                          onClick={() => handleToggleBuy(i)}
+                          className="text-teal-600 font-medium text-xs bg-teal-50 px-2 py-1 rounded hover:bg-teal-100"
+                        >
+                          Pôr na Lista
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* Sheets */}
       <WardrobeSheet
         open={wardrobeOpen}
@@ -353,13 +456,18 @@ export default function CasaPage() {
         onSave={wardrobe.upsert}
         members={members}
       />
-
       <MaintenanceSheet
         open={maintOpen}
         onClose={() => setMaintOpen(false)}
         item={selectedMaint}
         onSave={maintenance.upsert}
         members={members}
+      />
+      <ShoppingSheet
+        open={shoppingOpen}
+        onClose={() => setShoppingOpen(false)}
+        item={selectedItem}
+        onSave={shopping.upsert}
       />
     </div>
   )
