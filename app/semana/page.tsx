@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TaskSheet } from '@/components/sheets/TaskSheet'
 import { CheckinSheet } from '@/components/sheets/CheckinSheet'
-import { formatDate } from '@/lib/utils'
+import { formatTaskDateTime } from '@/lib/formatDateTime'
 import type { Task } from '@/types/database'
 
 export default function SemanaPage() {
@@ -34,6 +34,7 @@ export default function SemanaPage() {
   function TaskItem({ t }: { t: Task }) {
     const checklist = Array.isArray(t.checklist) ? t.checklist : []
     const done = checklist.filter(i => i.done).length
+    const dateTime = formatTaskDateTime((t as any).due_date, (t as any).due_time)
     return (
       <li className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
         <input
@@ -52,8 +53,8 @@ export default function SemanaPage() {
             {t.title}
           </p>
           <p className="text-xs text-gray-400 flex items-center gap-2">
-            {t.due_date && formatDate(t.due_date)}
-            {t.requires_supervision && ' · 👤 Requer adulto'}
+            {dateTime && <span>📅 {dateTime}</span>}
+            {t.requires_supervision && <span>· 👤 Requer adulto</span>}
             {checklist.length > 0 && (
               <span className={done === checklist.length ? 'text-green-500' : ''}>
                 · ✅ {done}/{checklist.length}
@@ -79,7 +80,6 @@ export default function SemanaPage() {
     )
   }
 
-  // Tarefas sem responsável atribuído
   const unassignedTasks = tasks.filter(t => !t.assigned_to)
 
   return (

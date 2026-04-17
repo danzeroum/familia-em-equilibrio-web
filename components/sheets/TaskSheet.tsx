@@ -124,9 +124,18 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
         </select>
       </div>
 
-      {/* Prazo + Prioridade */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Prazo + Hora + Prioridade */}
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
         <Field label="Prazo" type="date" value={form.due_date ?? ''} onChange={v => f('due_date', v)} />
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">Hora</label>
+          <input
+            type="time"
+            className="input-base w-[110px]"
+            value={form.due_time ?? ''}
+            onChange={e => f('due_time', e.target.value || null)}
+          />
+        </div>
         <div>
           <label className="text-sm text-gray-600 block mb-1">Prioridade</label>
           <select className="input-base" value={form.priority ?? 'medium'} onChange={e => f('priority', e.target.value)}>
@@ -182,7 +191,6 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
           )}
         </div>
 
-        {/* Barra de progresso */}
         {checklist.length > 0 && (
           <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
             <div
@@ -192,7 +200,6 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
           </div>
         )}
 
-        {/* Itens existentes */}
         {checklist.length > 0 && (
           <ul className="space-y-1.5 mb-3">
             {checklist.map(item => (
@@ -223,7 +230,6 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
           </ul>
         )}
 
-        {/* Adicionar novo item */}
         <div className="flex gap-2">
           <input
             type="text"

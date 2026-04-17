@@ -4,20 +4,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Task } from '@/types/database'
 
-// Colunas que realmente existem na tabela tasks
 const ALLOWED_COLUMNS = new Set([
-  'id', 'domain_id', 'title', 'description', 'due_date', 'status',
+  'id', 'domain_id', 'title', 'description', 'due_date', 'due_time', 'status',
   'assigned_to', 'created_by', 'recurrence_id', 'notes',
   'requires_supervision', 'validated_by', 'validated_at',
   'priority', 'visible_from', 'completed_at', 'checklist',
 ])
 
-// Mapeia prioridade string → integer (como está no banco)
-const PRIORITY_MAP: Record<string, number> = {
-  low: 1,
-  medium: 2,
-  high: 3,
-}
+const PRIORITY_MAP: Record<string, number> = { low: 1, medium: 2, high: 3 }
 
 function cleanPayload(raw: Record<string, any>) {
   const cleaned: Record<string, any> = {}
@@ -26,22 +20,21 @@ function cleanPayload(raw: Record<string, any>) {
     if (!ALLOWED_COLUMNS.has(key)) continue
     let value = raw[key]
 
-    // Converte prioridade string → int
     if (key === 'priority' && typeof value === 'string') {
       value = PRIORITY_MAP[value] ?? 2
     }
 
-    // Evita strings vazias em campos UUID (assigned_to, created_by, etc.)
     if (['assigned_to', 'created_by', 'recurrence_id', 'validated_by'].includes(key) && value === '') {
       value = null
     }
 
+    // due_time vazio → null
+    if (key === 'due_time' && !value) value = null
+
     cleaned[key] = value
   }
 
-  // Garante checklist como array
   cleaned.checklist = Array.isArray(cleaned.checklist) ? cleaned.checklist : []
-  // Garante status padrão
   if (!cleaned.status) cleaned.status = 'pending'
 
   return cleaned
@@ -59,6 +52,7 @@ export function useTasks(filters?: { assignedTo?: string; status?: Task['status'
       .from('tasks')
       .select('*')
       .order('due_date', { ascending: true, nullsFirst: false })
+      .order('due_time', { ascending: true, nullsFirst: false })
 
     if (filters?.assignedTo) query = query.eq('assigned_to', filters.assignedTo)
     if (filters?.status) query = query.eq('status', filters.status)

@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useFamilyStore } from '@/store/familyStore'
 import { useRadarItems } from '@/hooks/useRadarItems'
 import { useBills } from '@/hooks/useBills'
@@ -9,6 +8,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDate } from '@/lib/utils'
+import { formatTaskDateTime } from '@/lib/formatDateTime'
 
 export default function PainelPage() {
   const { currentFamily, members } = useFamilyStore()
@@ -16,7 +16,6 @@ export default function PainelPage() {
   const { bills, totalMonthly } = useBills()
   const { tasks } = useTasks()
 
-  // Tarefas pendentes com due_date nos próximos 7 dias (ou sem data)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const in7 = new Date(today)
@@ -30,7 +29,12 @@ export default function PainelPage() {
   }).sort((a, b) => {
     if (!a.due_date) return 1
     if (!b.due_date) return -1
-    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    const dateCompare = new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    if (dateCompare !== 0) return dateCompare
+    // mesma data: ordena por hora
+    const ta = (a as any).due_time ?? ''
+    const tb = (b as any).due_time ?? ''
+    return ta.localeCompare(tb)
   })
 
   const focusDo = items.filter(i => i.priority === 'urgent' || i.priority === 'overdue').slice(0, 3)
@@ -45,7 +49,7 @@ export default function PainelPage() {
     <div className="space-y-6">
       <PageHeader title="🎯 Painel" subtitle="Visão geral da família" />
 
-      {/* Semáforo — 4 cards */}
+      {/* Semáforo */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SemaforoCard label="🔴 Urgente" value={counts.urgent} color="text-red-600 bg-red-50" />
         <SemaforoCard label="🟡 Atenção" value={counts.attention} color="text-yellow-600 bg-yellow-50" />
@@ -83,6 +87,7 @@ export default function PainelPage() {
           <ul className="divide-y">
             {weekTasks.map(t => {
               const isOverdue = t.due_date && new Date(t.due_date) < today
+              const dateTime = formatTaskDateTime((t as any).due_date, (t as any).due_time)
               return (
                 <li key={t.id} className="px-4 py-3 flex items-center gap-3">
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOverdue ? 'bg-red-500' : 'bg-teal-500'}`} />
@@ -90,7 +95,7 @@ export default function PainelPage() {
                     <p className="text-sm font-medium truncate">{t.title}</p>
                     <p className="text-xs text-gray-400">
                       {memberName(t.assigned_to) ?? 'Sem responsável'}
-                      {t.due_date && ` · ${formatDate(t.due_date)}`}
+                      {dateTime && ` · ${dateTime}`}
                     </p>
                   </div>
                   {isOverdue && (
@@ -103,7 +108,7 @@ export default function PainelPage() {
         )}
       </div>
 
-      {/* Radar table */}
+      {/* Radar */}
       <div className="rounded-xl border bg-white overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <h2 className="font-semibold">📡 Radar — próximos 90 dias</h2>
@@ -134,7 +139,10 @@ export default function PainelPage() {
                     <td className="px-4 py-2 text-gray-500">{i.action}</td>
                     <td className="px-4 py-2 whitespace-nowrap">{i.eventDate ? formatDate(i.eventDate) : '—'}</td>
                     <td className="px-4 py-2">
-                      <span className={`font-bold ${i.daysLeft !== null && i.daysLeft < 0 ? 'text-red-600' : i.daysLeft !== null && i.daysLeft <= 7 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      <span className={`font-bold ${
+                        i.daysLeft !== null && i.daysLeft < 0 ? 'text-red-600' :
+                        i.daysLeft !== null && i.daysLeft <= 7 ? 'text-yellow-600' : 'text-green-600'
+                      }`}>
                         {i.daysLeft !== null ? (i.daysLeft < 0 ? `${Math.abs(i.daysLeft)}d atrás` : `${i.daysLeft}d`) : '—'}
                       </span>
                     </td>
