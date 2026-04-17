@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useBills, getBillUrgency, URGENCY_CONFIG, getBillsByCategory } from '@/hooks/useBills'
 import { useSavingsGoals, getMotivationalMessage } from '@/hooks/useSavingsGoals'
 import { useBudgetGoals } from '@/hooks/useBudgetGoals'
+import { useMonthlyHistory } from '@/hooks/useMonthlyHistory'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BillSheet } from '@/components/sheets/BillSheet'
@@ -30,10 +31,69 @@ const METHOD_LABEL: Record<string, string> = {
 const CURRENCY_SYMBOL: Record<string, string> = { BRL: 'R$', GBP: '£', USD: '$', EUR: '€' }
 
 function fmt(value: number, currency = 'BRL') {
-  return `${CURRENCY_SYMBOL[currency] ?? currency} ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+  return `${CURRENCY_SYMBOL[currency] ?? currency} ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 }
 
-// ─── Donut chart SVG ─────────────────────────────────────────────────────────
+function HistoricoTab() {
+  const { history, isLoading } = useMonthlyHistory()
+
+  if (isLoading) return <div className="p-4 text-center text-gray-500">A carregar histórico...</div>
+
+  if (history.length === 0) {
+    return <EmptyState title="Sem histórico" description="Os meses concluídos aparecerão aqui assim que as primeiras contas forem pagas." />
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold flex items-center gap-2">
+        📊 Comparativo Mensal
+      </h2>
+
+      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+              <tr>
+                <th className="px-6 py-3">Mês</th>
+                <th className="px-6 py-3">Contas Pagas</th>
+                <th className="px-6 py-3">Receita (Teto)</th>
+                <th className="px-6 py-3">Total Gasto</th>
+                <th className="px-6 py-3">Saldo Final</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {history.map((row, idx) => {
+                const dataFormatada = new Date(row.month_ref).toLocaleDateString('pt-BR', {
+                  month: 'long',
+                  year: 'numeric',
+                })
+
+                const isPositive = row.balance >= 0
+
+                return (
+                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-medium capitalize">{dataFormatada}</td>
+                    <td className="px-6 py-4 text-gray-600">{row.bills_count} itens</td>
+                    <td className="px-6 py-4 text-gray-600">R$ {Number(row.income).toFixed(2)}</td>
+                    <td className="px-6 py-4 text-gray-800 font-medium">R$ {Number(row.total_paid).toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        isPositive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        R$ {Number(row.balance).toFixed(2)}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CategoryDonut({ bills }: { bills: Bill[] }) {
   const data = getBillsByCategory(bills)
   const total = data.reduce((s, d) => s + d.total, 0)
@@ -83,7 +143,6 @@ function CategoryDonut({ bills }: { bills: Bill[] }) {
   )
 }
 
-// ─── Previsão do mês ────────────────────────────────────────────────────────
 function MonthForecast({
   bills,
   monthlyBudget,
@@ -100,7 +159,6 @@ function MonthForecast({
   const withDueDay = recurring.filter(b => b.due_day !== null)
   const missingDueDay = recurring.filter(b => b.due_day === null)
 
-  // Projeção: acumula contas futuras (due_day >= hoje)
   const upcomingTotal = withDueDay
     .filter(b => (b.due_day ?? 0) >= today && b.status !== 'paid' && b.status !== 'auto_debit')
     .reduce((s, b) => s + (b.amount ?? 0), 0)
@@ -121,12 +179,10 @@ function MonthForecast({
         <span className="text-xs text-gray-400">Dia {today}/{daysInMonth}</span>
       </div>
 
-      {/* Linha do tempo */}
       <div className="relative">
         <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
           <div className="h-full bg-teal-500 rounded-full" style={{ width: `${dayPct}%` }} />
         </div>
-        {/* Marcadores de vencimento */}
         {withDueDay.map(b => {
           const left = ((b.due_day ?? 1) / daysInMonth) * 100
           const isPast = (b.due_day ?? 0) < today
@@ -147,7 +203,6 @@ function MonthForecast({
         })}
       </div>
 
-      {/* Próximas contas */}
       <div className="space-y-1.5">
         {withDueDay
           .filter(b => (b.due_day ?? 0) >= today && b.status !== 'paid')
@@ -171,7 +226,6 @@ function MonthForecast({
           })}
       </div>
 
-      {/* Saldo projetado */}
       {monthlyBudget > 0 && (
         <div className={`rounded-lg px-3 py-2 text-sm font-medium ${
           projectedBalance >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
@@ -181,7 +235,6 @@ function MonthForecast({
         </div>
       )}
 
-      {/* Aviso: contas sem due_day */}
       {missingDueDay.length > 0 && (
         <div className="rounded-lg border border-dashed border-yellow-300 bg-yellow-50 p-2.5">
           <p className="text-xs text-yellow-700 font-medium mb-1.5">
@@ -206,7 +259,6 @@ function MonthForecast({
   )
 }
 
-// ─── Card de orçamento por categoria ────────────────────────────────────────
 function BudgetGoalCard({
   item, onEdit, onDelete,
 }: {
@@ -216,7 +268,7 @@ function BudgetGoalCard({
 }) {
   const color = item.color_hex ?? CATEGORY_COLORS[item.category] ?? '#7a7974'
   const statusColor =
-    item.status === 'over'    ? '#ef4444' :
+    item.status === 'over' ? '#ef4444' :
     item.status === 'warning' ? '#ca8a04' : color
   const label = CATEGORY_LABEL[item.category] ?? item.category
 
@@ -238,7 +290,6 @@ function BudgetGoalCard({
         </div>
       </div>
 
-      {/* Barra */}
       <div className="h-2 rounded-full bg-gray-100 overflow-hidden mb-1.5">
         <div
           className="h-full rounded-full transition-all duration-500"
@@ -248,8 +299,8 @@ function BudgetGoalCard({
 
       <div className="flex justify-between text-xs">
         <span style={{ color: statusColor }} className="font-medium">
-          {item.status === 'over' ? '🔴' : item.status === 'warning' ? '🟡' : '🟢'}
-          {' '}{fmt(item.spent)} gastos
+          {item.status === 'over' ? '🔴' : item.status === 'warning' ? '🟡' : '🟢'}{' '}
+          {fmt(item.spent)} gastos
         </span>
         <span className="text-gray-400">Limite: {fmt(item.monthly_limit)}</span>
       </div>
@@ -263,7 +314,6 @@ function BudgetGoalCard({
   )
 }
 
-// ─── Card de objetivo de poupança ────────────────────────────────────────────
 function SavingsGoalCard({
   goal, monthlySavings, onDeposit, onEdit, onDelete,
 }: {
@@ -304,7 +354,6 @@ function SavingsGoalCard({
         </div>
       </div>
 
-      {/* Barra de progresso */}
       <div className="mb-2">
         <div className="flex justify-between text-xs mb-1">
           <span className="font-medium" style={{ color: goal.color_hex ?? '#01696f' }}>
@@ -328,7 +377,6 @@ function SavingsGoalCard({
         </div>
       </div>
 
-      {/* Prazo */}
       {deadlineDays !== null && !goal.is_completed && (
         <p className={`text-xs mb-2 ${
           deadlineDays < 0 ? 'text-red-500' : deadlineDays <= 30 ? 'text-yellow-600' : 'text-gray-400'
@@ -339,14 +387,12 @@ function SavingsGoalCard({
         </p>
       )}
 
-      {/* Mensagem motivacional */}
       {motivational && (
         <div className="rounded-lg bg-teal-50 border border-teal-100 px-3 py-2 mb-3">
           <p className="text-xs text-teal-700">{motivational}</p>
         </div>
       )}
 
-      {/* Depositar */}
       {!goal.is_completed && (
         depositOpen ? (
           <div className="flex gap-2">
@@ -385,7 +431,6 @@ function SavingsGoalCard({
   )
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
 export default function FinanceiroPage() {
   const {
     bills, totalMonthly, paidTotal, pendingTotal,
@@ -404,24 +449,23 @@ export default function FinanceiroPage() {
     upsert: upsertBudget, remove: removeBudget,
   } = useBudgetGoals(bills)
 
-  const [billOpen, setBillOpen]   = useState(false)
+  const [billOpen, setBillOpen] = useState(false)
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
-  const [goalOpen, setGoalOpen]   = useState(false)
+  const [goalOpen, setGoalOpen] = useState(false)
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null)
   const [budgetOpen, setBudgetOpen] = useState(false)
   const [selectedBudget, setSelectedBudget] = useState<BudgetGoal | null>(null)
   const [budgetInput, setBudgetInput] = useState('')
-  const [activeTab, setActiveTab] = useState<'contas' | 'orcamento' | 'objetivos'>('contas')
+  const [activeTab, setActiveTab] = useState<'contas' | 'orcamento' | 'objetivos' | 'historico'>('contas')
 
   const balance = monthlyBudget - totalMonthly
-
-  // Poupança mensal estimada = saldo - todas as metas de gastos OK
   const monthlySavings = useMemo(() => Math.max(0, balance), [balance])
 
   const TABS = [
-    { key: 'contas',    label: '📋 Contas' },
+    { key: 'contas', label: '📋 Contas' },
     { key: 'orcamento', label: '📊 Orçamento' },
     { key: 'objetivos', label: '🎯 Objetivos' },
+    { key: 'historico', label: '📜 Histórico' },
   ] as const
 
   return (
@@ -432,7 +476,6 @@ export default function FinanceiroPage() {
         description="Contas, orçamento e objetivos de poupança"
       />
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border bg-white p-4">
           <p className="text-xs text-gray-500 mb-1">Renda mensal</p>
@@ -454,7 +497,7 @@ export default function FinanceiroPage() {
         <div className="rounded-xl border bg-white p-4">
           <p className="text-xs text-gray-500 mb-1">Total contas</p>
           <p className="text-xl font-bold text-red-600 tabular-nums">
-            R$ {totalMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {totalMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{bills.length} conta{bills.length !== 1 ? 's' : ''}</p>
         </div>
@@ -462,10 +505,10 @@ export default function FinanceiroPage() {
         <div className="rounded-xl border bg-white p-4">
           <p className="text-xs text-gray-500 mb-1">Já pago</p>
           <p className="text-xl font-bold text-green-600 tabular-nums">
-            R$ {paidTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {paidTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            Pendente: R$ {pendingTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            Pendente: R$ {pendingTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
         </div>
 
@@ -476,7 +519,7 @@ export default function FinanceiroPage() {
           <p className={`text-xl font-bold tabular-nums ${
             balance >= 0 ? 'text-green-700' : 'text-red-700'
           }`}>
-            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
             {balance >= 0 ? '✅ Dentro do orçamento' : '⚠️ Acima do orçamento'}
@@ -484,17 +527,14 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      {/* Previsão do mês — sempre visível */}
       <MonthForecast
         bills={bills}
         monthlyBudget={monthlyBudget}
         onEditBill={b => { setSelectedBill(b); setBillOpen(true) }}
       />
 
-      {/* Donut de categorias */}
       <CategoryDonut bills={bills} />
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
         {TABS.map(tab => (
           <button
@@ -511,7 +551,6 @@ export default function FinanceiroPage() {
         ))}
       </div>
 
-      {/* ── TAB: CONTAS ── */}
       {activeTab === 'contas' && (
         <div className="rounded-xl border bg-white overflow-hidden">
           <div className="px-4 py-3 border-b flex items-center justify-between">
@@ -532,7 +571,7 @@ export default function FinanceiroPage() {
                 const cfg = URGENCY_CONFIG[urgency]
                 return (
                   <div key={b.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 ${
-                    urgency === 'overdue'  ? 'border-l-2 border-l-red-400' :
+                    urgency === 'overdue' ? 'border-l-2 border-l-red-400' :
                     urgency === 'due_soon' ? 'border-l-2 border-l-yellow-400' : ''
                   }`}>
                     <span className="text-base shrink-0" title={cfg.label}>{cfg.emoji}</span>
@@ -556,10 +595,10 @@ export default function FinanceiroPage() {
                       value={b.status ?? 'pending'}
                       onChange={e => updateStatus(b.id, e.target.value as Bill['status'])}
                       className={`text-xs border rounded-lg px-1.5 py-1 shrink-0 ${
-                        b.status === 'paid'       ? 'bg-green-100  text-green-700  border-green-200'  :
-                        b.status === 'auto_debit' ? 'bg-blue-100   text-blue-700   border-blue-200'   :
-                        b.status === 'overdue'    ? 'bg-red-100    text-red-700    border-red-200'    :
-                                                    'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        b.status === 'paid' ? 'bg-green-100 text-green-700 border-green-200' :
+                        b.status === 'auto_debit' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                        b.status === 'overdue' ? 'bg-red-100 text-red-700 border-red-200' :
+                        'bg-yellow-100 text-yellow-700 border-yellow-200'
                       }`}
                     >
                       <option value="pending">⏳ Pendente</option>
@@ -581,7 +620,6 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      {/* ── TAB: ORÇAMENTO ── */}
       {activeTab === 'orcamento' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -614,7 +652,6 @@ export default function FinanceiroPage() {
                 ))}
               </div>
 
-              {/* Categorias sem meta */}
               {uncovered.length > 0 && (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
                   <p className="text-xs text-gray-500 font-medium mb-2">
@@ -630,8 +667,7 @@ export default function FinanceiroPage() {
                         }}
                         className="text-xs px-3 py-1.5 rounded-full border border-gray-300 bg-white hover:border-teal-400 hover:text-teal-600 transition-colors"
                       >
-                        {CATEGORY_LABEL[u.category] ?? u.category}
-                        {' '}— {fmt(u.spent)}
+                        {CATEGORY_LABEL[u.category] ?? u.category} — {fmt(u.spent)}
                       </button>
                     ))}
                   </div>
@@ -642,7 +678,6 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      {/* ── TAB: OBJETIVOS ── */}
       {activeTab === 'objetivos' && (
         <div className="space-y-4">
           {goals.length > 0 && (
@@ -661,10 +696,10 @@ export default function FinanceiroPage() {
               </div>
               <div className="flex justify-between text-xs mt-1.5">
                 <span className="text-teal-600 font-medium tabular-nums">
-                  R$ {totalSaved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} guardados
+                  R$ {totalSaved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} guardados
                 </span>
                 <span className="text-gray-400 tabular-nums">
-                  Meta: R$ {totalTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  Meta: R$ {totalTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -704,7 +739,8 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      {/* Sheets */}
+      {activeTab === 'historico' && <HistoricoTab />}
+
       <BillSheet open={billOpen} onClose={() => setBillOpen(false)} bill={selectedBill} onSave={upsertBill} />
       <SavingsGoalSheet open={goalOpen} onClose={() => setGoalOpen(false)} goal={selectedGoal} onSave={upsertGoal} />
       <BudgetGoalSheet open={budgetOpen} onClose={() => setBudgetOpen(false)} goal={selectedBudget} bills={bills} onSave={upsertBudget} />
