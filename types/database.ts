@@ -59,6 +59,7 @@ export interface Database {
           payment_method: string | null
           domain_id: number | null
           created_by: string | null
+          assigned_to: string | null
           paid_at: string | null
           created_at: string | null
         }
