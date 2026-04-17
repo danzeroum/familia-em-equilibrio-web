@@ -6,15 +6,15 @@ import { useFamilyStore } from '@/store/familyStore'
 import type { HomeMaintenance } from '@/types/database'
 
 const DEFAULT_ITEMS = [
-  { title: 'Ar-condicionado', emoji: '❄️', frequency_label: 'A cada 6 meses', frequency_days: 180 },
-  { title: 'Filtro de água', emoji: '💧', frequency_label: 'A cada 3 meses', frequency_days: 90 },
-  { title: 'Extintor', emoji: '🧯', frequency_label: 'Anual', frequency_days: 365 },
-  { title: 'Botijão de gás', emoji: '🔥', frequency_label: 'Mensal', frequency_days: 30 },
-  { title: 'Dedetização', emoji: '🐛', frequency_label: 'A cada 6 meses', frequency_days: 180 },
-  { title: 'Caixa d\'água', emoji: '🚿', frequency_label: 'Anual', frequency_days: 365 },
-  { title: 'Revisão elétrica', emoji: '🔌', frequency_label: 'Anual', frequency_days: 365 },
-  { title: 'Limpeza de calhas', emoji: '🪟', frequency_label: 'A cada 6 meses', frequency_days: 180 },
-  { title: 'Revisão de fechaduras', emoji: '🔒', frequency_label: 'Anual', frequency_days: 365 },
+  { title: 'Ar-condicionado',      emoji: '❄️',  frequency_label: 'A cada 6 meses', frequency_days: 180, category: 'equipamentos' },
+  { title: 'Filtro de água',       emoji: '💧',  frequency_label: 'A cada 3 meses', frequency_days: 90,  category: 'hidraulica'   },
+  { title: 'Extintor',             emoji: '🧯',  frequency_label: 'Anual',           frequency_days: 365, category: 'seguranca'    },
+  { title: 'Botijão de gás',       emoji: '🔥',  frequency_label: 'Mensal',          frequency_days: 30,  category: 'seguranca'    },
+  { title: 'Dedetização',          emoji: '🐛',  frequency_label: 'A cada 6 meses', frequency_days: 180, category: 'limpeza'      },
+  { title: 'Caixa d\'água',        emoji: '🚿',  frequency_label: 'Anual',           frequency_days: 365, category: 'hidraulica'   },
+  { title: 'Revisão elétrica',     emoji: '🔌',  frequency_label: 'Anual',           frequency_days: 365, category: 'eletrica'     },
+  { title: 'Limpeza de calhas',    emoji: '🪟',  frequency_label: 'A cada 6 meses', frequency_days: 180, category: 'limpeza'      },
+  { title: 'Revisão de fechaduras',emoji: '🔒',  frequency_label: 'Anual',           frequency_days: 365, category: 'seguranca'    },
 ]
 
 export interface MaintenanceWithAlert extends HomeMaintenance {
@@ -41,7 +41,6 @@ export function useHomeMaintenance() {
 
     let rows = data ?? []
 
-    // Seed itens padrão se tabela vazia para esta família
     if (rows.length === 0) {
       const seeds = DEFAULT_ITEMS.map(d => ({ ...d, family_id: family.id }))
       const { data: inserted } = await supabase
@@ -81,8 +80,27 @@ export function useHomeMaintenance() {
   }
 
   async function markDone(id: string) {
-    const today = new Date().toISOString().slice(0, 10)
-    await supabase.from('home_maintenance').update({ last_done_at: today, status: 'done' }).eq('id', id)
+    const item = items.find(i => i.id === id)
+    const today = new Date()
+    const todayStr = today.toISOString().slice(0, 10)
+
+    // Recalcula next_due_at com base na frequência
+    let nextDueAt: string | null = null
+    if (item?.frequency_days) {
+      const next = new Date(today)
+      next.setDate(next.getDate() + item.frequency_days)
+      nextDueAt = next.toISOString().slice(0, 10)
+    }
+
+    await supabase
+      .from('home_maintenance')
+      .update({
+        last_done_at: todayStr,
+        next_due_at: nextDueAt,
+        status: 'done',
+      })
+      .eq('id', id)
+
     await load()
   }
 
