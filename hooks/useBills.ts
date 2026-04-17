@@ -99,7 +99,12 @@ export function useBills() {
   }
 
   async function upsert(bill: Partial<Bill> & { title: string }) {
-    if (bill.id) {
+    const payload = { ...bill }
+
+    // Limpeza crucial: previne erro de FK se o select enviar string vazia
+    if (payload.assigned_to === '') payload.assigned_to = null
+
+    if (payload.id) {
       await supabase.from('bills').update(bill).eq('id', bill.id)
     } else {
       await supabase.from('bills').insert(bill as any)
