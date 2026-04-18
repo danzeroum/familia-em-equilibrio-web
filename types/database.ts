@@ -298,9 +298,16 @@ export interface Database {
           needs_action: boolean
           action_description: string | null
           budget: number | null
+          budget_estimate: number | null
           is_done: boolean
           created_by: string | null
           family_id: string | null
+          description: string | null
+          event_time: string | null
+          location: string | null
+          assigned_to: string | null
+          participants: string[] | null
+          notes: string | null
           created_at: string | null
         }
         Insert: Omit<Database['public']['Tables']['family_events']['Row'], 'id' | 'created_at'>
