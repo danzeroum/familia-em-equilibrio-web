@@ -26,7 +26,8 @@ export function useEmergencyContacts(familyId: string | null) {
 
   async function upsert(contact: Partial<EmergencyContact> & { name: string; phone: string }) {
     if (contact.id) {
-      await supabase.from('emergency_contacts').update(contact).eq('id', contact.id)
+      const { id: _id, created_at: _cat, ...updateData } = contact
+      await supabase.from('emergency_contacts').update(updateData).eq('id', contact.id)
     } else {
       await supabase.from('emergency_contacts').insert({ ...contact, family_id: familyId } as any)
     }

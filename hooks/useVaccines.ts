@@ -34,7 +34,8 @@ export function useVaccines(profileId?: string) {
 
   async function upsert(vaccine: Partial<Vaccine> & { name: string }) {
     if (vaccine.id) {
-      await supabase.from('vaccines').update(vaccine).eq('id', vaccine.id)
+      const { id: _id, created_at: _cat, ...updateData } = vaccine
+      await supabase.from('vaccines').update(updateData).eq('id', vaccine.id)
     } else {
       await supabase.from('vaccines').insert(vaccine as any)
     }
