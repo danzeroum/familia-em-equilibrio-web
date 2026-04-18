@@ -51,7 +51,7 @@ type Tab = 'vestuario' | 'medicamentos' | 'manutencao' | 'compras'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function CasaPage() {
-  const { members, authUser } = useFamilyStore()
+  const { members, currentUser } = useFamilyStore()
   const wardrobe    = useWardrobe()
   const { medications, isLoading: medLoading } = useMedications()
   const maintenance = useHomeMaintenance()
@@ -93,7 +93,7 @@ export default function CasaPage() {
 
   const handleToggleBuy = (item: ShoppingItem) => {
     if (item.status === 'needed' || item.status === 'running_out') {
-      shopping.updateStatus(item.id, 'bought', authUser?.id)
+      shopping.updateStatus(item.id, 'bought', currentUser?.id)
     } else {
       shopping.updateStatus(item.id, 'needed')
     }
