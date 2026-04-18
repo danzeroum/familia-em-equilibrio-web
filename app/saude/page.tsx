@@ -125,7 +125,7 @@ export default function SaudePage() {
                 onClick={() => { setSelectedMed(null); setMedOpen(true) }}>+ Adicionar</button>
             </div>
             {medications.length === 0 ? (
-              <EmptyState title="Nenhum medicamento" description="Cadastre os medicamentos da família." />
+              <EmptyState emoji="💊" title="Nenhum medicamento" description="Cadastre os medicamentos da família." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -173,7 +173,7 @@ export default function SaudePage() {
                 onClick={() => { setSelectedVac(null); setVacOpen(true) }}>+ Adicionar</button>
             </div>
             {vaccines.length === 0 ? (
-              <EmptyState title="Nenhuma vacina" description="Registre as vacinas da família." />
+              <EmptyState emoji="💉" title="Nenhuma vacina" description="Registre as vacinas da família." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -225,7 +225,7 @@ export default function SaudePage() {
           {health.isLoading ? (
             <div className="p-8 text-center text-gray-400">Carregando...</div>
           ) : health.items.length === 0 ? (
-            <EmptyState title="Nenhum acompanhamento" description="Cadastre consultas, dentista e rotinas de saúde." />
+            <EmptyState emoji="🩺" title="Nenhum acompanhamento" description="Cadastre consultas, dentista e rotinas de saúde." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
