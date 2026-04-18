@@ -43,8 +43,53 @@ export interface Database {
           color_hex: string
           created_at: string | null
         }
-        Insert: { id: string; name: string } & Partial<Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'name' | 'created_at'>>
-        Update: Partial<Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'created_at'>>
+        Insert: {
+          id: string
+          name: string
+          nickname?: string | null
+          avatar_url?: string | null
+          family_id?: string | null
+          role?: 'adult' | 'child' | 'teen' | 'other'
+          birth_date?: string | null
+          height_cm?: number | null
+          weight_kg?: number | null
+          blood_type?: string | null
+          dietary_restrictions?: string[]
+          allergies?: string[]
+          medication_allergies?: string[]
+          school_or_company?: string | null
+          health_plan_name?: string | null
+          health_plan_number?: string | null
+          health_plan_active?: boolean
+          doctor_name?: string | null
+          doctor_phone?: string | null
+          passport_number?: string | null
+          passport_expiry?: string | null
+          color_hex?: string
+        }
+        Update: {
+          name?: string
+          nickname?: string | null
+          avatar_url?: string | null
+          family_id?: string | null
+          role?: 'adult' | 'child' | 'teen' | 'other'
+          birth_date?: string | null
+          height_cm?: number | null
+          weight_kg?: number | null
+          blood_type?: string | null
+          dietary_restrictions?: string[]
+          allergies?: string[]
+          medication_allergies?: string[]
+          school_or_company?: string | null
+          health_plan_name?: string | null
+          health_plan_number?: string | null
+          health_plan_active?: boolean
+          doctor_name?: string | null
+          doctor_phone?: string | null
+          passport_number?: string | null
+          passport_expiry?: string | null
+          color_hex?: string
+        }
       }
       bills: {
         Row: {
