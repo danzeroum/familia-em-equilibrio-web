@@ -72,7 +72,8 @@ export function useHomeMaintenance() {
   async function upsert(item: Partial<HomeMaintenance> & { title: string; frequency_days: number; frequency_label: string }) {
     if (!family?.id) return
     if (item.id) {
-      await supabase.from('home_maintenance').update(item).eq('id', item.id)
+      const { id: _id, created_at: _cat, next_due_at: _nda, ...updateData } = item
+      await supabase.from('home_maintenance').update(updateData).eq('id', item.id)
     } else {
       await supabase.from('home_maintenance').insert({ ...item, family_id: family.id } as any)
     }

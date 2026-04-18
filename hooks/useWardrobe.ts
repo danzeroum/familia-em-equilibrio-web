@@ -31,7 +31,8 @@ export function useWardrobe(profileId?: string) {
 
   async function upsert(item: Partial<WardrobeItem> & { item_type: string }) {
     if (item.id) {
-      await supabase.from('wardrobe_items').update(item).eq('id', item.id)
+      const { id: _id, created_at: _cat, ...updateData } = item
+      await supabase.from('wardrobe_items').update(updateData).eq('id', item.id)
     } else {
       await supabase.from('wardrobe_items').insert(item as any)
     }

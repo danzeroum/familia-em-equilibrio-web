@@ -62,7 +62,8 @@ export function useSavingsGoals() {
 
   async function upsert(goal: Partial<SavingsGoal> & { title: string; target_amount: number }) {
     if (goal.id) {
-      await supabase.from('savings_goals').update(goal).eq('id', goal.id)
+      const { id: _id, created_at: _cat, updated_at: _uat, ...updateData } = goal as any
+      await supabase.from('savings_goals').update(updateData).eq('id', goal.id)
     } else {
       await supabase.from('savings_goals').insert({ ...goal, family_id: familyId! } as any)
     }

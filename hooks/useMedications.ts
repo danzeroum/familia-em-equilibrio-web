@@ -47,7 +47,8 @@ export function useMedications(profileId?: string) {
 
     let error: any
     if (payload.id) {
-      ({ error } = await supabase.from('medications').update(payload).eq('id', payload.id))
+      const { id: _id, created_at: _cat, ...updateData } = payload
+      ;({ error } = await supabase.from('medications').update(updateData).eq('id', payload.id))
     } else {
       ({ error } = await supabase.from('medications').insert(payload as any))
     }
