@@ -10,7 +10,7 @@ interface Props { open: boolean; onClose: () => void; member: Profile | null }
 
 export function MemberSheet({ open, onClose, member }: Props) {
   const { reload } = useFamilyStore()
-  const [form, setForm] = useState<Partial<Profile & Record<string, any>>>({})
+  const [form, setForm] = useState<Partial<Profile>>({})
   const [tab, setTab] = useState<Tab>('identidade')
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)

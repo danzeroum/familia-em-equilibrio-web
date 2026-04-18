@@ -42,6 +42,26 @@ export interface Database {
           passport_number: string | null
           passport_expiry: string | null
           color_hex: string
+          cpf: string | null
+          rg: string | null
+          gender: string | null
+          chronic_condition: string | null
+          continuous_medication: string | null
+          health_plan_provider: string | null
+          dentist_name: string | null
+          last_doctor_visit: string | null
+          last_dental_visit: string | null
+          next_doctor_visit: string | null
+          next_vaccine: string | null
+          food_allergies: string | null
+          environmental_allergies: string | null
+          school_phone: string | null
+          school_shift: string | null
+          school_year: string | null
+          teacher_or_manager: string | null
+          extracurricular: string | null
+          extracurricular_schedule: string | null
+          transport_mode: string | null
           created_at: string | null
         }
         Insert: {
@@ -67,6 +87,26 @@ export interface Database {
           passport_number?: string | null
           passport_expiry?: string | null
           color_hex?: string
+          cpf?: string | null
+          rg?: string | null
+          gender?: string | null
+          chronic_condition?: string | null
+          continuous_medication?: string | null
+          health_plan_provider?: string | null
+          dentist_name?: string | null
+          last_doctor_visit?: string | null
+          last_dental_visit?: string | null
+          next_doctor_visit?: string | null
+          next_vaccine?: string | null
+          food_allergies?: string | null
+          environmental_allergies?: string | null
+          school_phone?: string | null
+          school_shift?: string | null
+          school_year?: string | null
+          teacher_or_manager?: string | null
+          extracurricular?: string | null
+          extracurricular_schedule?: string | null
+          transport_mode?: string | null
         }
         Update: {
           name?: string
@@ -90,6 +130,26 @@ export interface Database {
           passport_number?: string | null
           passport_expiry?: string | null
           color_hex?: string
+          cpf?: string | null
+          rg?: string | null
+          gender?: string | null
+          chronic_condition?: string | null
+          continuous_medication?: string | null
+          health_plan_provider?: string | null
+          dentist_name?: string | null
+          last_doctor_visit?: string | null
+          last_dental_visit?: string | null
+          next_doctor_visit?: string | null
+          next_vaccine?: string | null
+          food_allergies?: string | null
+          environmental_allergies?: string | null
+          school_phone?: string | null
+          school_shift?: string | null
+          school_year?: string | null
+          teacher_or_manager?: string | null
+          extracurricular?: string | null
+          extracurricular_schedule?: string | null
+          transport_mode?: string | null
         }
         Relationships: never[]
       }
