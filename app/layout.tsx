@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Toaster } from '@/components/ui/Toaster'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { FamilyProvider } from '@/components/providers/FamilyProvider'
+import { QuickEntryProvider } from '@/components/quick-entry/QuickEntryProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -32,6 +33,7 @@ export default function RootLayout({
               </main>
             </div>
             <Toaster />
+            <QuickEntryProvider />
           </FamilyProvider>
         </AuthProvider>
       </body>
