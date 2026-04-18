@@ -32,7 +32,8 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
           console.log('[FamilyProvider] usuário sem perfil, criando...')
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
-            .insert({ id: session!.user.id, name: session!.user.email?.split('@')[0] ?? 'Usuário' })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .insert({ id: session!.user.id, name: session!.user.email?.split('@')[0] ?? 'Usuário' } as any)
             .select()
             .single()
           console.log('[FamilyProvider] perfil criado:', newProfile, insertError)
