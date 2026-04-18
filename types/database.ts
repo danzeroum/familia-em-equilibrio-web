@@ -53,8 +53,8 @@ export interface Database {
           last_dental_visit: string | null
           next_doctor_visit: string | null
           next_vaccine: string | null
-          food_allergies: string | null
-          environmental_allergies: string | null
+          food_allergies: string[]
+          environmental_allergies: string[]
           school_phone: string | null
           school_shift: string | null
           school_year: string | null
@@ -98,8 +98,8 @@ export interface Database {
           last_dental_visit?: string | null
           next_doctor_visit?: string | null
           next_vaccine?: string | null
-          food_allergies?: string | null
-          environmental_allergies?: string | null
+          food_allergies?: string[]
+          environmental_allergies?: string[]
           school_phone?: string | null
           school_shift?: string | null
           school_year?: string | null
@@ -141,8 +141,8 @@ export interface Database {
           last_dental_visit?: string | null
           next_doctor_visit?: string | null
           next_vaccine?: string | null
-          food_allergies?: string | null
-          environmental_allergies?: string | null
+          food_allergies?: string[]
+          environmental_allergies?: string[]
           school_phone?: string | null
           school_shift?: string | null
           school_year?: string | null
