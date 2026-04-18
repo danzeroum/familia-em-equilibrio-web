@@ -192,7 +192,7 @@ export default function SaudePage() {
                       <tr key={v.id} className="hover:bg-gray-50">
                         <td className="px-4 py-2 font-medium">{v.name}</td>
                         <td className="px-4 py-2 text-gray-500">{getMemberName(v.profile_id)}</td>
-                        <td className="px-4 py-2">{v.applied_date ? formatDate(v.applied_date) : '—'}</td>
+                        <td className="px-4 py-2">{v.applied_at ? formatDate(v.applied_at) : '—'}</td>
                         <td className="px-4 py-2">{v.next_due ? formatDate(v.next_due) : '—'}</td>
                         <td className="px-4 py-2">
                           <span className={`font-bold text-xs ${

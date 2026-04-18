@@ -545,18 +545,18 @@ export default function PainelPage() {
             ) : (
               <ul className="divide-y divide-white/10">
                 {radarItems.map(item => {
-                  const isCritical = item.urgency_score === 1 || item.days_remaining <= 7
+                  const isCritical = item.urgency_score === 1 || item.days_until <= 7
                   return (
                     <li key={`${item.source}-${item.item_id}`} className={`p-4 flex items-center gap-3 ${isCritical ? 'bg-red-500/20' : 'hover:bg-white/5'}`}>
                       <span className="text-xl flex-shrink-0">{SOURCE_ICONS[item.source] ?? '🎯'}</span>
                       <div className="flex-1 min-w-0">
                         <p className={`font-medium truncate ${isCritical ? 'text-white' : 'text-blue-50'}`}>{item.title}</p>
                         <p className="text-xs text-blue-200 mt-0.5">
-                          {new Date(item.target_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                          {new Date(item.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className={`text-sm font-bold ${isCritical ? 'text-red-300' : 'text-blue-200'}`}>{item.days_remaining}d</p>
+                        <p className={`text-sm font-bold ${isCritical ? 'text-red-300' : 'text-blue-200'}`}>{item.days_until}d</p>
                         {item.urgency_score === 1 && (
                           <p className="text-[10px] text-red-300 font-bold uppercase tracking-wide">crítico</p>
                         )}

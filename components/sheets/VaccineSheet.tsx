@@ -44,13 +44,8 @@ export function VaccineSheet({ open, onClose, vaccine, onSave, members }: Props)
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Data de aplicação" type="date" value={form.applied_date ?? ''} onChange={v => set('applied_date', v)} />
+        <Field label="Data de aplicação" type="date" value={form.applied_at ?? ''} onChange={v => set('applied_at', v)} />
         <Field label="Próxima dose" type="date" value={form.next_due ?? ''} onChange={v => set('next_due', v)} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Lote" value={form.batch_number ?? ''} onChange={v => set('batch_number', v)} placeholder="Ex: ABC123" />
-        <Field label="Local de aplicação" value={form.applied_at ?? ''} onChange={v => set('applied_at', v)} placeholder="Ex: UBS Centro" />
       </div>
 
       <Field label="Observações" value={form.notes ?? ''} onChange={v => set('notes', v)} placeholder="Reações, observações do médico..." />
