@@ -282,25 +282,61 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
       }
     }
+    Views: {
+      monthly_history_view: {
+        Row: {
+          /** YYYY-MM — ex: "2026-04" */
+          month: string
+          family_id: string
+          /** Total de contas pagas no mês */
+          total_paid: number
+          /** Total de contas ainda pendentes no mês */
+          total_pending: number
+          /** Total de contas em débito automático */
+          total_auto_debit: number
+          /** Soma geral de todas as contas do mês */
+          total_amount: number
+          /** Número de contas pagas */
+          paid_count: number
+          /** Número de contas pendentes */
+          pending_count: number
+          /** Número de contas em débito automático */
+          auto_debit_count: number
+          /** Total de contas no mês */
+          total_count: number
+          /** Categoria com maior gasto no mês (pode ser null se sem categoria) */
+          top_category: string | null
+          /** Valor gasto na top_category */
+          top_category_amount: number | null
+        }
+      }
+    }
+    Functions: Record<string, never>
+    Enums: Record<string, never>
   }
 }
 
-export type Family = Database['public']['Tables']['families']['Row']
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type Bill = Database['public']['Tables']['bills']['Row']
-export type SavingsGoal = Database['public']['Tables']['savings_goals']['Row']
-export type BudgetGoal = Database['public']['Tables']['budget_goals']['Row']
-export type Task = Database['public']['Tables']['tasks']['Row']
-export type Medication = Database['public']['Tables']['medications']['Row']
-export type MedicationLog = Database['public']['Tables']['medication_logs']['Row']
-export type Vaccine = Database['public']['Tables']['vaccines']['Row']
-export type FamilyEvent = Database['public']['Tables']['family_events']['Row']
+// ─── Table aliases ────────────────────────────────────────────────────────────
+export type Family          = Database['public']['Tables']['families']['Row']
+export type Profile         = Database['public']['Tables']['profiles']['Row']
+export type Bill            = Database['public']['Tables']['bills']['Row']
+export type SavingsGoal     = Database['public']['Tables']['savings_goals']['Row']
+export type BudgetGoal      = Database['public']['Tables']['budget_goals']['Row']
+export type Task            = Database['public']['Tables']['tasks']['Row']
+export type Medication      = Database['public']['Tables']['medications']['Row']
+export type MedicationLog   = Database['public']['Tables']['medication_logs']['Row']
+export type Vaccine         = Database['public']['Tables']['vaccines']['Row']
+export type FamilyEvent     = Database['public']['Tables']['family_events']['Row']
 export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row']
 export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
-export type WardrobeItem = Database['public']['Tables']['wardrobe_items']['Row']
-export type ShoppingItem = Database['public']['Tables']['shopping_items']['Row']
+export type WardrobeItem    = Database['public']['Tables']['wardrobe_items']['Row']
+export type ShoppingItem    = Database['public']['Tables']['shopping_items']['Row']
 export type HomeMaintenance = Database['public']['Tables']['home_maintenance']['Row']
 
+// ─── View aliases ─────────────────────────────────────────────────────────────
+export type MonthlyHistoryRow = Database['public']['Views']['monthly_history_view']['Row']
+
+// ─── Shared sub-types ─────────────────────────────────────────────────────────
 export interface ChecklistItem {
   id: string
   text: string
