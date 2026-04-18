@@ -38,7 +38,8 @@ export function getBillsByCategory(bills: Bill[]): { category: string; total: nu
 }
 
 export function useBills() {
-  const { familyId } = useFamilyStore()
+  const { currentFamily } = useFamilyStore()
+  const familyId = currentFamily?.id
   const [bills, setBills] = useState<Bill[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [monthlyBudget, setMonthlyBudgetState] = useState<number>(0)
