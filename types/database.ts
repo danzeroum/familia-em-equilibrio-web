@@ -320,6 +320,7 @@ export interface Database {
           /** ISO date string ou null */
           due_date: string | null
           emoji: string
+          subtitle?: string | null
         }[]
       }
       /**
