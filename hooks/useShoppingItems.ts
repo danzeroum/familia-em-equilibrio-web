@@ -38,7 +38,8 @@ export function useShoppingItems() {
   async function upsert(item: Partial<ShoppingItem>) {
     const payload = { ...item, domain_id: item.domain_id ?? (familyId as any) }
     if (payload.id) {
-      await supabase.from('shopping_items').update(payload).eq('id', payload.id)
+      const { id: _id, created_at: _cat, ...updateData } = payload
+      await supabase.from('shopping_items').update(updateData).eq('id', payload.id)
     } else {
       await supabase.from('shopping_items').insert(payload as any)
     }

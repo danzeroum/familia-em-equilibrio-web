@@ -69,7 +69,8 @@ export function useBudgetGoals(bills: Bill[]) {
     goal: Partial<BudgetGoal> & { category: string; monthly_limit: number }
   ) {
     if (goal.id) {
-      await supabase.from('budget_goals').update(goal).eq('id', goal.id)
+      const { id: _id, created_at: _cat, ...updateData } = goal
+      await supabase.from('budget_goals').update(updateData).eq('id', goal.id)
     } else {
       await supabase
         .from('budget_goals')
