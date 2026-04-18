@@ -40,7 +40,7 @@ function HistoricoTab() {
   if (isLoading) return <div className="p-4 text-center text-gray-500">A carregar histórico...</div>
 
   if (history.length === 0) {
-    return <EmptyState title="Sem histórico" description="Os meses concluídos aparecerão aqui assim que as primeiras contas forem pagas." />
+    return <EmptyState emoji="📊" title="Sem histórico" description="Os meses concluídos aparecerão aqui assim que as primeiras contas forem pagas." />
   }
 
   return (
@@ -563,7 +563,7 @@ export default function FinanceiroPage() {
             </button>
           </div>
           {bills.length === 0 ? (
-            <EmptyState title="Nenhuma conta" description="Cadastre as contas fixas e variáveis do mês." />
+            <EmptyState emoji="💸" title="Nenhuma conta" description="Cadastre as contas fixas e variáveis do mês." />
           ) : (
             <div className="divide-y">
               {bills.map(b => {
@@ -635,6 +635,7 @@ export default function FinanceiroPage() {
           {budgetEnriched.length === 0 && uncovered.length === 0 ? (
             <div className="rounded-xl border bg-white">
               <EmptyState
+                emoji="🎯"
                 title="Nenhuma meta de orçamento"
                 description="Defina limites por categoria para controlar seus gastos mensais."
               />
@@ -718,6 +719,7 @@ export default function FinanceiroPage() {
           {goals.length === 0 ? (
             <div className="rounded-xl border bg-white">
               <EmptyState
+                emoji="🏆"
                 title="Nenhum objetivo"
                 description="Crie um objetivo como ✈️ Viagem Inglaterra 2026 e acompanhe o progresso."
               />
