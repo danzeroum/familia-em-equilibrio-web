@@ -46,7 +46,8 @@ export function getUncoveredCategories(
 }
 
 export function useBudgetGoals(bills: Bill[]) {
-  const { familyId } = useFamilyStore()
+  const { currentFamily } = useFamilyStore()
+  const familyId = currentFamily?.id
   const [goals, setGoals] = useState<BudgetGoal[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

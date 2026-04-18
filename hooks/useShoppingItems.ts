@@ -6,7 +6,8 @@ import { useFamilyStore } from '@/store/familyStore'
 import type { ShoppingItem } from '@/types/database'
 
 export function useShoppingItems() {
-  const { familyId } = useFamilyStore()
+  const { currentFamily } = useFamilyStore()
+  const familyId = currentFamily?.id
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

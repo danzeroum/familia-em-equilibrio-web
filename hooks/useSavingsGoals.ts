@@ -41,7 +41,8 @@ export function getMotivationalMessage(goal: SavingsGoal, monthlySavings: number
 }
 
 export function useSavingsGoals() {
-  const { familyId } = useFamilyStore()
+  const { currentFamily } = useFamilyStore()
+  const familyId = currentFamily?.id
   const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
