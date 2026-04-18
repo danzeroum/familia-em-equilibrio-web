@@ -16,6 +16,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['families']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['families']['Insert']>
+        Relationships: never[]
       }
       profiles: {
         Row: {
@@ -90,6 +91,7 @@ export interface Database {
           passport_expiry?: string | null
           color_hex?: string
         }
+        Relationships: never[]
       }
       bills: {
         Row: {
@@ -110,6 +112,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['bills']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['bills']['Insert']>
+        Relationships: never[]
       }
       savings_goals: {
         Row: {
@@ -129,6 +132,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['savings_goals']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['savings_goals']['Insert']>
+        Relationships: never[]
       }
       budget_goals: {
         Row: {
@@ -143,6 +147,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['budget_goals']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['budget_goals']['Insert']>
+        Relationships: never[]
       }
       tasks: {
         Row: {
@@ -167,6 +172,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['tasks']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['tasks']['Insert']>
+        Relationships: never[]
       }
       medications: {
         Row: {
@@ -192,6 +198,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['medications']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['medications']['Insert']>
+        Relationships: never[]
       }
       medication_logs: {
         Row: {
@@ -206,6 +213,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['medication_logs']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['medication_logs']['Insert']>
+        Relationships: never[]
       }
       vaccines: {
         Row: {
@@ -219,6 +227,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['vaccines']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['vaccines']['Insert']>
+        Relationships: never[]
       }
       family_events: {
         Row: {
@@ -236,6 +245,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['family_events']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['family_events']['Insert']>
+        Relationships: never[]
       }
       emergency_contacts: {
         Row: {
@@ -250,6 +260,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['emergency_contacts']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['emergency_contacts']['Insert']>
+        Relationships: never[]
       }
       emotional_checkins: {
         Row: {
@@ -266,6 +277,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['emotional_checkins']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['emotional_checkins']['Insert']>
+        Relationships: never[]
       }
       wardrobe_items: {
         Row: {
@@ -287,6 +299,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['wardrobe_items']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['wardrobe_items']['Insert']>
+        Relationships: never[]
       }
       shopping_items: {
         Row: {
@@ -306,6 +319,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['shopping_items']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['shopping_items']['Insert']>
+        Relationships: never[]
       }
       home_maintenance: {
         Row: {
@@ -325,6 +339,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['home_maintenance']['Row'], 'id' | 'created_at' | 'next_due_at'>
         Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
+        Relationships: never[]
       }
     }
     Views: {
@@ -344,6 +359,7 @@ export interface Database {
           top_category: string | null
           top_category_amount: number | null
         }
+        Relationships: never[]
       }
     }
     Functions: {
@@ -391,6 +407,7 @@ export interface Database {
       }
     }
     Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
 
