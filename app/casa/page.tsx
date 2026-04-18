@@ -376,7 +376,7 @@ export default function CasaPage() {
           {shopping.isLoading ? (
             <div className="p-8 text-center text-gray-400">Carregando...</div>
           ) : shopping.items.length === 0 ? (
-            <EmptyState title="Lista Vazia" description="Adicione os produtos que estão a acabar em casa." />
+            <EmptyState emoji="🛒" title="Lista Vazia" description="Adicione os produtos que estão a acabar em casa." />
           ) : (
             <>
               {/* SECÇÃO 1: Urgentes */}
