@@ -41,7 +41,7 @@ export function BudgetGoalSheet({ open, onClose, goal, bills, onSave }: Props) {
   const [saving, setSaving]         = useState(false)
 
   // Categorias já usadas em bills (para sugestão)
-  const billCats = [...new Set(bills.map(b => b.category).filter(Boolean))] as string[]
+  const billCats = Array.from(new Set(bills.map(b => b.category).filter(Boolean))) as string[]
 
   useEffect(() => {
     if (goal) {
