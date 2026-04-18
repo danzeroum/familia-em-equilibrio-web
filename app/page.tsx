@@ -444,7 +444,7 @@ export default function PainelPage() {
                 <p className="text-xs text-gray-400 mt-1">Saldo restante projetado</p>
                 <div className="flex gap-3 mt-2 text-xs text-gray-500">
                   <span>↑ R$ {(currentMonth.income ?? 0).toFixed(2)}</span>
-                  <span>↓ R$ {(currentMonth.expenses ?? 0).toFixed(2)}</span>
+                  <span>↓ R$ {(currentMonth.total_paid ?? 0).toFixed(2)}</span>
                 </div>
               </>
             ) : (
