@@ -29,7 +29,8 @@ export function MemberSheet({ open, onClose, member }: Props) {
 
     if (form.id) {
       // Edição: atualiza pelo id existente
-      const { error } = await supabase.from('profiles').update(form).eq('id', form.id)
+      const { id: _id, created_at: _cat, ...updateData } = form
+      const { error } = await supabase.from('profiles').update(updateData).eq('id', form.id)
       if (error) { console.error('[MemberSheet] UPDATE ERRO:', error); alert('Erro ao salvar: ' + error.message) }
     } else {
       // Criação: omite o id — banco gera UUID automaticamente via gen_random_uuid()
