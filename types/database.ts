@@ -43,8 +43,8 @@ export interface Database {
           color_hex: string
           created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'created_at'>
-        Update: Partial<Database['public']['Tables']['profiles']['Insert']>
+        Insert: { id: string; name: string } & Partial<Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'name' | 'created_at'>>
+        Update: Partial<Omit<Database['public']['Tables']['profiles']['Row'], 'id' | 'created_at'>>
       }
       bills: {
         Row: {
