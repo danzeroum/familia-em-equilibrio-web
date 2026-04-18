@@ -25,7 +25,7 @@ export function TaskSheet({ open, onClose, task, onSave, members }: Props) {
   useEffect(() => { loadCategories() }, [])
 
   useEffect(() => {
-    const base = task ?? { priority: 'medium', status: 'pending', recurrence: 'none' }
+    const base = task ?? { priority: 2 as const, status: 'pending' as const, recurrence: 'none' }
     setForm(base)
     setChecklist(Array.isArray((base as any).checklist) ? (base as any).checklist : [])
     setNewText('')
