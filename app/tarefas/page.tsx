@@ -504,7 +504,7 @@ export default function TarefasPage() {
           </button>
         </div>
         {events.length === 0 ? (
-          <EmptyState title="Nenhum evento" description="Cadastre datas importantes, viagens, consultas e aniversários." />
+          <EmptyState emoji="📅" title="Nenhum evento" description="Cadastre datas importantes, viagens, consultas e aniversários." />
         ) : (
           <ul className="divide-y">
             {events.map(e => (

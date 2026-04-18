@@ -497,7 +497,7 @@ export default function PainelPage() {
               <div className="p-6 text-center text-gray-400 text-sm animate-pulse">A carregar...</div>
             ) : focusItems.length === 0 ? (
               <div className="p-8">
-                <EmptyState title="Tudo tranquilo!" description="Nenhuma pendência urgente para hoje." />
+                <EmptyState emoji="✅" title="Tudo tranquilo!" description="Nenhuma pendência urgente para hoje." />
               </div>
             ) : (
               <ul className="divide-y">
@@ -540,7 +540,7 @@ export default function PainelPage() {
               <div className="p-6 text-center text-blue-200 text-sm animate-pulse">A carregar...</div>
             ) : radarItems.length === 0 ? (
               <div className="p-8 bg-white/5">
-                <EmptyState title="Radar Limpo" description="Nenhum evento nos próximos 3 meses." />
+                <EmptyState emoji="📡" title="Radar Limpo" description="Nenhum evento nos próximos 3 meses." />
               </div>
             ) : (
               <ul className="divide-y divide-white/10">
