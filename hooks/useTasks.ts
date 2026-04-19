@@ -74,7 +74,7 @@ export function useTasks(filters?: { assignedTo?: string; status?: Task['status'
     let error
     if (payload.id) {
       const { id: _id, created_at: _cat, ...updateData } = payload
-      ;({ error } = await supabase.from('tasks').update(updateData).eq('id', payload.id))
+      ;({ error } = await supabase.from('tasks').update(updateData as any).eq('id', payload.id))
     } else {
       const { id: _id, ...insertPayload } = payload
       ;({ error } = await supabase.from('tasks').insert(insertPayload as any))
