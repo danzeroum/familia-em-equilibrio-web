@@ -30,6 +30,12 @@ export const PRIORITY_CONFIG = {
   planned:  { label: 'Planejado', color: 'bg-green-50 text-green-700 border-green-200', dot: '🟢', badge: 'success' },
 } as const
 
+// Interpreta 'YYYY-MM-DD' como data LOCAL (new Date('2026-04-20') é UTC midnight)
+export function parseLocalDate(iso: string): Date {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, (m ?? 1) - 1, d ?? 1)
+}
+
 // Formata data para exibição em pt-BR
 export function formatDate(dateStr: string | null, pattern = 'dd/MM/yyyy'): string {
   if (!dateStr) return '—'
