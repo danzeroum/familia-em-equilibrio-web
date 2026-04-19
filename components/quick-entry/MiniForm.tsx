@@ -135,8 +135,6 @@ export function MiniForm({ entity, onSaved }: Props) {
             status: 'pending',
             is_recurring: false,
             assigned_to: memberId || null,
-            domain_id: familyId as any,
-            created_by: currentUser?.id ?? null,
           } as any)
           break
         }
