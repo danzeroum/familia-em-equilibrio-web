@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { Bill } from '@/types/database'
@@ -36,48 +36,61 @@ export function getBillsByCategory(bills: Bill[]): { category: string; total: nu
 }
 
 export function useBills() {
-  const { currentFamily } = useFamilyStore()
-  const familyId = currentFamily?.id
+  // Selector específico: só re-renderiza quando currentFamily.id mudar
+  const familyId = useFamilyStore((s) => s.currentFamily?.id)
+
   const [bills, setBills] = useState<Bill[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [monthlyBudget, setMonthlyBudgetState] = useState<number>(0)
   const [isSavingBudget, setIsSavingBudget] = useState(false)
 
+  // Ref para sempre ter o familyId mais recente dentro das funções async
+  const familyIdRef = useRef(familyId)
+  useEffect(() => { familyIdRef.current = familyId }, [familyId])
+
   useEffect(() => {
+    if (!familyId) return
     loadBudget()
     load()
   }, [familyId])
 
   async function loadBudget() {
-    if (!familyId) return
+    const fid = familyIdRef.current
+    if (!fid) return
     const { data } = await supabase
       .from('families')
       .select('monthly_budget')
-      .eq('id', familyId)
+      .eq('id', fid)
       .single()
     if (data) setMonthlyBudgetState(data.monthly_budget ?? 0)
   }
 
   async function saveMonthlyBudget(value: number) {
-    if (!familyId) return
+    const fid = familyIdRef.current
+    if (!fid) return
     setIsSavingBudget(true)
     setMonthlyBudgetState(value)
     await supabase
       .from('families')
       .update({ monthly_budget: value })
-      .eq('id', familyId)
+      .eq('id', fid)
     setIsSavingBudget(false)
   }
 
   async function load() {
-    if (!familyId) return
+    const fid = familyIdRef.current
+    if (!fid) return
     setIsLoading(true)
     const { data, error } = await supabase
       .from('bills')
       .select('*')
-      .eq('family_id', familyId)
+      .eq('family_id', fid)
       .order('due_day', { ascending: true })
-    if (!error) setBills(data ?? [])
+    if (error) {
+      console.error('[useBills] load error:', error.message)
+    } else {
+      setBills(data ?? [])
+    }
     setIsLoading(false)
   }
 
@@ -98,21 +111,21 @@ export function useBills() {
   }
 
   async function upsert(bill: Partial<Bill> & { title: string }) {
+    const fid = familyIdRef.current
     const payload = { ...bill }
-
     if (payload.assigned_to === '') payload.assigned_to = null
 
     if (payload.id) {
       const { id: _id, created_at: _cat, ...updateData } = payload
       await supabase.from('bills').update(updateData).eq('id', payload.id)
     } else {
-      // Buscar usuário logado para popular created_by
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('bills').insert({
+      const { error } = await supabase.from('bills').insert({
         ...payload,
-        family_id: familyId,
+        family_id: fid,
         created_by: user?.id ?? null,
       } as any)
+      if (error) console.error('[useBills] upsert error:', error.message)
     }
     await load()
   }
