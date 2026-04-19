@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
 import { CheckinSheet } from '@/components/sheets/CheckinSheet'
 import { formatTaskDateTime } from '@/lib/formatDateTime'
+import { parseLocalDate } from '@/lib/utils'
 import type { Task } from '@/types/database'
 import {
   asTask, asEvent,
@@ -122,7 +123,7 @@ export default function TarefasPage() {
     mergedItems.filter(it => {
       const d = agDate(it)
       if (!d) return false
-      return sameDay(dayOnly(new Date(d)), day)
+      return sameDay(dayOnly(parseLocalDate(d)), day)
     }).sort((a, b) => (agTime(a) ?? '').localeCompare(agTime(b) ?? ''))
 
   const noDateTasks = tasks.filter(t => !(t as any).due_date).map(asTask)
@@ -133,7 +134,7 @@ export default function TarefasPage() {
     const done = agIsDone(item)
     const dateStr = agDate(item)
     const time = agTime(item)
-    const overdue = !isEvent && dateStr && dayOnly(new Date(dateStr)) < today && !done
+    const overdue = !isEvent && dateStr && dayOnly(parseLocalDate(dateStr)) < today && !done
     const checklist = item._kind === 'task' && Array.isArray(item.checklist) ? item.checklist : []
     const doneCk = checklist.filter((i: any) => i.done).length
     const dot = item._kind === 'task'
