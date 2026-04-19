@@ -29,6 +29,7 @@ export function useRadarItems(familyId: string | null) {
   }, [familyId])
 
   async function load() {
+    if (!familyId) return
     setIsLoading(true)
     const radar: RadarItem[] = []
     const today = new Date().toISOString().split('T')[0]
