@@ -376,6 +376,7 @@ export interface Database {
           quantity: string | null
           category: string | null
           domain_id: number | null
+          family_id: string | null
           requested_by: string | null
           is_bought: boolean
           bought_by: string | null

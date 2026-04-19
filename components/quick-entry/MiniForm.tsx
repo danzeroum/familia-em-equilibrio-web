@@ -162,7 +162,6 @@ export function MiniForm({ entity, onSaved }: Props) {
             status: 'needed',
             is_recurring: false,
             requested_by: currentUser?.id ?? null,
-            domain_id: familyId as any,
           } as any)
           break
         }

@@ -1,27 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { ShoppingItem } from '@/types/database'
 
 export function useShoppingItems() {
-  const { currentFamily } = useFamilyStore()
-  const familyId = currentFamily?.id
+  const familyId = useFamilyStore((s) => s.currentFamily?.id)
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => { load() }, [familyId])
+  const familyIdRef = useRef(familyId)
+  useEffect(() => { familyIdRef.current = familyId }, [familyId])
+
+  useEffect(() => {
+    if (!familyId) return
+    load()
+  }, [familyId])
 
   async function load() {
-    if (!familyId) return
+    const fid = familyIdRef.current
+    if (!fid) return
     setIsLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('shopping_items')
       .select('*')
-      .eq('domain_id', familyId as any)
+      .eq('family_id', fid)
       .order('created_at', { ascending: false })
-    setItems(data ?? [])
+    if (error) {
+      console.error('[useShoppingItems] load error:', error.message)
+    } else {
+      setItems(data ?? [])
+    }
     setIsLoading(false)
   }
 
@@ -36,12 +46,19 @@ export function useShoppingItems() {
   }
 
   async function upsert(item: Partial<ShoppingItem>) {
-    const payload = { ...item, domain_id: item.domain_id ?? (familyId as any) }
+    const fid = familyIdRef.current
+    const payload = { ...item }
     if (payload.id) {
       const { id: _id, created_at: _cat, ...updateData } = payload
       await supabase.from('shopping_items').update(updateData).eq('id', payload.id)
     } else {
-      await supabase.from('shopping_items').insert(payload as any)
+      const { data: { user } } = await supabase.auth.getUser()
+      const { error } = await supabase.from('shopping_items').insert({
+        ...payload,
+        family_id: fid,
+        requested_by: payload.requested_by ?? user?.id ?? null,
+      } as any)
+      if (error) console.error('[useShoppingItems] upsert error:', error.message)
     }
     await load()
   }
