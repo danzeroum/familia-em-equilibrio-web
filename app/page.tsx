@@ -6,9 +6,16 @@ import { useDashboard } from '@/hooks/useDashboard'
 import { useMonthlyHistory } from '@/hooks/useMonthlyHistory'
 import { useSavingsGoals } from '@/hooks/useSavingsGoals'
 import { useTasks } from '@/hooks/useTasks'
+import { useFamilyEvents } from '@/hooks/useFamilyEvents'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatTaskDateTime } from '@/lib/formatDateTime'
+import { parseLocalDate } from '@/lib/utils'
+import {
+  asTask, asEvent,
+  type AgendamentoItem,
+  agDate, agTime, agIsDone,
+} from '@/types/agendamento'
 
 // ─── helpers de data ─────────────────────────────────────────────────────────
 
@@ -55,27 +62,35 @@ function getDaysInMonth(year: number, month: number) {
 
 type TaskView = 'dia' | 'semana' | 'mes' | 'ano' | 'lista'
 
-// ─── TaskChip ────────────────────────────────────────────────────────────────
+// ─── ItemChip (tarefa ou evento) ─────────────────────────────────────────────
 
-function TaskChip({ t, memberName }: { t: any; memberName: (id: string|null) => string|null }) {
-  const today    = dayOnly(new Date())
-  const isOverdue = t.due_date && dayOnly(new Date(t.due_date)) < today
-  const priority  = t.priority ?? 'low'
-  const time      = t.due_time
-  const name      = memberName(t.assigned_to)
+function ItemChip({ item, memberName }: { item: AgendamentoItem; memberName: (id: string|null) => string|null }) {
+  const today     = dayOnly(new Date())
+  const isEvent   = item._kind === 'event'
+  const dateStr   = agDate(item)
+  const isOverdue = !isEvent && dateStr && dayOnly(parseLocalDate(dateStr)) < today && !agIsDone(item)
+  const priority  = item._kind === 'task' ? ((item as any).priority ?? 'low') : 'low'
+  const time      = agTime(item)
+  const name      = memberName(item.assigned_to ?? null)
   return (
     <div
-      title={t.title}
+      title={item.title}
       className={`rounded px-1 py-0.5 text-[10px] leading-tight cursor-pointer hover:opacity-75 transition-opacity
-        ${isOverdue ? 'bg-red-100 text-red-800' : `bg-white shadow-sm text-gray-700 ${PRIORITY_CARD[priority] ?? ''}`}`}
+        ${isOverdue
+          ? 'bg-red-100 text-red-800'
+          : isEvent
+            ? 'bg-blue-50/70 shadow-sm text-gray-700 border-l-2 border-l-blue-400'
+            : `bg-white shadow-sm text-gray-700 ${PRIORITY_CARD[priority] ?? ''}`}`}
     >
       <div className="flex items-center gap-1">
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${PRIORITY_DOT[priority] ?? 'bg-gray-300'}`} />
-        <span className="font-medium truncate">{t.title}</span>
+        {isEvent
+          ? <span className="text-[10px] flex-shrink-0">📅</span>
+          : <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${PRIORITY_DOT[priority] ?? 'bg-gray-300'}`} />}
+        <span className="font-medium truncate">{item.title}</span>
       </div>
       {(time || name) && (
         <div className="text-gray-400 truncate mt-0.5">
-          {time && <span>{time.slice(0,5)}</span>}
+          {time && <span>{time}</span>}
           {time && name && <span> · </span>}
           {name && <span>{name}</span>}
         </div>
@@ -108,7 +123,7 @@ function NavBar({ label, onPrev, onNext, onToday, showToday }: {
 // ════════════════════════════════════════════════════════════════════════════
 
 export default function PainelPage() {
-  const { members } = useFamilyStore()
+  const { members, currentFamily } = useFamilyStore()
 
   // ── hooks de dados ──────────────────────────────────────────────────────
   const {
@@ -123,13 +138,18 @@ export default function PainelPage() {
   const { history }      = useMonthlyHistory()
   const { goals }        = useSavingsGoals()
   const { tasks }        = useTasks()
+  const { events }       = useFamilyEvents(currentFamily?.id ?? null)
 
   // ── estado local ────────────────────────────────────────────────────────
   const [taskView, setTaskView] = useState<TaskView>('semana')
   const [offset,   setOffset]   = useState(0)
 
   const today      = useMemo(() => dayOnly(new Date()), [])
-  const allPending = useMemo(() => tasks.filter(t => t.status !== 'done'), [tasks])
+  const mergedItems: AgendamentoItem[] = useMemo(() => [
+    ...tasks.map(asTask),
+    ...events.map(asEvent),
+  ], [tasks, events])
+  const allPending = useMemo(() => mergedItems.filter(it => !agIsDone(it)), [mergedItems])
 
   // ── dados derivados ─────────────────────────────────────────────────────
   const currentMonth = history[0] ?? null
@@ -141,29 +161,33 @@ export default function PainelPage() {
     return m?.nickname ?? m?.name ?? null
   }
 
-  const tasksForDay = (day: Date) =>
-    allPending.filter(t => {
-      if (!t.due_date) return false
-      return sameDay(dayOnly(new Date(t.due_date)), day)
-    }).sort((a,b) => ((a as any).due_time??'').localeCompare((b as any).due_time??''))
+  const itemsForDay = (day: Date): AgendamentoItem[] =>
+    allPending.filter(it => {
+      const d = agDate(it)
+      if (!d) return false
+      return sameDay(dayOnly(parseLocalDate(d)), day)
+    }).sort((a, b) => (agTime(a) ?? '').localeCompare(agTime(b) ?? ''))
 
-  const tasksNoDate = allPending.filter(t => !t.due_date)
+  const itemsNoDate = allPending.filter(it => !agDate(it))
 
   const in7 = addDays(today, 7)
-  const weekTasks = allPending.filter(t => {
-    if (!t.due_date) return true
-    return dayOnly(new Date(t.due_date)) <= in7
-  }).sort((a,b) => {
-    if (!a.due_date) return 1; if (!b.due_date) return -1
-    const dc = new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-    return dc !== 0 ? dc : ((a as any).due_time??'').localeCompare((b as any).due_time??'')
+  const weekItems = allPending.filter(it => {
+    const d = agDate(it)
+    if (!d) return true
+    return dayOnly(parseLocalDate(d)) <= in7
+  }).sort((a, b) => {
+    const ad = agDate(a); const bd = agDate(b)
+    if (!ad) return 1; if (!bd) return -1
+    const dc = parseLocalDate(ad).getTime() - parseLocalDate(bd).getTime()
+    return dc !== 0 ? dc : (agTime(a) ?? '').localeCompare(agTime(b) ?? '')
   })
 
   const dayCountMap = useMemo(() => {
     const map: Record<string,number> = {}
-    allPending.forEach(t => {
-      if (!t.due_date) return
-      const key = t.due_date.slice(0,10)
+    allPending.forEach(it => {
+      const d = agDate(it)
+      if (!d) return
+      const key = d.slice(0,10)
       map[key] = (map[key] ?? 0) + 1
     })
     return map
@@ -176,9 +200,9 @@ export default function PainelPage() {
   const HOURS = Array.from({ length: 18 }, (_, i) => i + 6)
 
   function ViewDia() {
-    const dayTasks  = tasksForDay(currentDay)
-    const withTime  = dayTasks.filter(t => (t as any).due_time)
-    const noTime    = dayTasks.filter(t => !(t as any).due_time)
+    const dayItems  = itemsForDay(currentDay)
+    const withTime  = dayItems.filter(it => !!agTime(it))
+    const noTime    = dayItems.filter(it => !agTime(it))
     const isToday   = sameDay(currentDay, today)
     const label     = isToday
       ? 'Hoje'
@@ -189,27 +213,28 @@ export default function PainelPage() {
         {noTime.length > 0 && (
           <div className="px-3 py-2 border-b bg-gray-50 flex flex-wrap gap-1 items-center">
             <span className="text-[10px] text-gray-400 font-semibold mr-1 uppercase tracking-wide">Dia todo</span>
-            {noTime.map(t => <TaskChip key={t.id} t={t} memberName={memberName}/>)}
+            {noTime.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
           </div>
         )}
         <div className="overflow-y-auto max-h-[420px]">
           {HOURS.map(h => {
-            const slotTasks = withTime.filter(t => {
-              const [th] = ((t as any).due_time ?? '').split(':').map(Number)
+            const slotItems = withTime.filter(it => {
+              const t = agTime(it); if (!t) return false
+              const [th] = t.split(':').map(Number)
               return th === h
             })
             return (
               <div key={h} className={`flex border-b min-h-[44px] ${isToday && new Date().getHours()===h ? 'bg-teal-50' : ''}`}>
                 <div className="w-12 flex-shrink-0 text-[10px] text-gray-400 font-medium pt-1 pl-3">{String(h).padStart(2,'0')}h</div>
                 <div className="flex-1 p-1 flex flex-col gap-0.5">
-                  {slotTasks.map(t => <TaskChip key={t.id} t={t} memberName={memberName}/>)}
+                  {slotItems.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
                 </div>
               </div>
             )
           })}
         </div>
-        {dayTasks.length === 0 && (
-          <div className="p-8 text-center text-gray-400 text-sm">Nenhuma tarefa para este dia.</div>
+        {dayItems.length === 0 && (
+          <div className="p-8 text-center text-gray-400 text-sm">Nenhum agendamento para este dia.</div>
         )}
       </div>
     )
@@ -231,7 +256,7 @@ export default function PainelPage() {
           {weekDays.map((day, idx) => {
             const isToday = sameDay(day, today)
             const isPast  = day < today && !isToday
-            const dt      = tasksForDay(day)
+            const dt      = itemsForDay(day)
             return (
               <div key={idx} className={`flex flex-col ${isToday ? 'bg-teal-50' : isPast ? 'bg-gray-50/60' : 'bg-white'}`}>
                 <div className="flex flex-col items-center pt-2 pb-1 border-b">
@@ -240,18 +265,20 @@ export default function PainelPage() {
                   <span className={`w-1.5 h-1.5 rounded-full mt-1 ${dt.length > 0 ? (isToday ? 'bg-teal-500' : 'bg-gray-400') : 'bg-transparent'}`}/>
                 </div>
                 <div className="flex-1 p-1 space-y-0.5 overflow-hidden">
-                  {dt.map(t => <TaskChip key={t.id} t={t} memberName={memberName}/>)}
+                  {dt.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
                 </div>
               </div>
             )
           })}
         </div>
         </div>
-        {tasksNoDate.length > 0 && (
+        {itemsNoDate.length > 0 && (
           <div className="px-4 py-2 border-t bg-gray-50 flex flex-wrap gap-1.5 items-center">
             <span className="text-xs text-gray-400 font-medium mr-1">Sem data:</span>
-            {tasksNoDate.map(t => (
-              <span key={t.id} className="text-xs bg-white border border-gray-200 text-gray-600 rounded-full px-2 py-0.5 truncate max-w-[120px]" title={t.title}>{t.title}</span>
+            {itemsNoDate.map(it => (
+              <span key={`${it._kind}-${it.id}`} className="text-xs bg-white border border-gray-200 text-gray-600 rounded-full px-2 py-0.5 truncate max-w-[120px]" title={it.title}>
+                {it._kind === 'event' ? '📅 ' : ''}{it.title}
+              </span>
             ))}
           </div>
         )}
@@ -288,14 +315,14 @@ export default function PainelPage() {
             if (!day) return <div key={i} className="border-b bg-gray-50/40 min-h-[64px]"/>
             const isToday = sameDay(day, today)
             const isPast  = day < today && !isToday
-            const dt      = tasksForDay(day)
+            const dt      = itemsForDay(day)
             const visible = dt.slice(0, 2)
             const extra   = dt.length - visible.length
             return (
               <div key={i} className={`border-b min-h-[64px] flex flex-col p-0.5 ${isToday ? 'bg-teal-50' : isPast ? 'bg-gray-50/40' : 'bg-white'}`}>
                 <div className={`text-[11px] font-bold self-end w-5 h-5 flex items-center justify-center rounded-full mb-0.5 ${isToday ? 'bg-teal-600 text-white' : 'text-gray-500'}`}>{day.getDate()}</div>
                 <div className="space-y-0.5 flex-1 overflow-hidden">
-                  {visible.map(t => <TaskChip key={t.id} t={t} memberName={memberName}/>)}
+                  {visible.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
                   {extra > 0 && <div className="text-[10px] text-gray-400 font-medium pl-1">+{extra} mais</div>}
                 </div>
               </div>
@@ -344,7 +371,7 @@ export default function PainelPage() {
                     return (
                       <div
                         key={ci}
-                        title={cnt > 0 ? `${day}/${mIdx+1}: ${cnt} tarefa${cnt>1?'s':''}` : `${day}/${mIdx+1}`}
+                        title={cnt > 0 ? `${day}/${mIdx+1}: ${cnt} agendamento${cnt>1?'s':''}` : `${day}/${mIdx+1}`}
                         className={`w-full aspect-square rounded-sm ${isT ? 'ring-1 ring-teal-600' : ''} ${heatColor(cnt)} cursor-default`}
                       />
                     )
@@ -367,20 +394,25 @@ export default function PainelPage() {
 
   // ── Views: LISTA ────────────────────────────────────────────────────────
   function ViewLista() {
-    return weekTasks.length === 0 ? (
-      <div className="p-6 text-center text-gray-400 text-sm">Nenhuma tarefa pendente para os próximos 7 dias.</div>
+    return weekItems.length === 0 ? (
+      <div className="p-6 text-center text-gray-400 text-sm">Nenhum agendamento pendente para os próximos 7 dias.</div>
     ) : (
       <ul className="divide-y">
-        {weekTasks.map(t => {
-          const isOverdue = t.due_date && dayOnly(new Date(t.due_date)) < today
-          const dateTime  = formatTaskDateTime((t as any).due_date, (t as any).due_time)
+        {weekItems.map(it => {
+          const isEvent   = it._kind === 'event'
+          const dateStr   = agDate(it)
+          const time      = agTime(it)
+          const isOverdue = !isEvent && dateStr && dayOnly(parseLocalDate(dateStr)) < today
+          const dateTime  = formatTaskDateTime(dateStr, time)
           return (
-            <li key={t.id} className="px-4 py-3 flex items-center gap-3">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOverdue ? 'bg-red-500' : 'bg-teal-500'}`}/>
+            <li key={`${it._kind}-${it.id}`} className={`px-4 py-3 flex items-center gap-3 ${isEvent ? 'border-l-2 border-l-blue-400' : ''}`}>
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isOverdue ? 'bg-red-500' : isEvent ? 'bg-blue-500' : 'bg-teal-500'}`}/>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{t.title}</p>
+                <p className="text-sm font-medium truncate">
+                  {isEvent && <span className="mr-1">📅</span>}{it.title}
+                </p>
                 <p className="text-xs text-gray-400">
-                  {memberName(t.assigned_to) ?? 'Sem responsável'}
+                  {memberName(it.assigned_to ?? null) ?? 'Sem responsável'}
                   {dateTime && ` · ${dateTime}`}
                 </p>
               </div>
@@ -583,7 +615,7 @@ export default function PainelPage() {
       <section>
         <div className="rounded-xl border bg-white overflow-hidden">
           <div className="px-4 py-3 border-b flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="font-semibold text-gray-800">📅 Tarefas</h2>
+            <h2 className="font-semibold text-gray-800">📅 Agendamentos</h2>
             <div className="flex rounded-lg border overflow-hidden text-xs font-medium">
               {VIEWS.map(v => (
                 <button
