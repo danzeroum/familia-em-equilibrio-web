@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { Bill } from '@/types/database'
 
-// Retorna o semáforo de vencimento baseado no due_day vs hoje
 export function getBillUrgency(bill: Bill): 'overdue' | 'due_soon' | 'ok' {
   if (bill.status === 'paid' || bill.status === 'auto_debit') return 'ok'
   if (bill.status === 'overdue') return 'overdue'
@@ -23,7 +22,6 @@ export const URGENCY_CONFIG = {
   ok:       { emoji: '🟢', label: 'Em dia',        bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200' },
 } as const
 
-// Agrega total por categoria para gráfico
 export function getBillsByCategory(bills: Bill[]): { category: string; total: number; count: number }[] {
   const map: Record<string, { total: number; count: number }> = {}
   for (const b of bills) {
@@ -74,12 +72,12 @@ export function useBills() {
   async function load() {
     if (!familyId) return
     setIsLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bills')
       .select('*')
       .eq('family_id', familyId)
       .order('due_day', { ascending: true })
-    setBills(data ?? [])
+    if (!error) setBills(data ?? [])
     setIsLoading(false)
   }
 
@@ -102,15 +100,19 @@ export function useBills() {
   async function upsert(bill: Partial<Bill> & { title: string }) {
     const payload = { ...bill }
 
-    // Limpeza crucial: previne erro de FK se o select enviar string vazia
     if (payload.assigned_to === '') payload.assigned_to = null
 
     if (payload.id) {
       const { id: _id, created_at: _cat, ...updateData } = payload
       await supabase.from('bills').update(updateData).eq('id', payload.id)
     } else {
-      // Garante family_id no insert para RLS e filtragem correta
-      await supabase.from('bills').insert({ ...payload, family_id: familyId } as any)
+      // Buscar usuário logado para popular created_by
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('bills').insert({
+        ...payload,
+        family_id: familyId,
+        created_by: user?.id ?? null,
+      } as any)
     }
     await load()
   }
