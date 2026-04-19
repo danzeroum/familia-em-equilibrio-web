@@ -456,6 +456,26 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['health_tracking']['Insert']>
         Relationships: never[]
       }
+      task_categories: {
+        Row: {
+          id: string
+          family_id: string | null
+          name: string
+          emoji: string
+          group_name: string
+          is_default: boolean
+          created_at: string
+        }
+        Insert: {
+          family_id?: string | null
+          name: string
+          emoji: string
+          group_name: string
+          is_default?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['task_categories']['Insert']>
+        Relationships: never[]
+      }
     }
     Views: {
       monthly_history_view: {
