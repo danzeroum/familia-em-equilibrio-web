@@ -165,6 +165,7 @@ export interface Database {
           category: string | null
           payment_method: string | null
           domain_id: number | null
+          family_id: string | null
           created_by: string | null
           assigned_to: string | null
           paid_at: string | null
