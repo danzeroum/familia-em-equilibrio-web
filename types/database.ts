@@ -394,6 +394,7 @@ export interface Database {
           family_id: string
           title: string
           emoji: string | null
+          category: string | null
           frequency_label: string
           frequency_days: number
           responsible_id: string | null
@@ -404,7 +405,19 @@ export interface Database {
           created_by: string | null
           created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['home_maintenance']['Row'], 'id' | 'created_at' | 'next_due_at'>
+        Insert: {
+          family_id: string
+          title: string
+          emoji?: string | null
+          category?: string | null
+          frequency_label: string
+          frequency_days: number
+          responsible_id?: string | null
+          last_done_at?: string | null
+          notes?: string | null
+          status?: 'ok' | 'due_soon' | 'overdue' | 'done'
+          created_by?: string | null
+        }
         Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
         Relationships: never[]
       }
