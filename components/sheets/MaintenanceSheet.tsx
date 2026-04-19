@@ -32,10 +32,10 @@ const EMOJI_OPTIONS = ['🔧','❄️','💧','🧯','🔥','🐛','🚿','🔌'
 
 export function MaintenanceSheet({ open, onClose, item, onSave, members }: Props) {
   const [form, setForm] = useState<Partial<HomeMaintenance> & {
-    category?: string
+    category?: string | null
     estimated_cost?: number | null
-    provider_name?: string
-    provider_phone?: string
+    provider_name?: string | null
+    provider_phone?: string | null
   }>({})
 
   useEffect(() => {
