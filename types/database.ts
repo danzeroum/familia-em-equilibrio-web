@@ -414,6 +414,7 @@ export interface Database {
           frequency_days: number
           responsible_id?: string | null
           last_done_at?: string | null
+          next_due_at?: string | null
           notes?: string | null
           status?: 'ok' | 'due_soon' | 'overdue' | 'done'
           created_by?: string | null
