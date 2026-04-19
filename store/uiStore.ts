@@ -39,8 +39,8 @@ export const useUIStore = create<UIStore>((set) => ({
   activeSheet: null,
   sheetData: null,
 
-  openSheet: (type, data = null) =>
-    set({ activeSheet: type, sheetData: data }),
+  openSheet: (type, data = undefined) =>
+    set({ activeSheet: type, sheetData: data ?? null }),
 
   closeSheet: () =>
     set({ activeSheet: null, sheetData: null }),
