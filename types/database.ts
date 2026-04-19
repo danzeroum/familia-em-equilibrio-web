@@ -425,7 +425,20 @@ export interface Database {
           status: string
           created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['health_tracking']['Row'], 'id' | 'created_at'>
+        Insert: {
+          family_id: string
+          title: string
+          emoji: string
+          category: string
+          frequency_label: string
+          frequency_days: number
+          profile_id?: string | null
+          responsible_id?: string | null
+          last_done_at?: string | null
+          next_due_at?: string | null
+          notes?: string | null
+          status?: string
+        }
         Update: Partial<Database['public']['Tables']['health_tracking']['Insert']>
         Relationships: never[]
       }
