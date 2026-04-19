@@ -6,13 +6,15 @@ import { useTasks } from '@/hooks/useTasks'
 import { useEmotionalCheckins } from '@/hooks/useEmotionalCheckins'
 import { useFamilyEvents } from '@/hooks/useFamilyEvents'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { TaskSheet } from '@/components/sheets/TaskSheet'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
 import { CheckinSheet } from '@/components/sheets/CheckinSheet'
-import { EventSheet } from '@/components/sheets/EventSheet'
 import { formatTaskDateTime } from '@/lib/formatDateTime'
-import { formatDate } from '@/lib/utils'
-import type { Task, FamilyEvent } from '@/types/database'
+import type { Task } from '@/types/database'
+import {
+  asTask, asEvent,
+  type AgendamentoItem, type AgendamentoKind,
+  agDate, agTime, agIsDone,
+} from '@/types/agendamento'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -60,25 +62,53 @@ function NavBar({ label, onPrev, onNext, onToday, showToday }: {
 export default function TarefasPage() {
   const { currentFamily, members, currentUser } = useFamilyStore()
   const { tasks, isLoading, upsert, complete, remove } = useTasks()
-  const { addCheckin, weekMoodAverage } = useEmotionalCheckins(currentFamily?.id ?? null)
+  const { addCheckin } = useEmotionalCheckins(currentFamily?.id ?? null)
   const { events, upsert: upsertEvent, toggleDone, remove: removeEvent } = useFamilyEvents(currentFamily?.id ?? null)
 
-  const [taskOpen, setTaskOpen]         = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [agendamentoOpen, setAgendamentoOpen]   = useState(false)
+  const [selectedItem, setSelectedItem]         = useState<AgendamentoItem | null>(null)
+  const [defaultKind, setDefaultKind]           = useState<AgendamentoKind>('task')
+  const [prefill, setPrefill]                   = useState<{ date?: string; time?: string | null } | undefined>(undefined)
+
   const [checkinOpen, setCheckinOpen]   = useState(false)
   const [view, setView]                 = useState<ViewType>('semana')
   const [offset, setOffset]             = useState(0)
-  const [eventOpen, setEventOpen]       = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<FamilyEvent | null>(null)
 
-  const today  = useMemo(() => dayOnly(new Date()), [])
+  const today = useMemo(() => dayOnly(new Date()), [])
 
-  function openNew(prefill?: Partial<Task>) { setSelectedTask(prefill as Task ?? null); setTaskOpen(true) }
-  function openEdit(t: Task) { setSelectedTask(t); setTaskOpen(true) }
+  const mergedItems: AgendamentoItem[] = useMemo(() => {
+    const a = tasks.map(t => asTask(t))
+    const b = events.map(e => asEvent(e))
+    return [...a, ...b]
+  }, [tasks, events])
+
+  function openNew(kind: AgendamentoKind = 'task', pf?: { date?: string; time?: string | null }) {
+    setSelectedItem(null)
+    setDefaultKind(kind)
+    setPrefill(pf)
+    setAgendamentoOpen(true)
+  }
+
+  function openEdit(item: AgendamentoItem) {
+    setSelectedItem(item)
+    setDefaultKind(item._kind)
+    setPrefill(undefined)
+    setAgendamentoOpen(true)
+  }
+
   function switchView(v: ViewType) { setView(v); setOffset(0) }
 
-  function handleComplete(t: Task) {
-    if (t.status !== 'done') complete(t.id, t.requires_supervision ? currentUser?.id : undefined)
+  function handleToggleDone(item: AgendamentoItem) {
+    if (item._kind === 'task') {
+      if (item.status !== 'done') complete(item.id, item.requires_supervision ? currentUser?.id : undefined)
+    } else {
+      toggleDone(item.id, !!item.is_done)
+    }
+  }
+
+  function handleRemove(item: AgendamentoItem) {
+    if (item._kind === 'task') remove(item.id)
+    else removeEvent(item.id)
   }
 
   const memberName = (id: string | null | undefined) => {
@@ -87,61 +117,65 @@ export default function TarefasPage() {
     return m?.nickname ?? (m as any)?.name ?? null
   }
 
-  const moodEmoji = (avg: number | null) => {
-    if (avg === null) return '—'
-    if (avg >= 4.5) return '😄'
-    if (avg >= 3.5) return '🙂'
-    if (avg >= 2.5) return '😐'
-    if (avg >= 1.5) return '😔'
-    return '😢'
-  }
+  // itens por dia (tarefas + eventos)
+  const itemsForDay = (day: Date): AgendamentoItem[] =>
+    mergedItems.filter(it => {
+      const d = agDate(it)
+      if (!d) return false
+      return sameDay(dayOnly(new Date(d)), day)
+    }).sort((a, b) => (agTime(a) ?? '').localeCompare(agTime(b) ?? ''))
 
-  // tarefas por dia
-  const tasksForDay = (day: Date) =>
-    tasks.filter(t => {
-      const due = (t as any).due_date as string | null
-      if (!due) return false
-      return sameDay(dayOnly(new Date(due)), day)
-    }).sort((a,b) => ((a as any).due_time??'').localeCompare((b as any).due_time??''))
+  const noDateTasks = tasks.filter(t => !(t as any).due_date).map(asTask)
 
-  const noDateTasks = tasks.filter(t => !(t as any).due_date)
-
-  // ─── TaskCard ───────────────────────────────────────────────────────────
-  function TaskCard({ t, compact = false }: { t: Task; compact?: boolean }) {
-    const checklist = Array.isArray(t.checklist) ? t.checklist : []
-    const doneCk    = checklist.filter((i:any) => i.done).length
-    const overdue   = (t as any).due_date && dayOnly(new Date((t as any).due_date)) < today && t.status !== 'done'
-    const time      = (t as any).due_time ? (t as any).due_time.slice(0,5) : null
-    const dot       = PRIORITY_DOT[String((t as any).priority)] ?? 'bg-gray-300'
+  // ─── AgendamentoCard ───────────────────────────────────────────────────
+  function AgendamentoCard({ item, compact = false }: { item: AgendamentoItem; compact?: boolean }) {
+    const isEvent = item._kind === 'event'
+    const done = agIsDone(item)
+    const dateStr = agDate(item)
+    const time = agTime(item)
+    const overdue = !isEvent && dateStr && dayOnly(new Date(dateStr)) < today && !done
+    const checklist = item._kind === 'task' && Array.isArray(item.checklist) ? item.checklist : []
+    const doneCk = checklist.filter((i: any) => i.done).length
+    const dot = item._kind === 'task'
+      ? (PRIORITY_DOT[String((item as any).priority)] ?? 'bg-gray-300')
+      : 'bg-blue-400'
 
     if (compact) {
       return (
         <div
-          onClick={() => openEdit(t)}
+          onClick={() => openEdit(item)}
           className={`rounded-lg px-2 py-1.5 cursor-pointer border text-xs leading-tight transition-all
-            ${t.status==='done' ? 'bg-gray-50 border-gray-200 opacity-60'
-              : overdue         ? 'bg-red-50 border-red-200'
-              : 'bg-white border-gray-200 hover:border-teal-400 hover:shadow-sm'}`}
+            ${isEvent ? 'border-l-2 border-l-blue-400 ' : ''}
+            ${done
+              ? 'bg-gray-50 border-gray-200 opacity-60'
+              : overdue
+                ? 'bg-red-50 border-red-200'
+                : isEvent
+                  ? 'bg-blue-50/40 border-gray-200 hover:border-blue-400 hover:shadow-sm'
+                  : 'bg-white border-gray-200 hover:border-teal-400 hover:shadow-sm'}`}
         >
           <div className="flex items-center gap-1.5">
             <button
-              onClick={e => { e.stopPropagation(); handleComplete(t) }}
+              onClick={e => { e.stopPropagation(); handleToggleDone(item) }}
               className={`w-3.5 h-3.5 rounded-full border flex-shrink-0 flex items-center justify-center
-                ${t.status==='done' ? 'bg-teal-500 border-teal-500' : 'border-gray-300 hover:border-teal-400'}`}
+                ${done
+                  ? isEvent ? 'bg-blue-500 border-blue-500' : 'bg-teal-500 border-teal-500'
+                  : isEvent ? 'border-gray-300 hover:border-blue-400' : 'border-gray-300 hover:border-teal-400'}`}
             >
-              {t.status==='done' && (
+              {done && (
                 <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
                   <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
             </button>
-            <span className={`font-medium truncate ${t.status==='done' ? 'line-through text-gray-400' : ''}`}>{t.title}</span>
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
+            {isEvent && <span className="text-[10px]">📅</span>}
+            <span className={`font-medium truncate ${done ? 'line-through text-gray-400' : ''}`}>{item.title}</span>
+            {!isEvent && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />}
           </div>
-          {(time || memberName(t.assigned_to)) && (
+          {(time || memberName(item.assigned_to)) && (
             <p className="text-gray-400 mt-0.5 truncate pl-5">
               {time && <span className="font-medium text-gray-500">{time} </span>}
-              {memberName(t.assigned_to)}
+              {memberName(item.assigned_to)}
             </p>
           )}
           {checklist.length > 0 && (
@@ -155,22 +189,24 @@ export default function TarefasPage() {
 
     // lista
     return (
-      <li className="px-4 py-3 flex items-center gap-3 hover:bg-gray-50">
-        <input type="checkbox" checked={t.status==='done'} onChange={()=>handleComplete(t)}
-          className="w-4 h-4 accent-teal-600 flex-shrink-0" />
+      <li className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 ${isEvent ? 'border-l-2 border-l-blue-400' : ''}`}>
+        <input type="checkbox" checked={done} onChange={()=>handleToggleDone(item)}
+          className={`w-4 h-4 flex-shrink-0 ${isEvent ? 'accent-blue-600' : 'accent-teal-600'}`} />
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium truncate ${t.status==='done'?'line-through text-gray-400':''}`}>{t.title}</p>
+          <p className={`text-sm font-medium truncate ${done ? 'line-through text-gray-400' : ''}`}>
+            {isEvent && <span className="mr-1">📅</span>}{item.title}
+          </p>
           <p className="text-xs text-gray-400 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-            {memberName(t.assigned_to) && <span>{memberName(t.assigned_to)}</span>}
-            {(t as any).due_date && <span>📅 {formatTaskDateTime((t as any).due_date,(t as any).due_time)}</span>}
+            {memberName(item.assigned_to) && <span>{memberName(item.assigned_to)}</span>}
+            {dateStr && <span>📅 {formatTaskDateTime(dateStr, time)}</span>}
             {overdue && <span className="text-red-500 font-medium">Atrasada</span>}
-            {t.requires_supervision && <span>👤 Requer adulto</span>}
+            {item._kind === 'task' && item.requires_supervision && <span>👤 Requer adulto</span>}
             {checklist.length>0 && <span className={doneCk===checklist.length?'text-green-500':''}>✅ {doneCk}/{checklist.length}</span>}
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <button className="text-xs text-gray-400 hover:text-gray-600" onClick={()=>openEdit(t)}>Editar</button>
-          <button className="text-xs text-red-400 hover:text-red-600" onClick={()=>remove(t.id)}>×</button>
+          <button className="text-xs text-gray-400 hover:text-gray-600" onClick={()=>openEdit(item)}>Editar</button>
+          <button className="text-xs text-red-400 hover:text-red-600" onClick={()=>handleRemove(item)}>×</button>
         </div>
       </li>
     )
@@ -180,9 +216,9 @@ export default function TarefasPage() {
   function ViewDia() {
     const currentDay = addDays(today, offset)
     const isToday    = sameDay(currentDay, today)
-    const dayTasks   = tasksForDay(currentDay)
-    const withTime   = dayTasks.filter(t => (t as any).due_time)
-    const noTime     = dayTasks.filter(t => !(t as any).due_time)
+    const dayItems   = itemsForDay(currentDay)
+    const withTime   = dayItems.filter(it => !!agTime(it))
+    const noTime     = dayItems.filter(it => !agTime(it))
     const nowHour    = new Date().getHours()
     const label      = isToday
       ? 'Hoje — ' + currentDay.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})
@@ -196,15 +232,17 @@ export default function TarefasPage() {
         {noTime.length>0 && (
           <div className="px-3 py-2 border-b bg-teal-50/40 flex flex-wrap gap-1 items-center">
             <span className="text-[10px] text-teal-700 font-semibold uppercase tracking-wide mr-1">Dia todo</span>
-            {noTime.map(t=><div key={t.id} className="max-w-[200px]"><TaskCard t={t} compact/></div>)}
+            {noTime.map(it=><div key={`${it._kind}-${it.id}`} className="max-w-[200px]"><AgendamentoCard item={it} compact/></div>)}
           </div>
         )}
 
         {/* Slots de hora */}
         <div className="overflow-y-auto max-h-[480px] divide-y">
           {HOURS.map(h => {
-            const slotTasks = withTime.filter(t => {
-              const [th] = ((t as any).due_time??'').split(':').map(Number)
+            const slotItems = withTime.filter(it => {
+              const t = agTime(it)
+              if (!t) return false
+              const [th] = t.split(':').map(Number)
               return th === h
             })
             const isCurrentHour = isToday && nowHour === h
@@ -214,20 +252,20 @@ export default function TarefasPage() {
                   {String(h).padStart(2,'0')}:00
                 </div>
                 <div className="flex-1 p-1.5 flex flex-col gap-1">
-                  {slotTasks.map(t=><TaskCard key={t.id} t={t} compact/>)}
+                  {slotItems.map(it=><AgendamentoCard key={`${it._kind}-${it.id}`} item={it} compact/>)}
                 </div>
                 <button
-                  onClick={()=>openNew({ due_date: toISO(currentDay), due_time: `${String(h).padStart(2,'0')}:00` } as any)}
+                  onClick={()=>openNew('task', { date: toISO(currentDay), time: `${String(h).padStart(2,'0')}:00` })}
                   className="w-6 flex-shrink-0 text-gray-200 hover:text-teal-400 text-sm self-start pt-1.5 transition-colors"
-                  title={`Nova tarefa às ${h}h`}
+                  title={`Novo agendamento às ${h}h`}
                 >+</button>
               </div>
             )
           })}
         </div>
 
-        {dayTasks.length===0 && (
-          <div className="p-10 text-center text-gray-400 text-sm">Nenhuma tarefa para este dia.</div>
+        {dayItems.length===0 && (
+          <div className="p-10 text-center text-gray-400 text-sm">Nenhum agendamento para este dia.</div>
         )}
       </div>
     )
@@ -250,29 +288,29 @@ export default function TarefasPage() {
             {weekDays.map((d,i)=>{
               const isToday2 = sameDay(d,today)
               const isPast   = d<today && !isToday2
-              const hasTasks = tasksForDay(d).some(t=>t.status!=='done')
+              const hasItems = itemsForDay(d).some(it=>!agIsDone(it))
               return (
                 <div key={i} className={`px-2 py-2 border-b border-r last:border-r-0 text-center ${isToday2?'bg-teal-50':'bg-gray-50'}`}>
                   <p className={`text-xs font-semibold uppercase tracking-wide ${isToday2?'text-teal-700':isPast?'text-gray-400':'text-gray-500'}`}>{WEEKDAYS_SHORT[i]}</p>
                   <p className={`text-lg font-bold leading-tight ${isToday2?'text-teal-600':isPast?'text-gray-300':'text-gray-700'}`}>{d.getDate()}</p>
-                  <div className={`w-1.5 h-1.5 rounded-full mx-auto mt-0.5 ${hasTasks?(isToday2?'bg-teal-400':'bg-gray-400'):'bg-transparent'}`}/>
+                  <div className={`w-1.5 h-1.5 rounded-full mx-auto mt-0.5 ${hasItems?(isToday2?'bg-teal-400':'bg-gray-400'):'bg-transparent'}`}/>
                 </div>
               )
             })}
             {/* células */}
             {weekDays.map((d,i)=>{
               const isToday2 = sameDay(d,today)
-              const dt = tasksForDay(d)
+              const dt = itemsForDay(d)
               return (
                 <div key={i} className={`border-r last:border-r-0 p-1.5 min-h-[140px] ${isToday2?'bg-teal-50/30':''}`}>
                   <div className="space-y-1">
-                    {dt.map(t=><TaskCard key={t.id} t={t} compact/>)}
+                    {dt.map(it=><AgendamentoCard key={`${it._kind}-${it.id}`} item={it} compact/>)}
                     {dt.length===0 && <p className="text-xs text-gray-300 text-center pt-4">—</p>}
                   </div>
                   <button
-                    onClick={()=>openNew({due_date:toISO(d)} as any)}
+                    onClick={()=>openNew('task', { date: toISO(d) })}
                     className="mt-1 w-full text-xs text-gray-300 hover:text-teal-500 hover:bg-teal-50 rounded py-0.5 transition-colors"
-                    title={`Nova tarefa em ${WEEKDAYS_LONG[i]}`}
+                    title={`Novo agendamento em ${WEEKDAYS_LONG[i]}`}
                   >+</button>
                 </div>
               )
@@ -283,7 +321,7 @@ export default function TarefasPage() {
           <div className="border-t px-4 py-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Sem data</p>
             <div className="flex flex-wrap gap-1.5">
-              {noDateTasks.map(t=><div key={t.id} className="max-w-[200px]"><TaskCard t={t} compact/></div>)}
+              {noDateTasks.map(it=><div key={`${it._kind}-${it.id}`} className="max-w-[200px]"><AgendamentoCard item={it} compact/></div>)}
             </div>
           </div>
         )}
@@ -319,7 +357,7 @@ export default function TarefasPage() {
             if(!day) return <div key={i} className="border-b bg-gray-50/40 min-h-[80px]"/>
             const isToday2 = sameDay(day,today)
             const isPast   = day<today && !isToday2
-            const dt = tasksForDay(day)
+            const dt = itemsForDay(day)
             const visible = dt.slice(0,3)
             const extra   = dt.length-visible.length
             return (
@@ -327,13 +365,13 @@ export default function TarefasPage() {
                 <div className={`text-[11px] font-bold self-end w-5 h-5 flex items-center justify-center rounded-full mb-0.5
                   ${isToday2?'bg-teal-600 text-white':'text-gray-500'}`}>{day.getDate()}</div>
                 <div className="space-y-0.5 flex-1 overflow-hidden">
-                  {visible.map(t=><TaskCard key={t.id} t={t} compact/>)}
+                  {visible.map(it=><AgendamentoCard key={`${it._kind}-${it.id}`} item={it} compact/>)}
                   {extra>0 && <div className="text-[10px] text-gray-400 font-medium pl-1">+{extra} mais</div>}
                 </div>
                 <button
-                  onClick={()=>openNew({due_date:toISO(day)} as any)}
+                  onClick={()=>openNew('task', { date: toISO(day) })}
                   className="text-[10px] text-gray-300 hover:text-teal-500 transition-colors mt-0.5"
-                  title="Nova tarefa"
+                  title="Novo agendamento"
                 >+</button>
               </div>
             )
@@ -346,13 +384,14 @@ export default function TarefasPage() {
   // ─── VIEW: ANO (heatmap) ────────────────────────────────────────────────────────
   const dayCountMap = useMemo(()=>{
     const map: Record<string,number>={}
-    tasks.forEach(t=>{
-      if(!(t as any).due_date) return
-      const key=(t as any).due_date.slice(0,10)
+    mergedItems.forEach(it=>{
+      const d = agDate(it)
+      if(!d) return
+      const key = d.slice(0,10)
       map[key]=(map[key]??0)+1
     })
     return map
-  },[tasks])
+  },[mergedItems])
 
   function heatColor(n:number){
     if(n===0) return 'bg-gray-100'
@@ -388,7 +427,7 @@ export default function TarefasPage() {
                     return (
                       <div
                         key={ci}
-                        title={cnt>0?`${day}/${mIdx+1}: ${cnt} tarefa${cnt>1?'s':''}`:`${day}/${mIdx+1}`}
+                        title={cnt>0?`${day}/${mIdx+1}: ${cnt} agendamento${cnt>1?'s':''}`:`${day}/${mIdx+1}`}
                         onClick={()=>{
                           const d=new Date(anoYear,mIdx,day)
                           switchView('dia')
@@ -408,7 +447,7 @@ export default function TarefasPage() {
           {['bg-gray-100','bg-teal-200','bg-teal-300','bg-teal-500','bg-teal-700'].map(c=>(
             <span key={c} className={`w-3 h-3 rounded-sm ${c}`}/>
           ))}
-          <span>Mais tarefas</span>
+          <span>Mais agendamentos</span>
           <span className="ml-4 text-gray-300">• Clique em um dia para abrir visão diária</span>
         </div>
       </div>
@@ -417,7 +456,7 @@ export default function TarefasPage() {
 
   // ─── VIEW: LISTA ────────────────────────────────────────────────────────────
   function ViewLista() {
-    const unassigned = tasks.filter(t=>!t.assigned_to)
+    const unassigned = mergedItems.filter(it=>!it.assigned_to)
     return (
       <>
         {unassigned.length>0 && (
@@ -425,20 +464,21 @@ export default function TarefasPage() {
             <div className="px-4 py-3 border-b bg-gray-50">
               <h3 className="font-semibold text-gray-500">📋 Sem responsável</h3>
             </div>
-            <ul className="divide-y">{unassigned.map(t=><TaskCard key={t.id} t={t}/>)}</ul>
+            <ul className="divide-y">{unassigned.map(it=><AgendamentoCard key={`${it._kind}-${it.id}`} item={it}/>)}</ul>
           </div>
         )}
         {members.map(m=>{
-          const mt=tasks.filter(t=>t.assigned_to===m.id)
+          const mt = mergedItems.filter(it=>it.assigned_to===m.id)
           if(mt.length===0) return null
+          const doneCount = mt.filter(it=>agIsDone(it)).length
           return (
             <div key={m.id} className="rounded-xl border bg-white overflow-hidden">
               <div className="px-4 py-3 border-b bg-gray-50 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor:m.color_hex??'#4A90D9'}}/>
                 <h3 className="font-semibold text-gray-700">{m.nickname??(m as any).name}</h3>
-                <span className="text-xs text-gray-400 ml-auto">{mt.filter(t=>t.status==='done').length}/{mt.length} feitas</span>
+                <span className="text-xs text-gray-400 ml-auto">{doneCount}/{mt.length} feitos</span>
               </div>
-              <ul className="divide-y">{mt.map(t=><TaskCard key={t.id} t={t}/>)}</ul>
+              <ul className="divide-y">{mt.map(it=><AgendamentoCard key={`${it._kind}-${it.id}`} item={it}/>)}</ul>
             </div>
           )
         })}
@@ -450,9 +490,9 @@ export default function TarefasPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        emoji="✅"
-        title="Tarefas"
-        description="Organize e acompanhe as tarefas da família"
+        emoji="📆"
+        title="Agendamentos"
+        description="Tarefas e eventos da família em um só lugar"
         action={
           <div className="flex gap-2">
             <button
@@ -463,9 +503,9 @@ export default function TarefasPage() {
             </button>
             <button
               className="text-sm bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 font-medium"
-              onClick={() => openNew()}
+              onClick={() => openNew('task')}
             >
-              + Nova tarefa
+              + Novo agendamento
             </button>
           </div>
         }
@@ -492,73 +532,18 @@ export default function TarefasPage() {
       {view==='ano'    && <ViewAno/>}
       {view==='lista'  && <ViewLista/>}
 
-      {/* Eventos e prazos */}
-      <div className="rounded-xl border bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b flex items-center justify-between">
-          <h2 className="font-semibold">📅 Eventos e prazos</h2>
-          <button
-            className="text-sm text-teal-600 font-medium hover:underline"
-            onClick={() => { setSelectedEvent(null); setEventOpen(true) }}
-          >
-            + Adicionar
-          </button>
-        </div>
-        {events.length === 0 ? (
-          <EmptyState emoji="📅" title="Nenhum evento" description="Cadastre datas importantes, viagens, consultas e aniversários." />
-        ) : (
-          <ul className="divide-y">
-            {events.map(e => (
-              <li
-                key={e.id}
-                className={`px-4 py-3 flex items-center gap-3 hover:bg-gray-50 ${e.is_done ? 'opacity-50' : ''}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={!!e.is_done}
-                  onChange={() => toggleDone(e.id, !!e.is_done)}
-                  className="w-4 h-4 accent-teal-600"
-                />
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${e.is_done ? 'line-through text-gray-400' : ''}`}>
-                    {e.title}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {formatDate(e.event_date)}
-                    {e.daysLeft !== null && (
-                      <> &middot; {e.daysLeft < 0 ? `${Math.abs(e.daysLeft)}d atrás` : `em ${e.daysLeft}d`}</>
-                    )}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="text-xs text-gray-400 hover:text-gray-600"
-                    onClick={() => { setSelectedEvent(e); setEventOpen(true) }}
-                  >
-                    Editar
-                  </button>
-                  <button
-                    className="text-xs text-red-400 hover:text-red-600"
-                    onClick={() => removeEvent(e.id)}
-                  >
-                    ×
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <TaskSheet open={taskOpen} onClose={() => setTaskOpen(false)} task={selectedTask} onSave={upsert} members={members} />
-      <CheckinSheet open={checkinOpen} onClose={() => setCheckinOpen(false)} onSave={addCheckin} members={members} />
-      <EventSheet
-        open={eventOpen}
-        onClose={() => setEventOpen(false)}
-        event={selectedEvent}
-        onSave={upsertEvent}
+      <AgendamentoSheet
+        open={agendamentoOpen}
+        onClose={() => setAgendamentoOpen(false)}
+        item={selectedItem}
+        defaultKind={defaultKind}
+        prefill={prefill}
+        onSaveTask={upsert as any}
+        onSaveEvent={upsertEvent as any}
         familyId={currentFamily?.id ?? ''}
         members={members}
       />
+      <CheckinSheet open={checkinOpen} onClose={() => setCheckinOpen(false)} onSave={addCheckin} members={members} />
     </div>
   )
 }
