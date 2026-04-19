@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Sidebar } from '@/components/layout/Sidebar'
+import { AppShell } from '@/components/layout/AppShell'
 import { Toaster } from '@/components/ui/Toaster'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { FamilyProvider } from '@/components/providers/FamilyProvider'
@@ -16,6 +16,12 @@ export const metadata: Metadata = {
   description: 'Gestão doméstica familiar',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -26,14 +32,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <FamilyProvider>
-            <div className="flex h-screen overflow-hidden bg-background">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto">
-                <div className="p-6 max-w-[1400px] mx-auto">
-                  {children}
-                </div>
-              </main>
-            </div>
+            <AppShell>{children}</AppShell>
             <Toaster />
             <QuickEntryProvider />
           </FamilyProvider>
