@@ -64,6 +64,7 @@ export function useMedications(profileId?: string) {
   async function logDose(log: { medication_id: string; profile_id: string; dose_given: string; given_by: string; notes?: string }) {
     await supabase.from('medication_logs').insert({
       ...log,
+      notes: log.notes ?? null,
       given_at: new Date().toISOString(),
     })
   }
