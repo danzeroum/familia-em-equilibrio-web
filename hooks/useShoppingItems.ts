@@ -26,7 +26,7 @@ export function useShoppingItems() {
   }
 
   async function updateStatus(id: string, status: ShoppingItem['status'], buyerId?: string) {
-    const payload: Partial<ShoppingItem> = {
+    const payload = {
       status,
       bought_at: status === 'bought' ? new Date().toISOString() : null,
       bought_by: status === 'bought' && buyerId ? buyerId : null,
