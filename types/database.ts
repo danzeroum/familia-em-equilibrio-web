@@ -408,6 +408,27 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
         Relationships: never[]
       }
+      health_tracking: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          title: string
+          emoji: string
+          category: string
+          frequency_label: string
+          frequency_days: number
+          responsible_id: string | null
+          last_done_at: string | null
+          next_due_at: string | null
+          notes: string | null
+          status: string
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['health_tracking']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['health_tracking']['Insert']>
+        Relationships: never[]
+      }
     }
     Views: {
       monthly_history_view: {
