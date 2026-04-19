@@ -77,7 +77,7 @@ export function useBills() {
     const { data } = await supabase
       .from('bills')
       .select('*')
-      .eq('domain_id', familyId as any)
+      .eq('family_id', familyId)
       .order('due_day', { ascending: true })
     setBills(data ?? [])
     setIsLoading(false)
@@ -109,7 +109,8 @@ export function useBills() {
       const { id: _id, created_at: _cat, ...updateData } = payload
       await supabase.from('bills').update(updateData).eq('id', payload.id)
     } else {
-      await supabase.from('bills').insert(payload as any)
+      // Garante family_id no insert para RLS e filtragem correta
+      await supabase.from('bills').insert({ ...payload, family_id: familyId } as any)
     }
     await load()
   }
