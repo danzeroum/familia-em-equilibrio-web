@@ -226,7 +226,8 @@ export default function PainelPage() {
     return (
       <div>
         <NavBar label={label} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
-        <div className="grid grid-cols-7 divide-x min-h-[180px]">
+        <div className="overflow-x-auto">
+        <div className="grid grid-cols-7 divide-x min-h-[180px] min-w-[560px] sm:min-w-0">
           {weekDays.map((day, idx) => {
             const isToday = sameDay(day, today)
             const isPast  = day < today && !isToday
@@ -244,6 +245,7 @@ export default function PainelPage() {
               </div>
             )
           })}
+        </div>
         </div>
         {tasksNoDate.length > 0 && (
           <div className="px-4 py-2 border-t bg-gray-50 flex flex-wrap gap-1.5 items-center">
@@ -274,6 +276,8 @@ export default function PainelPage() {
     return (
       <div>
         <NavBar label={label} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
+        <div className="overflow-x-auto">
+        <div className="min-w-[560px] sm:min-w-0">
         <div className="grid grid-cols-7 border-b">
           {WEEKDAYS_SHORT.map(d => (
             <div key={d} className="text-center text-[10px] font-semibold text-gray-400 uppercase py-1">{d}</div>
@@ -297,6 +301,8 @@ export default function PainelPage() {
               </div>
             )
           })}
+        </div>
+        </div>
         </div>
       </div>
     )

@@ -25,12 +25,25 @@ const NAV_ITEMS = [
   { href: '/categorias',   label: 'Categorias',  icon: Tag,             emoji: '🏷️' },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean
+  onCloseMobile?: () => void
+}
+
+export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps = {}) {
   const pathname = usePathname()
   const { members, family } = useFamilyStore()
 
   return (
-    <aside className="w-56 shrink-0 border-r bg-card flex flex-col h-screen">
+    <aside
+      className={cn(
+        'bg-card flex flex-col border-r',
+        'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 md:transition-none',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        'md:static md:translate-x-0 md:w-56 md:h-screen md:shrink-0 md:z-auto'
+      )}
+      aria-hidden={!mobileOpen ? undefined : false}
+    >
       {/* Logo */}
       <div className="px-4 py-5 border-b">
         <h1 className="font-bold text-base leading-tight text-foreground">
@@ -52,6 +65,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => onCloseMobile?.()}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors group',
                 active

@@ -30,9 +30,9 @@ export function Sheet({ open, onClose, title, description, children, size = 'md'
   if (!open) return null
 
   const sizeClass = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-md',
+    lg: 'sm:max-w-lg',
   }[size]
 
   return (
@@ -42,16 +42,23 @@ export function Sheet({ open, onClose, title, description, children, size = 'md'
         className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={onClose}
       />
-      {/* Painel lateral */}
+      {/* Painel — bottom-sheet em mobile, painel lateral em >=sm */}
       <div
         className={cn(
-          'fixed right-0 top-0 h-full z-50 bg-card border-l shadow-2xl',
-          'flex flex-col w-full animate-in slide-in-from-right duration-300',
+          'fixed z-50 bg-card shadow-2xl flex flex-col',
+          // Mobile: bottom-sheet
+          'inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t animate-in slide-in-from-bottom duration-300',
+          // Desktop: painel lateral
+          'sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-0 sm:h-full sm:max-h-none sm:w-full sm:rounded-none sm:border-t-0 sm:border-l sm:slide-in-from-right',
           sizeClass
         )}
       >
+        {/* Handle visual do bottom-sheet (apenas mobile) */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <span className="block w-10 h-1 rounded-full bg-muted-foreground/30" />
+        </div>
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b">
+        <div className="flex items-start justify-between p-4 sm:p-5 border-b">
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
             {description && (
@@ -60,13 +67,14 @@ export function Sheet({ open, onClose, title, description, children, size = 'md'
           </div>
           <button
             onClick={onClose}
+            aria-label="Fechar"
             className="text-muted-foreground hover:text-foreground transition-colors mt-0.5"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
         {/* Conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
           {children}
         </div>
       </div>

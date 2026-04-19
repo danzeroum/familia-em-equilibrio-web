@@ -476,8 +476,8 @@ export default function FinanceiroPage() {
         description="Contas, orçamento e objetivos de poupança"
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border bg-white p-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <div className="rounded-xl border bg-white p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">Renda mensal</p>
           <div className="flex items-center gap-1">
             <span className="text-sm text-gray-400">R$</span>
@@ -487,24 +487,24 @@ export default function FinanceiroPage() {
               onChange={e => setBudgetInput(e.target.value)}
               onBlur={() => { if (budgetInput !== '') { saveMonthlyBudget(Number(budgetInput)); setBudgetInput('') } }}
               onKeyDown={e => { if (e.key === 'Enter') { saveMonthlyBudget(Number(budgetInput)); setBudgetInput(''); (e.target as HTMLInputElement).blur() } }}
-              className="text-xl font-bold w-full outline-none"
+              className="text-lg sm:text-xl font-bold w-full min-w-0 outline-none"
               placeholder="0,00"
             />
             {isSavingBudget && <span className="text-xs text-gray-400">💾</span>}
           </div>
         </div>
 
-        <div className="rounded-xl border bg-white p-4">
+        <div className="rounded-xl border bg-white p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">Total contas</p>
-          <p className="text-xl font-bold text-red-600 tabular-nums">
+          <p className="text-lg sm:text-xl font-bold text-red-600 tabular-nums">
             R$ {totalMonthly.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">{bills.length} conta{bills.length !== 1 ? 's' : ''}</p>
         </div>
 
-        <div className="rounded-xl border bg-white p-4">
+        <div className="rounded-xl border bg-white p-3 sm:p-4">
           <p className="text-xs text-gray-500 mb-1">Já pago</p>
-          <p className="text-xl font-bold text-green-600 tabular-nums">
+          <p className="text-lg sm:text-xl font-bold text-green-600 tabular-nums">
             R$ {paidTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
@@ -512,11 +512,11 @@ export default function FinanceiroPage() {
           </p>
         </div>
 
-        <div className={`rounded-xl border p-4 ${
+        <div className={`rounded-xl border p-3 sm:p-4 ${
           balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
         }`}>
           <p className="text-xs text-gray-500 mb-1">Saldo estimado</p>
-          <p className={`text-xl font-bold tabular-nums ${
+          <p className={`text-lg sm:text-xl font-bold tabular-nums ${
             balance >= 0 ? 'text-green-700' : 'text-red-700'
           }`}>
             R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -540,7 +540,7 @@ export default function FinanceiroPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 text-sm font-medium py-1.5 rounded-lg transition-all ${
+            className={`flex-1 text-xs sm:text-sm font-medium py-1.5 px-1 sm:px-2 rounded-lg transition-all truncate ${
               activeTab === tab.key
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
