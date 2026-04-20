@@ -19,10 +19,12 @@ import type { EmotionalPractice } from '@/hooks/useEmotionalPractices'
 
 type Tab = 'medicamentos' | 'acompanhamento' | 'calculadora' | 'emocional'
 
-const PEDIATRIC_MEDS = [
-  { name: 'Paracetamol', dosePerKg: 15, concMgMl: 200 },
-  { name: 'Ibuprofeno',  dosePerKg: 10, concMgMl: 50  },
-  { name: 'Dipirona',    dosePerKg: 15, concMgMl: 500 },
+type PedMed = { id: number; name: string; dosePerKg: number; concMgMl: number }
+
+const DEFAULT_MEDS: PedMed[] = [
+  { id: 1, name: 'Paracetamol', dosePerKg: 15, concMgMl: 200 },
+  { id: 2, name: 'Ibuprofeno',  dosePerKg: 10, concMgMl: 50  },
+  { id: 3, name: 'Dipirona',    dosePerKg: 15, concMgMl: 500 },
 ]
 
 function calcMl(weightKg: number, dosePerKg: number, concMgMl: number): string {
@@ -42,6 +44,8 @@ const STATUS_CYCLE: Record<string, { label: string; cls: string }> = {
   done:    { label: '✅ Feito',    cls: 'bg-green-100 text-green-700'   },
   skipped: { label: '⏭️ Pulado',   cls: 'bg-gray-100 text-gray-500'     },
 }
+
+const EMPTY_NEW_MED = { name: '', dosePerKg: '', concMgMl: '' }
 
 export default function SaudePage() {
   const { members } = useFamilyStore()
@@ -68,6 +72,29 @@ export default function SaudePage() {
   const [emotionalOpen, setEmotionalOpen] = useState(false)
   const [selectedPractice, setSelectedPractice] = useState<EmotionalPractice | null>(null)
 
+  // ── Calculadora: lista editável em memória ──
+  const [pedMeds, setPedMeds] = useState<PedMed[]>(DEFAULT_MEDS)
+  const [showAddMed, setShowAddMed] = useState(false)
+  const [newMed, setNewMed] = useState(EMPTY_NEW_MED)
+  const [addMedError, setAddMedError] = useState('')
+
+  function handleAddMed() {
+    if (!newMed.name.trim()) { setAddMedError('Informe o nome.'); return }
+    const dose = parseFloat(newMed.dosePerKg)
+    const conc = parseFloat(newMed.concMgMl)
+    if (isNaN(dose) || dose <= 0) { setAddMedError('Dose inválida.'); return }
+    if (isNaN(conc) || conc <= 0) { setAddMedError('Concentração inválida.'); return }
+    setPedMeds(prev => [...prev, { id: Date.now(), name: newMed.name.trim(), dosePerKg: dose, concMgMl: conc }])
+    setNewMed(EMPTY_NEW_MED)
+    setAddMedError('')
+    setShowAddMed(false)
+  }
+
+  function handleRemoveMed(id: number) {
+    if (!confirm('Remover este medicamento da calculadora?')) return
+    setPedMeds(prev => prev.filter(m => m.id !== id))
+  }
+
   const alerts = medications.filter(m => m.statusLabel !== '✅ OK')
   const healthAlerts = health.items.filter(i => i.alertLevel !== 'ok').length
 
@@ -77,10 +104,10 @@ export default function SaudePage() {
   }
 
   const TABS = [
-    { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',      alerts: alerts.length    },
-    { id: 'acompanhamento' as Tab, label: '🩺 Acompanhamento',    alerts: healthAlerts     },
-    { id: 'calculadora'    as Tab, label: '⚕️ Calculadora',        alerts: 0                },
-    { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional',    alerts: 0                },
+    { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',   alerts: alerts.length },
+    { id: 'acompanhamento' as Tab, label: '🩺 Acompanhamento', alerts: healthAlerts  },
+    { id: 'calculadora'    as Tab, label: '⚕️ Calculadora',     alerts: 0             },
+    { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional', alerts: 0             },
   ]
 
   function handleSavePractice(data: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>) {
@@ -107,6 +134,9 @@ export default function SaudePage() {
           ) : tab === 'emocional' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setSelectedPractice(null); setEmotionalOpen(true) }}>+ Prática</button>
+          ) : tab === 'calculadora' ? (
+            <button className="text-sm text-teal-600 font-medium hover:underline"
+              onClick={() => { setShowAddMed(true); setAddMedError('') }}>+ Adicionar</button>
           ) : null
         }
       />
@@ -322,48 +352,112 @@ export default function SaudePage() {
               <span className="text-yellow-600 ml-1">⚠️ Nenhum membro com peso cadastrado — atualize os perfis em <strong>Família</strong>.</span>
             )}
           </p>
-          <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                  <tr>
-                    <th className="px-4 py-3 text-left">💊 Medicamento</th>
-                    <th className="px-4 py-3 text-left">Dose (mg/kg)</th>
-                    <th className="px-4 py-3 text-left">Conc. (mg/ml)</th>
-                    {members.map(m => (
-                      <th key={m.id} className="px-4 py-3 text-left">
-                        {(m as any).emoji ?? '👤'} {(m as any).nickname ?? (m as any).name}
-                        {(m as any).weight_kg && (
-                          <span className="block text-gray-400 font-normal normal-case">{(m as any).weight_kg} kg</span>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {PEDIATRIC_MEDS.map(med => (
-                    <tr key={med.name} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-800">{med.name}</td>
-                      <td className="px-4 py-3 text-gray-500">{med.dosePerKg} mg/kg</td>
-                      <td className="px-4 py-3 text-gray-500">{med.concMgMl} mg/ml</td>
-                      {members.map(m => {
-                        const weight = (m as any).weight_kg ?? null
-                        const result = weight ? calcMl(weight, med.dosePerKg, med.concMgMl) : '—'
-                        return (
-                          <td key={m.id} className="px-4 py-3">
-                            {weight ? (
-                              <span className="font-semibold text-teal-700">{result}</span>
-                            ) : (
-                              <span className="text-gray-400 text-xs">sem peso</span>
-                            )}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+          {/* Formulário inline para adicionar novo medicamento */}
+          {showAddMed && (
+            <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-3">
+              <h3 className="font-semibold text-teal-800 text-sm">➕ Novo medicamento</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Nome *</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Amoxicilina"
+                    value={newMed.name}
+                    onChange={e => setNewMed(p => ({ ...p, name: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Dose (mg/kg) *</label>
+                  <input
+                    type="number"
+                    placeholder="Ex: 25"
+                    value={newMed.dosePerKg}
+                    onChange={e => setNewMed(p => ({ ...p, dosePerKg: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Concentração (mg/ml) *</label>
+                  <input
+                    type="number"
+                    placeholder="Ex: 250"
+                    value={newMed.concMgMl}
+                    onChange={e => setNewMed(p => ({ ...p, concMgMl: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  />
+                </div>
+              </div>
+              {addMedError && <p className="text-xs text-red-600">{addMedError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddMed}
+                  className="bg-teal-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-teal-700 transition-colors">
+                  Adicionar
+                </button>
+                <button
+                  onClick={() => { setShowAddMed(false); setNewMed(EMPTY_NEW_MED); setAddMedError('') }}
+                  className="text-sm text-gray-500 px-4 py-1.5 rounded-lg border hover:bg-gray-50 transition-colors">
+                  Cancelar
+                </button>
+              </div>
             </div>
+          )}
+
+          <div className="rounded-xl border bg-white overflow-hidden">
+            {pedMeds.length === 0 ? (
+              <EmptyState emoji="⚕️" title="Nenhum medicamento" description="Adicione um medicamento para calcular a dose." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                    <tr>
+                      <th className="px-4 py-3 text-left">💊 Medicamento</th>
+                      <th className="px-4 py-3 text-left">Dose (mg/kg)</th>
+                      <th className="px-4 py-3 text-left">Conc. (mg/ml)</th>
+                      {members.map(m => (
+                        <th key={m.id} className="px-4 py-3 text-left">
+                          {(m as any).emoji ?? '👤'} {(m as any).nickname ?? (m as any).name}
+                          {(m as any).weight_kg && (
+                            <span className="block text-gray-400 font-normal normal-case">{(m as any).weight_kg} kg</span>
+                          )}
+                        </th>
+                      ))}
+                      <th className="px-4 py-3 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {pedMeds.map(med => (
+                      <tr key={med.id} className="hover:bg-gray-50 group">
+                        <td className="px-4 py-3 font-medium text-gray-800">{med.name}</td>
+                        <td className="px-4 py-3 text-gray-500">{med.dosePerKg} mg/kg</td>
+                        <td className="px-4 py-3 text-gray-500">{med.concMgMl} mg/ml</td>
+                        {members.map(m => {
+                          const weight = (m as any).weight_kg ?? null
+                          const result = weight ? calcMl(weight, med.dosePerKg, med.concMgMl) : '—'
+                          return (
+                            <td key={m.id} className="px-4 py-3">
+                              {weight ? (
+                                <span className="font-semibold text-teal-700">{result}</span>
+                              ) : (
+                                <span className="text-gray-400 text-xs">sem peso</span>
+                              )}
+                            </td>
+                          )
+                        })}
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleRemoveMed(med.id)}
+                            className="text-xs text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remover">×</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
           <p className="text-xs text-gray-400">⚠️ Sempre confirme a dosagem com um profissional de saúde antes de administrar.</p>
         </div>
