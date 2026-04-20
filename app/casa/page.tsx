@@ -11,9 +11,10 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { WardrobeSheet } from '@/components/sheets/WardrobeSheet'
 import { MaintenanceSheet } from '@/components/sheets/MaintenanceSheet'
 import { ShoppingSheet } from '@/components/sheets/ShoppingSheet'
-import type { WardrobeItem, HomeMaintenance, ShoppingItem } from '@/types/database'
+import { MedicationSheet } from '@/components/sheets/MedicationSheet'
+import type { WardrobeItem, HomeMaintenance, ShoppingItem, Medication } from '@/types/database'
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// ─── helpers ───────────────────────────────────────────────────────────────────────────────────
 const SEASON_LABEL: Record<string, string> = { summer: '☀️ Verão', winter: '❄️ Inverno', all: '🔄 Todas' }
 const WARDROBE_STATUS: Record<string, { label: string; cls: string }> = {
   fitting:  { label: '✅ Serve',    cls: 'bg-green-100 text-green-700' },
@@ -53,7 +54,7 @@ type Tab = 'vestuario' | 'medicamentos' | 'manutencao' | 'compras'
 export default function CasaPage() {
   const { members, currentUser } = useFamilyStore()
   const wardrobe    = useWardrobe()
-  const { medications, isLoading: medLoading } = useMedications()
+  const { medications, isLoading: medLoading, upsert: upsertMed, remove: removeMed } = useMedications()
   const maintenance = useHomeMaintenance()
   const shopping    = useShoppingItems()
 
@@ -68,6 +69,10 @@ export default function CasaPage() {
 
   const [shoppingOpen, setShoppingOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null)
+
+  // ── Med. & Primeiros Socorros ──
+  const [medOpen, setMedOpen] = useState(false)
+  const [selectedMed, setSelectedMed] = useState<Medication | null>(null)
 
   const filteredWardrobe = filterMember === 'all'
     ? wardrobe.items
@@ -86,9 +91,8 @@ export default function CasaPage() {
     return members.find(m => m.id === id)?.nickname ?? members.find(m => m.id === id)?.name ?? '—'
   }
 
-  // Shopping helpers
-  const runningOut     = shopping.items.filter(i => i.status === 'running_out')
-  const needed         = shopping.items.filter(i => i.status === 'needed')
+  const runningOut      = shopping.items.filter(i => i.status === 'running_out')
+  const needed          = shopping.items.filter(i => i.status === 'needed')
   const boughtRecurring = shopping.items.filter(i => i.status === 'bought' && i.is_recurring)
 
   const handleToggleBuy = (item: ShoppingItem) => {
@@ -100,9 +104,9 @@ export default function CasaPage() {
   }
 
   const TABS = [
-    { id: 'vestuario'    as Tab, label: '🧥 Vestuário',                alerts: wardrobeAlerts },
-    { id: 'medicamentos' as Tab, label: '💊 Med. & Primeiros Socorros', alerts: medAlerts },
-    { id: 'manutencao'   as Tab, label: '🛠️ Manutenção',              alerts: maintAlerts },
+    { id: 'vestuario'    as Tab, label: '🧥 Vestuário',                 alerts: wardrobeAlerts },
+    { id: 'medicamentos' as Tab, label: '💊 Med. & Primeiros Socorros', alerts: medAlerts       },
+    { id: 'manutencao'   as Tab, label: '🛠️ Manutenção',               alerts: maintAlerts    },
     { id: 'compras'      as Tab, label: '🛒 Compras',                  alerts: shoppingAlerts },
   ]
 
@@ -116,6 +120,9 @@ export default function CasaPage() {
           tab === 'vestuario' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setSelectedWardrobe(null); setWardrobeOpen(true) }}>+ Item</button>
+          ) : tab === 'medicamentos' ? (
+            <button className="text-sm text-teal-600 font-medium hover:underline"
+              onClick={() => { setSelectedMed(null); setMedOpen(true) }}>+ Medicamento</button>
           ) : tab === 'manutencao' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setSelectedMaint(null); setMaintOpen(true) }}>+ Manutenção</button>
@@ -234,20 +241,15 @@ export default function CasaPage() {
       {/* ══ BLOCO B — MEDICAMENTOS & PRIMEIROS SOCORROS ══ */}
       {tab === 'medicamentos' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Medicamentos e itens de primeiros socorros da família.</p>
-            <a href="/saude" className="text-sm text-teal-600 hover:underline font-medium">Gerenciar em Saúde →</a>
-          </div>
-
           <div className="rounded-xl border bg-white overflow-hidden">
             {medLoading ? (
               <div className="p-8 text-center text-gray-400">Carregando...</div>
             ) : medications.length === 0 ? (
-              <div className="p-10 text-center">
-                <p className="text-3xl mb-2">💊</p>
-                <p className="text-gray-500 font-medium">Nenhum medicamento cadastrado</p>
-                <p className="text-sm text-gray-400 mt-1">Acesse a seção Saúde para adicionar.</p>
-              </div>
+              <EmptyState
+                emoji="💊"
+                title="Nenhum medicamento cadastrado"
+                description="Adicione medicamentos e itens de primeiros socorros da família."
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -258,19 +260,14 @@ export default function CasaPage() {
                       <th className="px-4 py-3 text-left">📦 Estoque / Mín</th>
                       <th className="px-4 py-3 text-left">⏳ Validade</th>
                       <th className="px-4 py-3 text-left">🚦 Situação</th>
-                      <th className="px-4 py-3 text-left">🔘 Condição</th>
-                      <th className="px-4 py-3 text-left">🛒 Ação</th>
-                      <th className="px-4 py-3 text-left">📅 Data</th>
+                      <th className="px-4 py-3 text-left">🔘 Forma</th>
+                      <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {medications.map(i => {
                       const sit = situationBadge(i.stock_quantity ?? 0, i.minimum_stock ?? 1)
                       const exp = expiryBadge(i.expiry_date)
-                      const condMap: Record<string, string> = {
-                        ok: '✅ OK', broken: '❌ Quebrado', missing: '⚠️ Falta', needs_check: '🔍 Verificar',
-                      }
-                      const cond = condMap[(i as any).item_condition ?? 'ok'] ?? '✅ OK'
                       return (
                         <tr key={i.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3 font-medium text-gray-800">{i.name}</td>
@@ -285,9 +282,17 @@ export default function CasaPage() {
                           <td className="px-4 py-3">
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${sit.cls}`}>{sit.label}</span>
                           </td>
-                          <td className="px-4 py-3 text-gray-600">{cond}</td>
-                          <td className="px-4 py-3 text-gray-600 max-w-[160px] truncate">{(i as any).action_description || '—'}</td>
-                          <td className="px-4 py-3 text-gray-500">{formatDate((i as any).action_date)}</td>
+                          <td className="px-4 py-3 text-gray-500">{i.form ?? '—'}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                className="text-xs text-teal-600 hover:underline"
+                                onClick={() => { setSelectedMed(i); setMedOpen(true) }}>Editar</button>
+                              <button
+                                className="text-xs text-red-400 hover:text-red-600"
+                                onClick={() => { if (confirm('Remover medicamento?')) removeMed(i.id) }}>×</button>
+                            </div>
+                          </td>
                         </tr>
                       )
                     })}
@@ -296,6 +301,7 @@ export default function CasaPage() {
               </div>
             )}
           </div>
+          <p className="text-xs text-gray-400">💡 Estes dados são compartilhados com a aba Medicamentos em <strong>Saúde</strong>.</p>
         </div>
       )}
 
@@ -338,9 +344,7 @@ export default function CasaPage() {
                           <td className="px-4 py-3 text-gray-600">
                             {i.daysRemaining !== null ? (
                               <span className={i.daysRemaining < 0 ? 'text-red-600 font-semibold' : ''}>
-                                {i.daysRemaining < 0
-                                  ? `${Math.abs(i.daysRemaining)}d atrás`
-                                  : `${i.daysRemaining}d`}
+                                {i.daysRemaining < 0 ? `${Math.abs(i.daysRemaining)}d atrás` : `${i.daysRemaining}d`}
                               </span>
                             ) : '—'}
                           </td>
@@ -379,7 +383,6 @@ export default function CasaPage() {
             <EmptyState emoji="🛒" title="Lista Vazia" description="Adicione os produtos que estão a acabar em casa." />
           ) : (
             <>
-              {/* SECÇÃO 1: Urgentes */}
               {runningOut.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                   <h3 className="text-yellow-800 font-semibold mb-3">⚠️ A Acabar (Prioridade)</h3>
@@ -393,14 +396,16 @@ export default function CasaPage() {
                             {i.quantity && <p className="text-xs text-gray-500">{i.quantity}</p>}
                           </div>
                         </div>
-                        <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                          <button onClick={() => shopping.remove(i.id)} className="text-red-400 text-sm hover:text-red-600">×</button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* SECÇÃO 2: A Comprar */}
               {needed.length > 0 && (
                 <div>
                   <h3 className="text-gray-700 font-medium mb-3">A Comprar</h3>
@@ -424,7 +429,6 @@ export default function CasaPage() {
                 </div>
               )}
 
-              {/* SECÇÃO 3: Recorrentes em Stock */}
               {boughtRecurring.length > 0 && (
                 <div className="opacity-70">
                   <h3 className="text-gray-500 font-medium mb-3 text-sm">🔄 Recorrentes em Stock (Comprados)</h3>
@@ -468,6 +472,13 @@ export default function CasaPage() {
         onClose={() => setShoppingOpen(false)}
         item={selectedItem}
         onSave={shopping.upsert}
+      />
+      <MedicationSheet
+        open={medOpen}
+        onClose={() => setMedOpen(false)}
+        medication={selectedMed}
+        onSave={upsertMed}
+        members={members}
       />
     </div>
   )
