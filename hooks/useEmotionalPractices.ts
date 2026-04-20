@@ -24,7 +24,7 @@ const INITIAL_PRACTICES: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>[] = 
   { id: '4', emoji: '🌙', title: 'Fechamento da noite',          howTo: 'Revisar o dia, agradecer algo bom',             whenToUse: 'Noite',          forWhom: 'Todos',          frequency: 'Diário'          },
   { id: '5', emoji: '🤗', title: 'Elogio específico',            howTo: 'Nomear o comportamento positivo',               whenToUse: 'Quando ocorrer', forWhom: 'Crianças',       frequency: 'Diário'          },
   { id: '6', emoji: '📓', title: 'Diário de emoções',            howTo: 'Criança desenha ou escreve o que sentiu',       whenToUse: 'Semanal',        forWhom: 'Crianças',       frequency: 'Semanal'         },
-  { id: '7', emoji: '🧩', title: 'Tempo de qualidade individual',howTo: '15min só com uma criança, sem distração',       whenToUse: 'Semanal',        forWhom: 'Cada criança',   frequency: 'Semanal'         },
+  { id: '7', emoji: '🧩', title: 'Tempo de qualidade individual',howTo: '15min só com uma criança, sem distracção',       whenToUse: 'Semanal',        forWhom: 'Cada criança',   frequency: 'Semanal'         },
 ]
 
 export function useEmotionalPractices() {
@@ -41,7 +41,32 @@ export function useEmotionalPractices() {
     }))
   }
 
+  function addPractice(data: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>) {
+    setPractices(prev => [
+      ...prev,
+      { ...data, id: data.id || String(Date.now()), status: 'pending', lastDoneWeek: null },
+    ])
+  }
+
+  function updatePractice(data: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>) {
+    setPractices(prev => prev.map(p =>
+      p.id === data.id ? { ...p, ...data } : p
+    ))
+  }
+
+  function removePractice(id: string) {
+    setPractices(prev => prev.filter(p => p.id !== id))
+  }
+
   const doneCount = practices.filter(p => p.status === 'done').length
 
-  return { practices, toggleStatus, doneCount, total: practices.length }
+  return {
+    practices,
+    toggleStatus,
+    addPractice,
+    updatePractice,
+    removePractice,
+    doneCount,
+    total: practices.length,
+  }
 }
