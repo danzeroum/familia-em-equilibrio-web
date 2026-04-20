@@ -10,8 +10,12 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { MedicationSheet } from '@/components/sheets/MedicationSheet'
 import { VaccineSheet } from '@/components/sheets/VaccineSheet'
+import { HealthTrackingSheet } from '@/components/sheets/HealthTrackingSheet'
+import { EmotionalPracticeSheet } from '@/components/sheets/EmotionalPracticeSheet'
 import { formatDate } from '@/lib/utils'
 import type { Medication, Vaccine } from '@/types/database'
+import type { HealthTrackingItem } from '@/hooks/useHealthTracking'
+import type { EmotionalPractice } from '@/hooks/useEmotionalPractices'
 
 type Tab = 'medicamentos' | 'acompanhamento' | 'calculadora' | 'emocional'
 
@@ -43,18 +47,29 @@ export default function SaudePage() {
   const { members } = useFamilyStore()
   const { medications, upsert: upsertMed, remove: removeMed } = useMedications()
   const { vaccines, upsert: upsertVac, remove: removeVac } = useVaccines()
-  const health  = useHealthTracking()
+  const health = useHealthTracking()
   const emotional = useEmotionalPractices()
 
   const [tab, setTab] = useState<Tab>('medicamentos')
+
+  // Medication sheet
   const [medOpen, setMedOpen] = useState(false)
   const [selectedMed, setSelectedMed] = useState<Medication | null>(null)
+
+  // Vaccine sheet
   const [vacOpen, setVacOpen] = useState(false)
   const [selectedVac, setSelectedVac] = useState<Vaccine | null>(null)
 
+  // Health tracking sheet
+  const [healthOpen, setHealthOpen] = useState(false)
+  const [selectedHealth, setSelectedHealth] = useState<HealthTrackingItem | null>(null)
+
+  // Emotional practice sheet
+  const [emotionalOpen, setEmotionalOpen] = useState(false)
+  const [selectedPractice, setSelectedPractice] = useState<EmotionalPractice | null>(null)
+
   const alerts = medications.filter(m => m.statusLabel !== '✅ OK')
   const healthAlerts = health.items.filter(i => i.alertLevel !== 'ok').length
-  const children = members.filter(m => (m as any).role === 'child' || (m as any).is_child)
 
   const getMemberName = (id: string | null) => {
     if (!id) return 'Família'
@@ -68,6 +83,14 @@ export default function SaudePage() {
     { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional',    alerts: 0                },
   ]
 
+  function handleSavePractice(data: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>) {
+    if (selectedPractice) {
+      emotional.updatePractice(data)
+    } else {
+      emotional.addPractice(data)
+    }
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -80,7 +103,10 @@ export default function SaudePage() {
               onClick={() => { setSelectedMed(null); setMedOpen(true) }}>+ Remédio</button>
           ) : tab === 'acompanhamento' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
-              onClick={() => health.upsert({ title: 'Nova consulta', frequency_days: 365, frequency_label: 'Anual' })}>+ Item</button>
+              onClick={() => { setSelectedHealth(null); setHealthOpen(true) }}>+ Item</button>
+          ) : tab === 'emocional' ? (
+            <button className="text-sm text-teal-600 font-medium hover:underline"
+              onClick={() => { setSelectedPractice(null); setEmotionalOpen(true) }}>+ Prática</button>
           ) : null
         }
       />
@@ -117,7 +143,6 @@ export default function SaudePage() {
             </div>
           )}
 
-          {/* Medicamentos */}
           <div className="rounded-xl border bg-white overflow-hidden">
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <h2 className="font-semibold">💊 Caixa de remédios</h2>
@@ -165,7 +190,6 @@ export default function SaudePage() {
             )}
           </div>
 
-          {/* Vacinas */}
           <div className="rounded-xl border bg-white overflow-hidden">
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <h2 className="font-semibold">💉 Vacinas</h2>
@@ -225,7 +249,11 @@ export default function SaudePage() {
           {health.isLoading ? (
             <div className="p-8 text-center text-gray-400">Carregando...</div>
           ) : health.items.length === 0 ? (
-            <EmptyState emoji="🩺" title="Nenhum acompanhamento" description="Cadastre consultas, dentista e rotinas de saúde." />
+            <EmptyState
+              emoji="🩺"
+              title="Nenhum acompanhamento"
+              description="Cadastre consultas, dentista e rotinas de saúde."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -266,6 +294,9 @@ export default function SaudePage() {
                         <td className="px-4 py-3">
                           <div className="flex gap-2 justify-end">
                             <button
+                              className="text-xs text-gray-400 hover:text-gray-600"
+                              onClick={() => { setSelectedHealth(i); setHealthOpen(true) }}>Editar</button>
+                            <button
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => health.markDone(i.id)}>✓ Feito</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -287,7 +318,9 @@ export default function SaudePage() {
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
             Doses calculadas automaticamente com base no peso de cada membro cadastrado.
-            {children.length === 0 && <span className="text-yellow-600 ml-1">⚠️ Nenhuma criança encontrada — verifique os perfis cadastrados.</span>}
+            {members.every(m => !(m as any).weight_kg) && (
+              <span className="text-yellow-600 ml-1">⚠️ Nenhum membro com peso cadastrado — atualize os perfis em <strong>Família</strong>.</span>
+            )}
           </p>
           <div className="rounded-xl border bg-white overflow-hidden">
             <div className="overflow-x-auto">
@@ -299,7 +332,10 @@ export default function SaudePage() {
                     <th className="px-4 py-3 text-left">Conc. (mg/ml)</th>
                     {members.map(m => (
                       <th key={m.id} className="px-4 py-3 text-left">
-                        {(m as any).emoji ?? '👤'} {m.nickname ?? m.name}
+                        {(m as any).emoji ?? '👤'} {(m as any).nickname ?? (m as any).name}
+                        {(m as any).weight_kg && (
+                          <span className="block text-gray-400 font-normal normal-case">{(m as any).weight_kg} kg</span>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -353,6 +389,7 @@ export default function SaudePage() {
                     <th className="px-4 py-3 text-left">👨‍👩‍👧 Para quem</th>
                     <th className="px-4 py-3 text-left">🔁 Frequência</th>
                     <th className="px-4 py-3 text-left">📊 Status semana</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -371,6 +408,16 @@ export default function SaudePage() {
                             className={`text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-colors ${st.cls}`}
                           >{st.label}</button>
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              className="text-xs text-gray-400 hover:text-gray-600"
+                              onClick={() => { setSelectedPractice(p); setEmotionalOpen(true) }}>Editar</button>
+                            <button
+                              className="text-xs text-red-400 hover:text-red-600"
+                              onClick={() => { if (confirm('Remover prática?')) emotional.removePractice(p.id) }}>×</button>
+                          </div>
+                        </td>
                       </tr>
                     )
                   })}
@@ -384,6 +431,8 @@ export default function SaudePage() {
 
       <MedicationSheet open={medOpen} onClose={() => setMedOpen(false)} medication={selectedMed} onSave={upsertMed} members={members} />
       <VaccineSheet open={vacOpen} onClose={() => setVacOpen(false)} vaccine={selectedVac} onSave={upsertVac} members={members} />
+      <HealthTrackingSheet open={healthOpen} onClose={() => setHealthOpen(false)} item={selectedHealth} onSave={health.upsert} members={members} />
+      <EmotionalPracticeSheet open={emotionalOpen} onClose={() => setEmotionalOpen(false)} practice={selectedPractice} onSave={handleSavePractice} />
     </div>
   )
 }
