@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { ShoppingItem } from '@/types/database'
 
-export function useShoppingItems() {
+export function useGroceryItems() {
   const familyId = useFamilyStore((s) => s.currentFamily?.id)
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -26,14 +26,31 @@ export function useShoppingItems() {
       .from('shopping_items')
       .select('*')
       .eq('family_id', fid)
-      .or('category.is.null,category.neq.grocery')
+      .eq('category', 'grocery')
       .order('created_at', { ascending: false })
-    if (error) {
-      console.error('[useShoppingItems] load error:', error.message)
-    } else {
-      setItems(data ?? [])
-    }
+    if (error) console.error('[useGroceryItems] load error:', error.message)
+    else setItems(data ?? [])
     setIsLoading(false)
+  }
+
+  async function bulkInsert(names: string[]) {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const clean = names.map(n => n.trim()).filter(Boolean)
+    if (clean.length === 0) return
+    const { data: { user } } = await supabase.auth.getUser()
+    const rows = clean.map(name => ({
+      name,
+      family_id: fid,
+      category: 'grocery',
+      status: 'needed' as const,
+      is_bought: false,
+      is_recurring: false,
+      requested_by: user?.id ?? null,
+    }))
+    const { error } = await supabase.from('shopping_items').insert(rows as any)
+    if (error) console.error('[useGroceryItems] bulkInsert error:', error.message)
+    await load()
   }
 
   async function updateStatus(id: string, status: ShoppingItem['status'], buyerId?: string) {
@@ -48,7 +65,7 @@ export function useShoppingItems() {
 
   async function upsert(item: Partial<ShoppingItem>) {
     const fid = familyIdRef.current
-    const payload = { ...item }
+    const payload = { ...item, category: 'grocery' }
     if (payload.id) {
       const { id: _id, created_at: _cat, ...updateData } = payload
       await supabase.from('shopping_items').update(updateData).eq('id', payload.id)
@@ -59,7 +76,7 @@ export function useShoppingItems() {
         family_id: fid,
         requested_by: payload.requested_by ?? user?.id ?? null,
       } as any)
-      if (error) console.error('[useShoppingItems] upsert error:', error.message)
+      if (error) console.error('[useGroceryItems] upsert error:', error.message)
     }
     await load()
   }
@@ -69,5 +86,5 @@ export function useShoppingItems() {
     await load()
   }
 
-  return { items, isLoading, updateStatus, upsert, remove, reload: load }
+  return { items, isLoading, bulkInsert, updateStatus, upsert, remove, reload: load }
 }

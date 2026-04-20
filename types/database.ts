@@ -669,6 +669,61 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['vehicle_calls']['Insert']>
         Relationships: never[]
       }
+      recipes: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          emoji: string | null
+          ingredients: string | null
+          instructions: string | null
+          servings: number | null
+          prep_minutes: number | null
+          tags: string[]
+          is_favorite: boolean
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['recipes']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['recipes']['Insert']>
+        Relationships: never[]
+      }
+      meal_plan: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          day_of_week: number
+          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+          title: string
+          description: string | null
+          recipe_id: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['meal_plan']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['meal_plan']['Insert']>
+        Relationships: never[]
+      }
+      pantry_items: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          emoji: string | null
+          category: string | null
+          quantity: number | null
+          unit: string | null
+          minimum_quantity: number | null
+          expiry_date: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['pantry_items']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['pantry_items']['Insert']>
+        Relationships: never[]
+      }
     }
     Views: {
       monthly_history_view: {
@@ -763,6 +818,9 @@ export type Vehicle             = Database['public']['Tables']['vehicles']['Row'
 export type VehicleDocument     = Database['public']['Tables']['vehicle_documents']['Row']
 export type VehicleMaintenance  = Database['public']['Tables']['vehicle_maintenance']['Row']
 export type VehicleCall         = Database['public']['Tables']['vehicle_calls']['Row']
+export type Recipe              = Database['public']['Tables']['recipes']['Row']
+export type MealPlan            = Database['public']['Tables']['meal_plan']['Row']
+export type PantryItem          = Database['public']['Tables']['pantry_items']['Row']
 
 // ─── View aliases ─────────────────────────────────────────────────────────────
 export type MonthlyHistoryRow = Database['public']['Views']['monthly_history_view']['Row']
