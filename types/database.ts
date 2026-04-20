@@ -572,6 +572,103 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['school_supplies']['Insert']>
         Relationships: never[]
       }
+      vehicles: {
+        Row: {
+          id: string
+          family_id: string
+          owner_id: string | null
+          type: 'car' | 'motorcycle' | 'ebike' | 'bike' | 'scooter'
+          nickname: string
+          brand: string | null
+          model: string | null
+          year: number | null
+          color: string | null
+          plate: string | null
+          fuel_type: 'gasoline' | 'ethanol' | 'flex' | 'diesel' | 'electric' | 'hybrid' | 'none' | null
+          current_km: number | null
+          battery_kwh: number | null
+          battery_range_km: number | null
+          garage_location: string | null
+          photo_url: string | null
+          is_active: boolean
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicles']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicles']['Insert']>
+        Relationships: never[]
+      }
+      vehicle_documents: {
+        Row: {
+          id: string
+          family_id: string
+          vehicle_id: string
+          type: 'ipva' | 'licenciamento' | 'seguro' | 'dpvat' | 'vistoria' | 'crlv' | 'outro'
+          title: string
+          due_date: string | null
+          amount: number | null
+          status: 'pending' | 'paid' | 'overdue' | 'renewed'
+          paid_at: string | null
+          reference_year: number | null
+          policy_number: string | null
+          provider: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicle_documents']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicle_documents']['Insert']>
+        Relationships: never[]
+      }
+      vehicle_maintenance: {
+        Row: {
+          id: string
+          family_id: string
+          vehicle_id: string
+          title: string
+          emoji: string | null
+          category: string | null
+          frequency_label: string
+          frequency_days: number | null
+          frequency_km: number | null
+          last_done_at: string | null
+          last_done_km: number | null
+          next_due_at: string | null
+          next_due_km: number | null
+          responsible_id: string | null
+          estimated_cost: number | null
+          status: 'ok' | 'due_soon' | 'overdue' | 'done'
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicle_maintenance']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicle_maintenance']['Insert']>
+        Relationships: never[]
+      }
+      vehicle_calls: {
+        Row: {
+          id: string
+          family_id: string
+          vehicle_id: string
+          title: string
+          description: string | null
+          status: 'pending' | 'scheduled' | 'done'
+          priority: number
+          professional_name: string | null
+          professional_phone: string | null
+          estimated_cost: number | null
+          actual_cost: number | null
+          scheduled_date: string | null
+          completed_at: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicle_calls']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicle_calls']['Insert']>
+        Relationships: never[]
+      }
     }
     Views: {
       monthly_history_view: {
@@ -662,6 +759,10 @@ export type MaintenanceCallRow = Database['public']['Tables']['maintenance_calls
 export type SchoolCommunication = Database['public']['Tables']['school_communications']['Row']
 export type SchoolHomework      = Database['public']['Tables']['school_homework']['Row']
 export type SchoolSupply        = Database['public']['Tables']['school_supplies']['Row']
+export type Vehicle             = Database['public']['Tables']['vehicles']['Row']
+export type VehicleDocument     = Database['public']['Tables']['vehicle_documents']['Row']
+export type VehicleMaintenance  = Database['public']['Tables']['vehicle_maintenance']['Row']
+export type VehicleCall         = Database['public']['Tables']['vehicle_calls']['Row']
 
 // ─── View aliases ─────────────────────────────────────────────────────────────
 export type MonthlyHistoryRow = Database['public']['Views']['monthly_history_view']['Row']
