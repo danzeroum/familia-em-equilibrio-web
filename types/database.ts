@@ -424,6 +424,40 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
         Relationships: never[]
       }
+      maintenance_calls: {
+        Row: {
+          id: string
+          family_id: string | null
+          title: string
+          description: string | null
+          status: 'pending' | 'scheduled' | 'done' | null
+          priority: number | null
+          professional_name: string | null
+          professional_phone: string | null
+          estimated_cost: number | null
+          scheduled_date: string | null
+          domain_id: number | null
+          created_by: string | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id?: string | null
+          title: string
+          description?: string | null
+          status?: 'pending' | 'scheduled' | 'done' | null
+          priority?: number | null
+          professional_name?: string | null
+          professional_phone?: string | null
+          estimated_cost?: number | null
+          scheduled_date?: string | null
+          domain_id?: number | null
+          created_by?: string | null
+          completed_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['maintenance_calls']['Insert']>
+        Relationships: never[]
+      }
       health_tracking: {
         Row: {
           id: string
@@ -549,21 +583,22 @@ export interface Database {
 }
 
 // ─── Table aliases ────────────────────────────────────────────────────────────
-export type Family           = Database['public']['Tables']['families']['Row']
-export type Profile          = Database['public']['Tables']['profiles']['Row']
-export type Bill             = Database['public']['Tables']['bills']['Row']
-export type SavingsGoal      = Database['public']['Tables']['savings_goals']['Row']
-export type BudgetGoal       = Database['public']['Tables']['budget_goals']['Row']
-export type Task             = Database['public']['Tables']['tasks']['Row']
-export type Medication       = Database['public']['Tables']['medications']['Row']
-export type MedicationLog    = Database['public']['Tables']['medication_logs']['Row']
-export type Vaccine          = Database['public']['Tables']['vaccines']['Row']
-export type FamilyEvent      = Database['public']['Tables']['family_events']['Row']
-export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row']
-export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
-export type WardrobeItem     = Database['public']['Tables']['wardrobe_items']['Row']
-export type ShoppingItem     = Database['public']['Tables']['shopping_items']['Row']
-export type HomeMaintenance  = Database['public']['Tables']['home_maintenance']['Row']
+export type Family             = Database['public']['Tables']['families']['Row']
+export type Profile            = Database['public']['Tables']['profiles']['Row']
+export type Bill               = Database['public']['Tables']['bills']['Row']
+export type SavingsGoal        = Database['public']['Tables']['savings_goals']['Row']
+export type BudgetGoal         = Database['public']['Tables']['budget_goals']['Row']
+export type Task               = Database['public']['Tables']['tasks']['Row']
+export type Medication         = Database['public']['Tables']['medications']['Row']
+export type MedicationLog      = Database['public']['Tables']['medication_logs']['Row']
+export type Vaccine            = Database['public']['Tables']['vaccines']['Row']
+export type FamilyEvent        = Database['public']['Tables']['family_events']['Row']
+export type EmergencyContact   = Database['public']['Tables']['emergency_contacts']['Row']
+export type EmotionalCheckin   = Database['public']['Tables']['emotional_checkins']['Row']
+export type WardrobeItem       = Database['public']['Tables']['wardrobe_items']['Row']
+export type ShoppingItem       = Database['public']['Tables']['shopping_items']['Row']
+export type HomeMaintenance    = Database['public']['Tables']['home_maintenance']['Row']
+export type MaintenanceCallRow = Database['public']['Tables']['maintenance_calls']['Row']
 
 // ─── View aliases ─────────────────────────────────────────────────────────────
 export type MonthlyHistoryRow = Database['public']['Views']['monthly_history_view']['Row']
