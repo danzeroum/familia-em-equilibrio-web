@@ -5,20 +5,9 @@ import { supabase } from '@/lib/supabase'
 
 export interface MonthlyHistory {
   family_id: string
-  month: string
   month_ref: string
-  total_paid: number
-  total_pending: number
-  total_auto_debit: number
-  total_amount: number
-  paid_count: number
-  pending_count: number
-  auto_debit_count: number
-  total_count: number
-  top_category: string | null
-  top_category_amount: number | null
-  // computed aliases
   income: number
+  total_paid: number
   balance: number
   bills_count: number
 }
@@ -31,19 +20,23 @@ export function useMonthlyHistory() {
 
   async function load() {
     setIsLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('monthly_history_view')
       .select('*')
-      .order('month', { ascending: false })
+      .order('month_ref', { ascending: false })
       .limit(6)
 
-    setHistory((data ?? []).map(row => ({
-      ...row,
-      month_ref: row.month,
-      bills_count: row.total_count,
-      income: 0,
-      balance: -(row.total_paid ?? 0),
-    })))
+    if (error) console.error('[useMonthlyHistory] load error:', error.message)
+    // Supabase retorna `numeric` como string — normaliza para number
+    const rows: MonthlyHistory[] = (data ?? []).map((r: any) => ({
+      family_id:   r.family_id,
+      month_ref:   r.month_ref,
+      income:      Number(r.income ?? 0),
+      total_paid:  Number(r.total_paid ?? 0),
+      balance:     Number(r.balance ?? 0),
+      bills_count: Number(r.bills_count ?? 0),
+    }))
+    setHistory(rows)
     setIsLoading(false)
   }
 
