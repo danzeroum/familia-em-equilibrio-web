@@ -21,6 +21,13 @@ export interface MaintenanceCall {
   created_at?: string | null
 }
 
+function toMaintenanceCalls(rows: any[]): MaintenanceCall[] {
+  return rows.map(r => ({
+    ...r,
+    family_id: r.family_id ?? undefined,
+  }))
+}
+
 export function useMaintenanceCalls() {
   const { family, currentUser } = useFamilyStore()
   const [items, setItems] = useState<MaintenanceCall[]>([])
@@ -37,7 +44,7 @@ export function useMaintenanceCalls() {
       .eq('family_id', family.id)
       .order('priority', { ascending: true })
       .order('created_at', { ascending: false })
-    setItems(data ?? [])
+    setItems(toMaintenanceCalls(data ?? []))
     setIsLoading(false)
   }
 
