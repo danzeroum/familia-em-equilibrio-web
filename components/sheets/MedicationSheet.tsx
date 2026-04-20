@@ -12,6 +12,15 @@ interface Props {
   members: Profile[]
 }
 
+// Valores aceitos pelo CHECK CONSTRAINT do banco:
+// CHECK ((form = ANY (ARRAY['liquid', 'tablet', 'drops', 'other'])))
+const FORM_OPTIONS = [
+  { value: 'tablet', label: '💊 Comprimido / Cápsula' },
+  { value: 'liquid', label: '🥤 Líquido / Xarope' },
+  { value: 'drops',  label: '💧 Gotas' },
+  { value: 'other',  label: '📦 Outro (pomada, injetável…)' },
+]
+
 export function MedicationSheet({ open, onClose, medication, onSave, members }: Props) {
   const { currentUser } = useFamilyStore()
   const [form, setForm] = useState<Partial<Medication>>({})
@@ -25,14 +34,16 @@ export function MedicationSheet({ open, onClose, medication, onSave, members }: 
   async function save() {
     if (!form.name?.trim()) { alert('Nome é obrigatório'); return }
 
-    // RLS exige profile_id válido — usa o usuário logado como fallback
     const profileId = form.profile_id?.trim() || currentUser?.id
     if (!profileId) {
       alert('Não foi possível identificar o perfil. Selecione um membro.')
       return
     }
 
-    await onSave({ ...form, profile_id: profileId })
+    // Garante que form vá como null se vazio (evita violar o check constraint)
+    const formValue = form.form?.trim() || null
+
+    await onSave({ ...form, profile_id: profileId, form: formValue })
     onClose()
   }
 
@@ -55,14 +66,15 @@ export function MedicationSheet({ open, onClose, medication, onSave, members }: 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm text-gray-600 block mb-1">Forma</label>
-          <select className="input-base" value={form.form ?? ''} onChange={e => set('form', e.target.value)}>
-            <option value="">—</option>
-            <option value="comprimido">Comprimido</option>
-            <option value="capsula">Cápsula</option>
-            <option value="liquid">Líquido</option>
-            <option value="pomada">Pomada</option>
-            <option value="drops">Gotas</option>
-            <option value="injetavel">Injetável</option>
+          <select
+            className="input-base"
+            value={form.form ?? ''}
+            onChange={e => set('form', e.target.value || null)}
+          >
+            <option value="">— Não informado —</option>
+            {FORM_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
           </select>
         </div>
         <Field label="Dosagem" value={form.dosage ?? ''} onChange={v => set('dosage', v)} placeholder="Ex: 500mg" />
