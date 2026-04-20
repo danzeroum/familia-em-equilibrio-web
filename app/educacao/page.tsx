@@ -95,17 +95,12 @@ export default function EducacaoPage() {
   const filteredComms = filterByMember(communications.items)
   const filteredHw    = filterByMember(homework.items)
 
-  // Supplies split into: "material" (MATERIAL tab) and the rest + sazonais (COMPRAS tab)
-  const materialSupplies = filterByMember(
-    supplies.items.filter(i => i.category === 'material' || i.category === 'uniforme')
-  )
-  const comprasSupplies = filterByMember(
-    supplies.items.filter(i => i.category !== 'material' && i.category !== 'uniforme')
-  )
-
-  const runningOut        = comprasSupplies.filter(i => i.status === 'running_out')
-  const needed            = comprasSupplies.filter(i => i.status === 'needed')
-  const boughtCompras     = comprasSupplies.filter(i => i.status === 'bought')
+  // Material tab = inventário completo (todos os itens da família).
+  // Compras tab = mesmos itens, agrupados por status (lista de compras).
+  const allSupplies   = filterByMember(supplies.items)
+  const runningOut    = allSupplies.filter(i => i.status === 'running_out')
+  const needed        = allSupplies.filter(i => i.status === 'needed')
+  const boughtCompras = allSupplies.filter(i => i.status === 'bought')
 
   // Alert counts per tab
   const commAlerts = communications.items.filter(i => {
@@ -121,11 +116,9 @@ export default function EducacaoPage() {
     return days <= 3
   }).length
   const materialAlerts = supplies.items.filter(i =>
-    (i.category === 'material' || i.category === 'uniforme') && i.status !== 'bought' && (i.quantity_have ?? 0) < (i.quantity_need ?? 1)
+    i.status !== 'bought' && (i.quantity_have ?? 0) < (i.quantity_need ?? 1)
   ).length
-  const comprasAlerts = supplies.items.filter(i =>
-    i.category !== 'material' && i.category !== 'uniforme' && i.status === 'running_out'
-  ).length
+  const comprasAlerts = supplies.items.filter(i => i.status === 'running_out').length
 
   const TABS: { id: Tab; label: string; alerts: number }[] = [
     { id: 'comunicacao', label: '💬 Comunicação',       alerts: commAlerts },
@@ -166,7 +159,7 @@ export default function EducacaoPage() {
               onClick={() => { setSelectedHw(null); setHwOpen(true) }}>+ Lição</button>
           ) : tab === 'compras' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
-              onClick={() => openNewSupply('sazonal')}>+ Compra</button>
+              onClick={() => openNewSupply('material')}>+ Compra</button>
           ) : null
         }
       />
@@ -193,7 +186,7 @@ export default function EducacaoPage() {
       </div>
 
       {/* Filter member */}
-      {tab !== 'compras' && (
+      {(
         <div className="flex gap-2 flex-wrap">
           {[{ id: 'all', label: 'Todos' }, ...members.map(m => ({ id: m.id, label: m.nickname ?? m.name }))].map(opt => (
             <button key={opt.id}
@@ -278,7 +271,7 @@ export default function EducacaoPage() {
         <div className="rounded-xl border bg-white overflow-hidden">
           {supplies.isLoading ? (
             <div className="p-8 text-center text-gray-400">Carregando...</div>
-          ) : materialSupplies.length === 0 ? (
+          ) : allSupplies.length === 0 ? (
             <EmptyState
               emoji="📦"
               title="Nenhum material cadastrado"
@@ -299,7 +292,7 @@ export default function EducacaoPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {materialSupplies.map(i => {
+                  {allSupplies.map(i => {
                     const sit = supplySituation(i.quantity_have ?? 0, i.quantity_need ?? 1)
                     const st  = SUPPLY_STATUS_BADGE[i.status] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
                     return (
@@ -409,8 +402,10 @@ export default function EducacaoPage() {
         <div className="space-y-6">
           {supplies.isLoading ? (
             <div className="p-8 text-center text-gray-400">Carregando...</div>
-          ) : comprasSupplies.length === 0 ? (
-            <EmptyState emoji="🛒" title="Lista vazia" description="Itens básicos repostos + compras sazonais (volta às aulas, materiais específicos)." />
+          ) : allSupplies.length === 0 ? (
+            <EmptyState emoji="🛒" title="Lista vazia" description="Adicione itens escolares (material básico, uniformes, livros, sazonais)." />
+          ) : runningOut.length + needed.length + boughtCompras.length === 0 ? (
+            <EmptyState emoji="✅" title="Nada pendente" description="Todos os itens já estão resolvidos para essa seleção." />
           ) : (
             <>
               {runningOut.length > 0 && (
