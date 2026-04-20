@@ -512,6 +512,66 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['task_categories']['Insert']>
         Relationships: never[]
       }
+      school_communications: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          type: 'whatsapp' | 'email' | 'reuniao' | 'telefone' | 'outro'
+          title: string
+          description: string | null
+          status: 'pending' | 'in_progress' | 'done'
+          due_date: string | null
+          created_by: string | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['school_communications']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['school_communications']['Insert']>
+        Relationships: never[]
+      }
+      school_homework: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          subject: string
+          title: string
+          description: string | null
+          due_date: string | null
+          status: 'pending' | 'in_progress' | 'done'
+          needs_help: boolean
+          is_project: boolean
+          created_by: string | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['school_homework']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['school_homework']['Insert']>
+        Relationships: never[]
+      }
+      school_supplies: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          name: string
+          category: 'material' | 'uniforme' | 'livro' | 'sazonal' | 'outro'
+          quantity_need: number
+          quantity_have: number
+          unit_price: number | null
+          status: 'needed' | 'running_out' | 'bought'
+          season: 'verao' | 'inverno' | 'todas' | null
+          notes: string | null
+          bought_by: string | null
+          bought_at: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['school_supplies']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['school_supplies']['Insert']>
+        Relationships: never[]
+      }
     }
     Views: {
       monthly_history_view: {
@@ -599,6 +659,9 @@ export type WardrobeItem       = Database['public']['Tables']['wardrobe_items'][
 export type ShoppingItem       = Database['public']['Tables']['shopping_items']['Row']
 export type HomeMaintenance    = Database['public']['Tables']['home_maintenance']['Row']
 export type MaintenanceCallRow = Database['public']['Tables']['maintenance_calls']['Row']
+export type SchoolCommunication = Database['public']['Tables']['school_communications']['Row']
+export type SchoolHomework      = Database['public']['Tables']['school_homework']['Row']
+export type SchoolSupply        = Database['public']['Tables']['school_supplies']['Row']
 
 // ─── View aliases ─────────────────────────────────────────────────────────────
 export type MonthlyHistoryRow = Database['public']['Views']['monthly_history_view']['Row']
