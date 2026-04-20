@@ -10,6 +10,7 @@ import {
   CheckSquare,
   Home,
   BookOpen,
+  UtensilsCrossed,
   Car,
   Heart,
   Wallet,
@@ -18,15 +19,16 @@ import {
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/',             label: 'Painel',      icon: LayoutDashboard, emoji: '🎯' },
-  { href: '/familia',      label: 'Família',     icon: Users,           emoji: '👨‍👩‍👧‍👦' },
-  { href: '/tarefas',      label: 'Tarefas',     icon: CheckSquare,     emoji: '✅' },
-  { href: '/casa',         label: 'Casa',        icon: Home,            emoji: '🏠' },
-  { href: '/educacao',     label: 'Educação',    icon: BookOpen,        emoji: '📚' },
-  { href: '/veiculos',     label: 'Veículos',    icon: Car,             emoji: '🚗' },
-  { href: '/saude',        label: 'Saúde',       icon: Heart,           emoji: '🩺' },
-  { href: '/financeiro',   label: 'Financeiro',  icon: Wallet,          emoji: '💰' },
-  { href: '/categorias',   label: 'Categorias',  icon: Tag,             emoji: '🏷️' },
+  { href: '/',             label: 'Painel',      icon: LayoutDashboard,  emoji: '🎯' },
+  { href: '/familia',      label: 'Família',     icon: Users,            emoji: '👨‍👩‍👧‍👦' },
+  { href: '/tarefas',      label: 'Tarefas',     icon: CheckSquare,      emoji: '✅' },
+  { href: '/casa',         label: 'Casa',        icon: Home,             emoji: '🏠' },
+  { href: '/educacao',     label: 'Educação',    icon: BookOpen,         emoji: '📚' },
+  { href: '/alimentacao',  label: 'Alimentação', icon: UtensilsCrossed,  emoji: '🍽️' },
+  { href: '/veiculos',     label: 'Veículos',    icon: Car,              emoji: '🚗' },
+  { href: '/saude',        label: 'Saúde',       icon: Heart,            emoji: '🩺' },
+  { href: '/financeiro',   label: 'Financeiro',  icon: Wallet,           emoji: '💰' },
+  { href: '/categorias',   label: 'Categorias',  icon: Tag,              emoji: '🏷️' },
 ]
 
 interface SidebarProps {
