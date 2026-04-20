@@ -103,6 +103,7 @@ export default function AlimentacaoPage() {
   const groceryRunningOut = filteredGrocery.filter(i => i.status === 'running_out')
   const groceryNeeded     = filteredGrocery.filter(i => i.status === 'needed')
   const groceryBoughtRec  = filteredGrocery.filter(i => i.status === 'bought' && i.is_recurring)
+  const groceryBought     = filteredGrocery.filter(i => i.status === 'bought' && !i.is_recurring)
 
   const handleToggleBuy = (item: ShoppingItem) => {
     if (item.status === 'needed' || item.status === 'running_out') {
@@ -140,9 +141,18 @@ export default function AlimentacaoPage() {
         title="Alimentação"
         description="Mercado, cardápio, receitas e despensa da família"
         action={
-          tab === 'cardapio' ? (
-            <button className="text-sm text-teal-600 font-medium hover:underline"
-              onClick={() => { setSelectedMeal(null); setMealDefaults(undefined); setMealSheetOpen(true) }}>+ Refeição</button>
+          tab === 'mercado' && grocery.items.length > 0 ? (
+            <button className="text-sm text-red-500 font-medium hover:underline"
+              onClick={() => { if (confirm('Remover TODOS os itens da lista de mercado?')) grocery.clearAll() }}>🗑 Limpar tudo</button>
+          ) : tab === 'cardapio' ? (
+            <div className="flex items-center gap-3">
+              {mealPlan.items.length > 0 && (
+                <button className="text-sm text-red-500 font-medium hover:underline"
+                  onClick={() => { if (confirm('Remover TODO o cardápio da semana?')) mealPlan.clearAll() }}>🗑 Limpar tudo</button>
+              )}
+              <button className="text-sm text-teal-600 font-medium hover:underline"
+                onClick={() => { setSelectedMeal(null); setMealDefaults(undefined); setMealSheetOpen(true) }}>+ Refeição</button>
+            </div>
           ) : tab === 'receitas' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setSelectedRecipe(null); setRecipeSheetOpen(true) }}>+ Receita</button>
@@ -273,6 +283,39 @@ export default function AlimentacaoPage() {
                           onClick={() => handleToggleBuy(i)}
                           className="text-teal-600 font-medium text-xs bg-teal-50 px-2 py-1 rounded hover:bg-teal-100"
                         >Pôr na Lista</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {groceryBought.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-gray-500 font-medium text-sm">✅ Comprados ({groceryBought.length})</h3>
+                    <button
+                      onClick={() => { if (confirm('Remover todos os itens comprados?')) grocery.clearBought() }}
+                      className="text-xs text-red-500 hover:underline"
+                    >🗑 Limpar comprados</button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {groceryBought.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded text-sm">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked
+                            className="w-4 h-4 accent-teal-600"
+                            onChange={() => handleToggleBuy(i)}
+                          />
+                          <span className="text-gray-400 line-through">{i.name}</span>
+                          {i.requested_by && (
+                            <span className="text-[10px] text-gray-400">· {getMemberName(i.requested_by)}</span>
+                          )}
+                        </label>
+                        <button
+                          onClick={() => { if (confirm('Remover?')) grocery.remove(i.id) }}
+                          className="text-red-300 text-sm hover:text-red-500"
+                        >×</button>
                       </div>
                     ))}
                   </div>

@@ -86,5 +86,31 @@ export function useGroceryItems() {
     await load()
   }
 
-  return { items, isLoading, bulkInsert, updateStatus, upsert, remove, reload: load }
+  async function clearBought() {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const { error } = await supabase
+      .from('shopping_items')
+      .delete()
+      .eq('family_id', fid)
+      .eq('category', 'grocery')
+      .eq('status', 'bought')
+      .eq('is_recurring', false)
+    if (error) console.error('[useGroceryItems] clearBought error:', error.message)
+    await load()
+  }
+
+  async function clearAll() {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const { error } = await supabase
+      .from('shopping_items')
+      .delete()
+      .eq('family_id', fid)
+      .eq('category', 'grocery')
+    if (error) console.error('[useGroceryItems] clearAll error:', error.message)
+    await load()
+  }
+
+  return { items, isLoading, bulkInsert, updateStatus, upsert, remove, clearBought, clearAll, reload: load }
 }

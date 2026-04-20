@@ -59,5 +59,13 @@ export function useMealPlan() {
     await load()
   }
 
-  return { items, isLoading, upsert, remove, reload: load }
+  async function clearAll() {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const { error } = await supabase.from('meal_plan').delete().eq('family_id', fid)
+    if (error) console.error('[useMealPlan] clearAll error:', error.message)
+    await load()
+  }
+
+  return { items, isLoading, upsert, remove, clearAll, reload: load }
 }
