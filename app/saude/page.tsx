@@ -285,7 +285,7 @@ export default function SaudePage() {
         </div>
       )}
 
-      {/* ══ ABA: ACOMPANHAMENTO ══ */}
+          {/* ══ ABA: ACOMPANHAMENTO ══ */}
       {tab === 'acompanhamento' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -314,21 +314,25 @@ export default function SaudePage() {
                       const badge = h.alertLevel === 'overdue'
                         ? { label: '🔴 Atrasado', cls: 'bg-red-100 text-red-700' }
                         : h.alertLevel === 'due_soon'
-                        ? { label: `🟡 ${h.daysUntilNext}d`, cls: 'bg-yellow-100 text-yellow-700' }
-                        : { label: `🟢 ${h.daysUntilNext}d`, cls: 'bg-green-100 text-green-700' }
+                        ? { label: h.daysRemaining !== null ? `🟡 ${h.daysRemaining}d` : '🟡 Pendente', cls: 'bg-yellow-100 text-yellow-700' }
+                        : { label: h.daysRemaining !== null ? `🟢 ${h.daysRemaining}d` : '🟢 OK', cls: 'bg-green-100 text-green-700' }
                       return (
                         <tr key={h.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 font-medium">{h.name}</td>
+                          <td className="px-4 py-2 font-medium">{h.emoji} {h.title}</td>
                           <td className="px-4 py-2 text-gray-500">{getMemberName(h.profile_id)}</td>
-                          <td className="px-4 py-2">{h.last_done ? formatDate(h.last_done) : '—'}</td>
-                          <td className="px-4 py-2">{h.next_due ? formatDate(h.next_due) : '—'}</td>
+                          <td className="px-4 py-2">{h.last_done_at ? formatDate(h.last_done_at) : '—'}</td>
+                          <td className="px-4 py-2">{h.next_due_at ? formatDate(h.next_due_at) : '—'}</td>
                           <td className="px-4 py-2">
                             <span className={`text-xs px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
                           </td>
                           <td className="px-4 py-2 flex gap-2">
                             <button
+                              title="Marcar como feito"
+                              onClick={() => health.markDone(h.id)}
+                              className="text-xs text-green-400 hover:text-green-600">✓</button>
+                            <button
                               title="Criar agendamento"
-                              onClick={() => schedule(`🩺 ${h.name}`, h.next_due)}
+                              onClick={() => schedule(`🩺 ${h.title}`, h.next_due_at)}
                               className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-gray-600"
                               onClick={() => { setSelectedHealth(h); setHealthOpen(true) }}>Editar</button>
@@ -345,7 +349,6 @@ export default function SaudePage() {
           </div>
         </div>
       )}
-
       {/* ══ ABA: CALCULADORA ══ */}
       {tab === 'calculadora' && (
         <div className="space-y-4">
