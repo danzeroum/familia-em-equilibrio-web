@@ -15,6 +15,7 @@ import { MaintenanceSheet } from '@/components/sheets/MaintenanceSheet'
 import { MaintenanceCallSheet } from '@/components/sheets/MaintenanceCallSheet'
 import { ShoppingSheet } from '@/components/sheets/ShoppingSheet'
 import { MedicationSheet } from '@/components/sheets/MedicationSheet'
+import { QuickAddList } from '@/components/food/QuickAddList'
 import type { WardrobeItem, HomeMaintenance, ShoppingItem, Medication } from '@/types/database'
 
 // ─── helpers ───────────────────────────────────────────────────────────────────
@@ -110,9 +111,13 @@ export default function CasaPage() {
     return members.find(m => m.id === id)?.nickname ?? members.find(m => m.id === id)?.name ?? '—'
   }
 
-  const runningOut      = shopping.items.filter(i => i.status === 'running_out')
-  const needed          = shopping.items.filter(i => i.status === 'needed')
-  const boughtRecurring = shopping.items.filter(i => i.status === 'bought' && i.is_recurring)
+  const filteredShopping = filterMember === 'all'
+    ? shopping.items
+    : shopping.items.filter(i => i.requested_by === filterMember)
+  const runningOut      = filteredShopping.filter(i => i.status === 'running_out')
+  const needed          = filteredShopping.filter(i => i.status === 'needed')
+  const boughtRecurring = filteredShopping.filter(i => i.status === 'bought' && i.is_recurring)
+  const boughtNonRec    = filteredShopping.filter(i => i.status === 'bought' && !i.is_recurring)
 
   const handleToggleBuy = (item: ShoppingItem) => {
     if (item.status === 'needed' || item.status === 'running_out') {
@@ -150,8 +155,14 @@ export default function CasaPage() {
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setSelectedCall(null); setCallOpen(true) }}>+ Conserto</button>
           ) : tab === 'compras' ? (
-            <button className="text-sm text-teal-600 font-medium hover:underline"
-              onClick={() => { setSelectedItem(null); setShoppingOpen(true) }}>+ Produto</button>
+            <div className="flex items-center gap-3">
+              {shopping.items.length > 0 && (
+                <button className="text-sm text-red-500 font-medium hover:underline"
+                  onClick={() => { if (confirm('Remover TODOS os itens da lista de compras?')) shopping.clearAll() }}>🗑 Limpar tudo</button>
+              )}
+              <button className="text-sm text-teal-600 font-medium hover:underline"
+                onClick={() => { setSelectedItem(null); setShoppingOpen(true) }}>+ Produto</button>
+            </div>
           ) : null
         }
       />
@@ -529,11 +540,36 @@ export default function CasaPage() {
 
       {/* ══ BLOCO E — COMPRAS ══ */}
       {tab === 'compras' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {members.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {[{ id: 'all', label: 'Todos' }, ...members.map(m => ({ id: m.id, label: m.nickname ?? m.name }))].map(opt => (
+                <button key={opt.id}
+                  onClick={() => setFilterMember(opt.id)}
+                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                    filterMember === opt.id
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'border-gray-200 text-gray-600 hover:border-teal-400'
+                  }`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <QuickAddList
+            onAdd={shopping.bulkInsert}
+            placeholder="Cole sua lista ou digite um item e aperte Enter..."
+          />
+
           {shopping.isLoading ? (
             <div className="p-8 text-center text-gray-400">Carregando...</div>
-          ) : shopping.items.length === 0 ? (
-            <EmptyState emoji="🛒" title="Lista Vazia" description="Adicione os produtos que estão a acabar em casa." />
+          ) : filteredShopping.length === 0 ? (
+            <EmptyState
+              emoji="🛒"
+              title="Lista vazia"
+              description="Adicione itens no campo acima — cole uma lista inteira ou digite um por vez."
+            />
           ) : (
             <>
               {runningOut.length > 0 && (
@@ -542,16 +578,22 @@ export default function CasaPage() {
                   <div className="space-y-2">
                     {runningOut.map(i => (
                       <div key={i.id} className="flex items-center justify-between bg-white p-3 rounded shadow-sm">
-                        <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
                           <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
                           <div>
                             <p className="font-medium">{i.name}</p>
-                            {i.quantity && <p className="text-xs text-gray-500">{i.quantity}</p>}
+                            {(i.quantity || i.requested_by) && (
+                              <p className="text-xs text-gray-500">
+                                {i.quantity && <span>{i.quantity}</span>}
+                                {i.quantity && i.requested_by && <span> · </span>}
+                                {i.requested_by && <span>{getMemberName(i.requested_by)}</span>}
+                              </p>
+                            )}
                           </div>
-                        </div>
+                        </label>
                         <div className="flex items-center gap-2">
                           <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
-                          <button onClick={() => shopping.remove(i.id)} className="text-red-400 text-sm hover:text-red-600">×</button>
+                          <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
                         </div>
                       </div>
                     ))}
@@ -560,20 +602,26 @@ export default function CasaPage() {
               )}
               {needed.length > 0 && (
                 <div>
-                  <h3 className="text-gray-700 font-medium mb-3">A Comprar</h3>
+                  <h3 className="text-gray-700 font-medium mb-3">A Comprar ({needed.length})</h3>
                   <div className="space-y-2">
                     {needed.map(i => (
-                      <div key={i.id} className="flex items-center justify-between bg-white border p-3 rounded">
-                        <div className="flex items-center gap-3">
+                      <div key={i.id} className="flex items-center justify-between bg-white border p-3 rounded hover:border-teal-300 transition-colors">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
                           <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
                           <div>
                             <p className="font-medium text-gray-800">{i.name}</p>
-                            {i.quantity && <p className="text-xs text-gray-500">{i.quantity}</p>}
+                            {(i.quantity || i.requested_by) && (
+                              <p className="text-xs text-gray-500">
+                                {i.quantity && <span>{i.quantity}</span>}
+                                {i.quantity && i.requested_by && <span> · </span>}
+                                {i.requested_by && <span>{getMemberName(i.requested_by)}</span>}
+                              </p>
+                            )}
                           </div>
-                        </div>
+                        </label>
                         <div className="flex items-center gap-2">
                           <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
-                          <button onClick={() => shopping.remove(i.id)} className="text-red-400 text-sm hover:text-red-600">×</button>
+                          <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
                         </div>
                       </div>
                     ))}
@@ -583,7 +631,7 @@ export default function CasaPage() {
               {boughtRecurring.length > 0 && (
                 <div className="opacity-70">
                   <h3 className="text-gray-500 font-medium mb-3 text-sm">🔄 Recorrentes em Stock (Comprados)</h3>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {boughtRecurring.map(i => (
                       <div key={i.id} className="flex items-center justify-between bg-gray-50 border p-2 rounded text-sm">
                         <span className="text-gray-500 line-through">{i.name}</span>
@@ -591,6 +639,39 @@ export default function CasaPage() {
                           onClick={() => handleToggleBuy(i)}
                           className="text-teal-600 font-medium text-xs bg-teal-50 px-2 py-1 rounded hover:bg-teal-100"
                         >Pôr na Lista</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {boughtNonRec.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-gray-500 font-medium text-sm">✅ Comprados ({boughtNonRec.length})</h3>
+                    <button
+                      onClick={() => { if (confirm('Remover todos os itens comprados?')) shopping.clearBought() }}
+                      className="text-xs text-red-500 hover:underline"
+                    >🗑 Limpar comprados</button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {boughtNonRec.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded text-sm">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked
+                            className="w-4 h-4 accent-teal-600"
+                            onChange={() => handleToggleBuy(i)}
+                          />
+                          <span className="text-gray-400 line-through">{i.name}</span>
+                          {i.requested_by && (
+                            <span className="text-[10px] text-gray-400">· {getMemberName(i.requested_by)}</span>
+                          )}
+                        </label>
+                        <button
+                          onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }}
+                          className="text-red-300 text-sm hover:text-red-500"
+                        >×</button>
                       </div>
                     ))}
                   </div>
