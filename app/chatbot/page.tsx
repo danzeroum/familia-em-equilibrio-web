@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useChatbot } from '@/hooks/useChatbot'
 import { TYPE_CONFIG, ParsedItem, ParsedItemType } from '@/types/chatbot'
-import PageHeader from '@/components/ui/PageHeader'
+import { PageHeader } from '@/components/ui/PageHeader'
 import {
   Send,
   Trash2,
