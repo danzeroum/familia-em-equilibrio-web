@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { SocialEventTask } from '@/types/database'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
 export function useSocialEventTasks() {
   const familyId = useFamilyStore((s) => s.currentFamily?.id)
   const [items, setItems] = useState<SocialEventTask[]>([])
@@ -22,7 +25,7 @@ export function useSocialEventTasks() {
     const fid = familyIdRef.current
     if (!fid) return
     setIsLoading(true)
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('social_event_tasks')
       .select('*')
       .eq('family_id', fid)
@@ -39,22 +42,22 @@ export function useSocialEventTasks() {
     const payload = { ...item }
     if (payload.id) {
       const { id: _id, created_at: _cat, ...updateData } = payload
-      const { error } = await supabase.from('social_event_tasks').update(updateData as any).eq('id', payload.id)
+      const { error } = await db.from('social_event_tasks').update(updateData).eq('id', payload.id)
       if (error) console.error('[useSocialEventTasks] update error:', error.message)
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      const { error } = await supabase.from('social_event_tasks').insert({
+      const { error } = await db.from('social_event_tasks').insert({
         ...payload,
         family_id: fid,
         created_by: payload.created_by ?? user?.id ?? null,
-      } as any)
+      })
       if (error) console.error('[useSocialEventTasks] insert error:', error.message)
     }
     await load()
   }
 
   async function remove(id: string) {
-    const { error } = await supabase.from('social_event_tasks').delete().eq('id', id)
+    const { error } = await db.from('social_event_tasks').delete().eq('id', id)
     if (error) console.error('[useSocialEventTasks] remove error:', error.message)
     await load()
   }
