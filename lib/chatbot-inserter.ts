@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase'
+// lib/chatbot-inserter.ts
+import { supabase } from '@/lib/supabase'  // ← usa o import direto, sem createClient()
 import { ParsedItem } from '@/types/chatbot'
 
 function recurrenceToDays(r?: string | null, interval?: number | null): number {
@@ -21,51 +22,63 @@ export async function insertParsedItems(
     try {
       switch (item.type) {
 
+        // ── SHOPPING ────────────────────────────────────────────────────
         case 'shopping': {
           const { error } = await supabase.from('shopping_items').insert({
             family_id: familyId,
             name: item.title,
-            quantity: item.quantity ?? null,
-            category: item.category ?? null,
+            quantity: item.quantity ?? '1',
+            category: item.category ?? 'Geral',
             status: 'needed',
             is_bought: false,
             is_recurring: false,
             requested_by: createdBy,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
 
+        // ── TASK ─────────────────────────────────────────────────────────
         case 'task': {
-          const recurrenceNote = item.recurrence
-            ? `[Recorr\u00eancia: ${item.recurrence}${item.recurrence_interval ? ` a cada ${item.recurrence_interval}` : ''}]`
-            : null
-          const notes = [recurrenceNote, item.notes].filter(Boolean).join(' ') || null
+          let recurrence_id: string | null = null
+
+          if (item.recurrence) {
+            const { data: rr, error: rrErr } = await supabase
+              .from('recurrence_rules')
+              .insert({
+                frequency: item.recurrence,          // 'daily'|'weekly'|'monthly'|'yearly'
+                interval: item.recurrence_interval ?? 1,
+                next_occurrence: new Date().toISOString().split('T')[0],
+              })
+              .select('id')
+              .single()
+            if (rrErr) throw rrErr
+            recurrence_id = rr?.id ?? null
+          }
 
           const { error } = await supabase.from('tasks').insert({
             title: item.title,
             status: 'pending',
             created_by: createdBy,
-            notes,
+            recurrence_id,
+            notes: item.notes ?? null,
             priority: 2,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
 
+        // ── HOME MAINTENANCE (rotinas periódicas) ────────────────────────
         case 'home_maintenance': {
-          const freqMap: Record<string, string> = {
-            daily: 'dia(s)',
-            weekly: 'semana(s)',
-            monthly: 'm\u00eas(es)',
-            yearly: 'ano(s)',
-          }
           const { error } = await supabase.from('home_maintenance').insert({
             family_id: familyId,
             title: item.title,
-            emoji: '\ud83d\udd27',
+            emoji: '🔧',
             frequency_label: item.recurrence
-              ? `A cada ${item.recurrence_interval ?? 1} ${freqMap[item.recurrence] ?? item.recurrence}`
+              ? `A cada ${item.recurrence_interval ?? 1} ${{
+                  daily: 'dia(s)', weekly: 'semana(s)',
+                  monthly: 'mês(es)', yearly: 'ano(s)',
+                }[item.recurrence] ?? 'período(s)'}`
               : 'Pontual',
             frequency_days: recurrenceToDays(item.recurrence, item.recurrence_interval),
             category: item.location?.toLowerCase() ?? 'geral',
@@ -73,25 +86,27 @@ export async function insertParsedItems(
             notes: item.notes ?? null,
             created_by: createdBy,
             responsible_id: createdBy,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
 
+        // ── MAINTENANCE CALL (reparos pontuais) ──────────────────────────
+        // ⚠️ maintenance_calls NÃO tem family_id — RLS via created_by
         case 'maintenance_call': {
           const { error } = await supabase.from('maintenance_calls').insert({
-            family_id: familyId,
             title: item.title,
             description: item.location ? `Local: ${item.location}` : null,
-            status: 'pending',
+            status: 'open',            // ← default do banco é 'open', não 'pending'
             priority: 2,
             created_by: createdBy,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
 
-        case 'calendar_event': {
+        // ── FAMILY EVENT ─────────────────────────────────────────────────
+        case 'family_event': {
           const { error } = await supabase.from('family_events').insert({
             family_id: familyId,
             title: item.title,
@@ -99,14 +114,15 @@ export async function insertParsedItems(
             event_time: item.time ?? null,
             event_type: 'general',
             created_by: createdBy,
-            notes: item.notes ?? null,
+            description: item.notes ?? null,  // ← era 'notes', coluna correta é 'description'
             needs_action: false,
             is_done: false,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
 
+        // ── MEDICATION ───────────────────────────────────────────────────
         case 'medication': {
           const { error } = await supabase.from('medications').insert({
             profile_id: createdBy,
@@ -120,18 +136,19 @@ export async function insertParsedItems(
             weight_based: false,
             dosage_interval_hours: 6,
             max_doses_per_day: 4,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
 
+        // ── VACCINE ──────────────────────────────────────────────────────
         case 'vaccine': {
           const { error } = await supabase.from('vaccines').insert({
             profile_id: createdBy,
             name: item.title,
             notes: item.notes ?? null,
-          } as any)
-          if (error) throw new Error(error.message)
+          })
+          if (error) throw error
           break
         }
       }
