@@ -86,7 +86,6 @@ export async function insertParsedItems(
             title: item.title,
             description: null,
             due_date: null,
-            due_time: null,
             status: 'pending',
             assigned_to: null,
             created_by: createdBy,
