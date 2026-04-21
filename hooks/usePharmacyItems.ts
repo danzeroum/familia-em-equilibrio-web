@@ -80,7 +80,7 @@ export function usePharmacyItems() {
 
   async function cycleStatus(id: string, current: string) {
     const next = STATUS_NEXT[current] ?? 'pending'
-    const { error } = await supabase.from('shopping_items').update({ status: next }).eq('id', id)
+    const { error } = await supabase.from('shopping_items').update({ status: next } as any).eq('id', id)
     if (error) console.error('[usePharmacyItems] cycleStatus:', error)
     await load()
   }
