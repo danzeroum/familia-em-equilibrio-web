@@ -12,6 +12,8 @@ import { MedicationSheet } from '@/components/sheets/MedicationSheet'
 import { VaccineSheet } from '@/components/sheets/VaccineSheet'
 import { HealthTrackingSheet } from '@/components/sheets/HealthTrackingSheet'
 import { EmotionalPracticeSheet } from '@/components/sheets/EmotionalPracticeSheet'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import { formatDate } from '@/lib/utils'
 import type { Medication, Vaccine } from '@/types/database'
 import type { HealthTrackingItem } from '@/hooks/useHealthTracking'
@@ -71,6 +73,8 @@ export default function SaudePage() {
   // Emotional practice sheet
   const [emotionalOpen, setEmotionalOpen] = useState(false)
   const [selectedPractice, setSelectedPractice] = useState<EmotionalPractice | null>(null)
+
+  const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
   // ── Calculadora: lista editável em memória ──
   const [pedMeds, setPedMeds] = useState<PedMed[]>(DEFAULT_MEDS)
@@ -207,6 +211,10 @@ export default function SaudePage() {
                           <span className={`text-xs px-2 py-0.5 rounded-full ${m.statusColor}`}>{m.statusLabel}</span>
                         </td>
                         <td className="px-4 py-2 flex gap-2">
+                          <button
+                            title="Criar agendamento"
+                            onClick={() => schedule(`💊 Comprar: ${m.name}`)}
+                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                           <button className="text-xs text-gray-400 hover:text-gray-600"
                             onClick={() => { setSelectedMed(m); setMedOpen(true) }}>Editar</button>
                           <button className="text-xs text-red-400 hover:text-red-600"
@@ -258,6 +266,10 @@ export default function SaudePage() {
                           </span>
                         </td>
                         <td className="px-4 py-2 flex gap-2">
+                          <button
+                            title="Criar agendamento"
+                            onClick={() => schedule(`💉 Vacina: ${v.name}`, v.next_due)}
+                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                           <button className="text-xs text-gray-400 hover:text-gray-600"
                             onClick={() => { setSelectedVac(v); setVacOpen(true) }}>Editar</button>
                           <button className="text-xs text-red-400 hover:text-red-600"
@@ -326,6 +338,10 @@ export default function SaudePage() {
                             <button
                               className="text-xs text-gray-400 hover:text-gray-600"
                               onClick={() => { setSelectedHealth(i); setHealthOpen(true) }}>Editar</button>
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🏥 ${i.title}`, i.next_due_at)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => health.markDone(i.id)}>✓ Feito</button>
@@ -527,6 +543,18 @@ export default function SaudePage() {
       <VaccineSheet open={vacOpen} onClose={() => setVacOpen(false)} vaccine={selectedVac} onSave={upsertVac} members={members} />
       <HealthTrackingSheet open={healthOpen} onClose={() => setHealthOpen(false)} item={selectedHealth} onSave={health.upsert} members={members} />
       <EmotionalPracticeSheet open={emotionalOpen} onClose={() => setEmotionalOpen(false)} practice={selectedPractice} onSave={handleSavePractice} />
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => setSchedOpen(false)}
+        item={null}
+        defaultKind="task"
+        prefill={schedPrefill}
+        onSaveTask={upsertTask}
+        onSaveEvent={upsertEvent}
+        familyId={schedFamilyId}
+        members={schedMembers}
+      />
     </div>
   )
 }

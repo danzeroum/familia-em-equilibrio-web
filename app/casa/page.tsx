@@ -16,6 +16,8 @@ import { MaintenanceCallSheet } from '@/components/sheets/MaintenanceCallSheet'
 import { ShoppingSheet } from '@/components/sheets/ShoppingSheet'
 import { MedicationSheet } from '@/components/sheets/MedicationSheet'
 import { QuickAddList } from '@/components/food/QuickAddList'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import type { WardrobeItem, HomeMaintenance, ShoppingItem, Medication } from '@/types/database'
 
 // ─── helpers ───────────────────────────────────────────────────────────────────
@@ -93,6 +95,8 @@ export default function CasaPage() {
 
   const [medOpen, setMedOpen]             = useState(false)
   const [selectedMed, setSelectedMed]     = useState<Medication | null>(null)
+
+  const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
   const filteredWardrobe = filterMember === 'all'
     ? wardrobe.items
@@ -389,6 +393,10 @@ export default function CasaPage() {
                                 className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100 transition-colors"
                                 onClick={() => maintenance.markDone(i.id)}
                               >✓ Feito</button>
+                              <button
+                                title="Criar agendamento"
+                                onClick={() => schedule(`🔧 ${i.title}`, i.next_due_at)}
+                                className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                               <button className="text-xs text-gray-400 hover:text-teal-600"
                                 onClick={() => { setSelectedMaint(i); setMaintOpen(true) }}>✏️</button>
                               <button className="text-xs text-red-400 hover:text-red-600"
@@ -447,6 +455,10 @@ export default function CasaPage() {
                             <button
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => calls.markDone(c.id)}>✓ Resolvido</button>
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🔨 ${c.title}`, c.scheduled_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedCall(c); setCallOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -490,6 +502,10 @@ export default function CasaPage() {
                             <button
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => calls.markDone(c.id)}>✓ Resolvido</button>
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🔨 ${c.title}`, c.scheduled_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedCall(c); setCallOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -592,6 +608,10 @@ export default function CasaPage() {
                           </div>
                         </label>
                         <div className="flex items-center gap-2">
+                          <button
+                            title="Criar agendamento"
+                            onClick={() => schedule(`🛒 Comprar: ${i.name}`)}
+                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                           <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
                           <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
                         </div>
@@ -620,6 +640,10 @@ export default function CasaPage() {
                           </div>
                         </label>
                         <div className="flex items-center gap-2">
+                          <button
+                            title="Criar agendamento"
+                            onClick={() => schedule(`🛒 Comprar: ${i.name}`)}
+                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                           <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
                           <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
                         </div>
@@ -716,6 +740,18 @@ export default function CasaPage() {
         medication={selectedMed}
         onSave={upsertMed}
         members={members}
+      />
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => setSchedOpen(false)}
+        item={null}
+        defaultKind="task"
+        prefill={schedPrefill}
+        onSaveTask={upsertTask}
+        onSaveEvent={upsertEvent}
+        familyId={schedFamilyId}
+        members={schedMembers}
       />
     </div>
   )

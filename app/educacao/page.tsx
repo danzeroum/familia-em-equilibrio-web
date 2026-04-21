@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { SchoolCommunicationSheet } from '@/components/sheets/SchoolCommunicationSheet'
 import { SchoolHomeworkSheet } from '@/components/sheets/SchoolHomeworkSheet'
 import { SchoolSupplySheet } from '@/components/sheets/SchoolSupplySheet'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import type { SchoolCommunication, SchoolHomework, SchoolSupply } from '@/types/database'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -82,6 +84,8 @@ export default function EducacaoPage() {
   const [supplyOpen, setSupplyOpen]   = useState(false)
   const [selectedSupply, setSelectedSupply] = useState<SchoolSupply | null>(null)
   const [supplyDefaultCategory, setSupplyDefaultCategory] = useState<SchoolSupply['category']>('material')
+
+  const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
   const getMemberName = (id: string | null) => {
     if (!id) return 'Família'
@@ -250,6 +254,10 @@ export default function EducacaoPage() {
                               <button className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100 transition-colors"
                                 onClick={() => communications.markDone(i.id)}>✓ Feito</button>
                             )}
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`📩 Comunicado: ${i.title}`, i.due_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-teal-600 hover:underline"
                               onClick={() => { setSelectedComm(i); setCommOpen(true) }}>Editar</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -312,6 +320,10 @@ export default function EducacaoPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2 justify-end">
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`📚 Comprar: ${i.name}`)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-teal-600 hover:underline"
                               onClick={() => { setSelectedSupply(i); setSupplyDefaultCategory(i.category); setSupplyOpen(true) }}>Editar</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -381,6 +393,10 @@ export default function EducacaoPage() {
                               <button className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100 transition-colors"
                                 onClick={() => homework.markDone(i.id)}>✓ Feito</button>
                             )}
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`📝 ${i.subject}: ${i.title}`, i.due_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-teal-600 hover:underline"
                               onClick={() => { setSelectedHw(i); setHwOpen(true) }}>Editar</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -425,6 +441,10 @@ export default function EducacaoPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <button
+                            title="Criar agendamento"
+                            onClick={() => schedule(`📚 Comprar: ${i.name}`)}
+                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                           <button onClick={() => { setSelectedSupply(i); setSupplyDefaultCategory(i.category); setSupplyOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
                           <button onClick={() => supplies.remove(i.id)} className="text-red-400 text-sm hover:text-red-600">×</button>
                         </div>
@@ -450,6 +470,10 @@ export default function EducacaoPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <button
+                            title="Criar agendamento"
+                            onClick={() => schedule(`📚 Comprar: ${i.name}`)}
+                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                           <button onClick={() => { setSelectedSupply(i); setSupplyDefaultCategory(i.category); setSupplyOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
                           <button onClick={() => supplies.remove(i.id)} className="text-red-400 text-sm hover:text-red-600">×</button>
                         </div>
@@ -501,6 +525,18 @@ export default function EducacaoPage() {
         defaultCategory={supplyDefaultCategory}
         onSave={supplies.upsert}
         members={members}
+      />
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => setSchedOpen(false)}
+        item={null}
+        defaultKind="task"
+        prefill={schedPrefill}
+        onSaveTask={upsertTask}
+        onSaveEvent={upsertEvent}
+        familyId={schedFamilyId}
+        members={schedMembers}
       />
     </div>
   )

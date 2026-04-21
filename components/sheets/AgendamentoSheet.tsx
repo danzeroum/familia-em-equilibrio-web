@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void
   item: AgendamentoItem | null
   defaultKind?: AgendamentoKind
-  prefill?: { date?: string; time?: string | null }
+  prefill?: { title?: string; date?: string; time?: string | null }
   onSaveTask: (t: any) => Promise<void>
   onSaveEvent: (e: any) => Promise<void>
   familyId: string
@@ -100,7 +100,7 @@ export function AgendamentoSheet({
     } else {
       // Novo
       setKind(defaultKind)
-      setTitle('')
+      setTitle(prefill?.title ?? '')
       setDescription('')
       setDate(prefill?.date ?? '')
       setTime(prefill?.time ? String(prefill.time).slice(0, 5) : '')

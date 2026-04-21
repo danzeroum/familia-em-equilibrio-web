@@ -15,6 +15,8 @@ import { SocialEventShoppingSheet } from '@/components/sheets/SocialEventShoppin
 import { SocialEventContactSheet } from '@/components/sheets/SocialEventContactSheet'
 import { SocialEventExpenseSheet } from '@/components/sheets/SocialEventExpenseSheet'
 import { daysUntil, formatDate } from '@/lib/utils'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import type {
   SocialEvent,
   SocialEventTask,
@@ -95,6 +97,8 @@ export default function SocialPage() {
   const shopping  = useSocialEventShopping()
   const contacts  = useSocialEventContacts()
   const expenses  = useSocialEventExpenses()
+
+  const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
   const [tab, setTab] = useState<Tab>('eventos')
   const [filterEvent, setFilterEvent] = useState<string>('all')
@@ -351,6 +355,12 @@ export default function SocialPage() {
                       onClick={() => { setFilterEvent(ev.id); setTab('checklist') }}>
                       Ver checklist
                     </button>
+                    <button
+                      title="Criar agendamento"
+                      onClick={() => schedule(`Evento: ${ev.name}`, ev.event_date, ev.event_time)}
+                      className="text-xs text-blue-400 hover:text-blue-600">
+                      📅
+                    </button>
                     <button className="text-xs text-red-400 hover:underline ml-auto"
                       onClick={() => {
                         if (confirm(`Remover "${ev.name}"? Todos os dados do evento serão excluídos.`))
@@ -405,6 +415,12 @@ export default function SocialPage() {
                       <button className="text-xs text-teal-600 hover:underline"
                         onClick={() => { setSelectedTask(task); setTaskOpen(true) }}>
                         Editar
+                      </button>
+                      <button
+                        title="Criar agendamento"
+                        onClick={() => schedule(`Tarefa: ${task.title}`, task.due_date)}
+                        className="text-xs text-blue-400 hover:text-blue-600">
+                        📅
                       </button>
                       <button className="text-xs text-red-400 hover:underline"
                         onClick={() => tasks.remove(task.id)}>
@@ -696,6 +712,18 @@ export default function SocialPage() {
         eventId={activeEvent}
         vendors={vendorsForFilter}
         onSave={async (i) => { await expenses.upsert(i); setExpenseOpen(false) }}
+      />
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => setSchedOpen(false)}
+        item={null}
+        defaultKind="task"
+        prefill={schedPrefill}
+        onSaveTask={upsertTask}
+        onSaveEvent={upsertEvent}
+        familyId={schedFamilyId}
+        members={schedMembers}
       />
     </div>
   )

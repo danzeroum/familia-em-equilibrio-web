@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { BillSheet } from '@/components/sheets/BillSheet'
 import { SavingsGoalSheet } from '@/components/sheets/SavingsGoalSheet'
 import { BudgetGoalSheet } from '@/components/sheets/BudgetGoalSheet'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import type { Bill, SavingsGoal, BudgetGoal } from '@/types/database'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -26,6 +28,17 @@ const CATEGORY_LABEL: Record<string, string> = {
 const METHOD_LABEL: Record<string, string> = {
   credit_card: '💳 Crédito', debit_card: '💳 Débito', pix: '📱 Pix',
   bank_slip: '🏦 Boleto', auto_debit: '🔄 Débito auto', cash: '💵 Dinheiro',
+}
+
+function computeBillDueDate(b: Bill): string | null {
+  if (b.due_date) return b.due_date
+  if (b.due_day) {
+    const today = new Date()
+    const d = new Date(today.getFullYear(), today.getMonth(), b.due_day)
+    if (d < today) d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  }
+  return null
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = { BRL: 'R$', GBP: '£', USD: '$', EUR: '€' }
@@ -315,13 +328,14 @@ function BudgetGoalCard({
 }
 
 function SavingsGoalCard({
-  goal, monthlySavings, onDeposit, onEdit, onDelete,
+  goal, monthlySavings, onDeposit, onEdit, onDelete, onSchedule,
 }: {
   goal: SavingsGoal
   monthlySavings: number
   onDeposit: (id: string, amount: number) => void
   onEdit: (g: SavingsGoal) => void
   onDelete: (id: string) => void
+  onSchedule?: () => void
 }) {
   const [depositOpen, setDepositOpen] = useState(false)
   const [depositValue, setDepositValue] = useState('')
@@ -349,6 +363,12 @@ function SavingsGoalCard({
           </div>
         </div>
         <div className="flex gap-1">
+          {onSchedule && (
+            <button
+              title="Criar agendamento"
+              onClick={onSchedule}
+              className="text-xs text-blue-400 hover:text-blue-600 px-1">📅</button>
+          )}
           <button onClick={() => onEdit(goal)} className="text-xs text-gray-400 hover:text-gray-600 px-1">✏️</button>
           <button onClick={() => onDelete(goal.id)} className="text-xs text-gray-400 hover:text-red-500 px-1">×</button>
         </div>
@@ -455,6 +475,8 @@ export default function FinanceiroPage() {
   const [selectedGoal, setSelectedGoal] = useState<SavingsGoal | null>(null)
   const [budgetOpen, setBudgetOpen] = useState(false)
   const [selectedBudget, setSelectedBudget] = useState<BudgetGoal | null>(null)
+
+  const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
   const [budgetInput, setBudgetInput] = useState('')
   const [activeTab, setActiveTab] = useState<'contas' | 'orcamento' | 'objetivos' | 'historico'>('contas')
 
@@ -607,6 +629,10 @@ export default function FinanceiroPage() {
                       <option value="overdue">🔴 Atrasado</option>
                     </select>
                     <div className="flex gap-1 shrink-0">
+                      <button
+                        title="Criar agendamento"
+                        onClick={() => schedule(`💰 Pagar: ${b.title}`, computeBillDueDate(b))}
+                        className="text-xs text-blue-400 hover:text-blue-600 p-1">📅</button>
                       <button className="text-xs text-gray-400 hover:text-gray-600 p-1"
                         onClick={() => { setSelectedBill(b); setBillOpen(true) }}>✏️</button>
                       <button className="text-xs text-gray-400 hover:text-red-500 p-1"
@@ -734,6 +760,7 @@ export default function FinanceiroPage() {
                   onDeposit={addDeposit}
                   onEdit={g => { setSelectedGoal(g); setGoalOpen(true) }}
                   onDelete={removeGoal}
+                  onSchedule={() => schedule(`🎯 Depositar: ${goal.title}`, goal.deadline)}
                 />
               ))}
             </div>
@@ -746,6 +773,18 @@ export default function FinanceiroPage() {
       <BillSheet open={billOpen} onClose={() => setBillOpen(false)} bill={selectedBill} onSave={upsertBill} />
       <SavingsGoalSheet open={goalOpen} onClose={() => setGoalOpen(false)} goal={selectedGoal} onSave={upsertGoal} />
       <BudgetGoalSheet open={budgetOpen} onClose={() => setBudgetOpen(false)} goal={selectedBudget} bills={bills} onSave={upsertBudget} />
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => setSchedOpen(false)}
+        item={null}
+        defaultKind="task"
+        prefill={schedPrefill}
+        onSaveTask={upsertTask}
+        onSaveEvent={upsertEvent}
+        familyId={schedFamilyId}
+        members={schedMembers}
+      />
     </div>
   )
 }
