@@ -38,7 +38,7 @@ export async function insertParsedItems(
 
         case 'task': {
           const recurrenceNote = item.recurrence
-            ? `[Recorrência: ${item.recurrence}${item.recurrence_interval ? ` a cada ${item.recurrence_interval}` : ''}]`
+            ? `[Recorr\u00eancia: ${item.recurrence}${item.recurrence_interval ? ` a cada ${item.recurrence_interval}` : ''}]`
             : null
           const notes = [recurrenceNote, item.notes].filter(Boolean).join(' ') || null
 
@@ -57,13 +57,13 @@ export async function insertParsedItems(
           const freqMap: Record<string, string> = {
             daily: 'dia(s)',
             weekly: 'semana(s)',
-            monthly: 'mês(es)',
+            monthly: 'm\u00eas(es)',
             yearly: 'ano(s)',
           }
           const { error } = await supabase.from('home_maintenance').insert({
             family_id: familyId,
             title: item.title,
-            emoji: '🔧',
+            emoji: '\ud83d\udd27',
             frequency_label: item.recurrence
               ? `A cada ${item.recurrence_interval ?? 1} ${freqMap[item.recurrence] ?? item.recurrence}`
               : 'Pontual',
@@ -91,7 +91,7 @@ export async function insertParsedItems(
           break
         }
 
-        case 'family_event': {
+        case 'calendar_event': {
           const { error } = await supabase.from('family_events').insert({
             family_id: familyId,
             title: item.title,
