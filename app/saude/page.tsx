@@ -436,7 +436,7 @@ export default function SaudePage() {
         </div>
       )}
 
-      {/* ══ ABA: SAÚDE EMOCIONAL ══ */}
+            {/* ══ ABA: SAÚDE EMOCIONAL ══ */}
       {tab === 'emocional' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -453,12 +453,12 @@ export default function SaudePage() {
                 {emotional.practices.map(p => (
                   <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{p.name}</div>
-                      <div className="text-xs text-gray-500">{getMemberName(p.profile_id)}</div>
+                      <div className="font-medium text-sm truncate">{p.emoji} {p.title}</div>
+                      <div className="text-xs text-gray-500">{p.forWhom} · {p.frequency}</div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
-                        onClick={() => emotional.toggleWeekStatus(p.id, p.status)}
+                        onClick={() => emotional.toggleStatus(p.id)}
                         className={`text-xs px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
                           p.status === 'done' ? 'bg-green-100 text-green-700'
                           : p.status === 'skipped' ? 'bg-gray-100 text-gray-500'
@@ -479,6 +479,7 @@ export default function SaudePage() {
         </div>
       )}
 
+      
       {/* ══ ABA: FARMÁCIA ══ */}
       {tab === 'farmacia' && (
         <div className="space-y-4">
