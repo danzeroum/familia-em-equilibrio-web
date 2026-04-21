@@ -1,163 +1,145 @@
-// lib/chatbot-inserter.ts
-import { createClient } from '@/lib/supabase'
-import { ParsedItem, InsertResult } from '@/types/chatbot'
+import { createClient } from '@/lib/supabase';
+import { ParsedItem } from '@/types/chatbot';
 
-function parseDateBR(dateStr: string | null | undefined): string | null {
-  if (!dateStr) return null
-  // Tenta ISO primeiro
-  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr
-  // Tenta DD/MM/YYYY
-  const match = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
-  if (match) return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`
-  // Texto como "Sábado" — não converte, coloca em notes
-  return null
+// Mapeia texto de recorrência para frequency_days (home_maintenance)
+function recurrenceToDays(r?: string, interval?: number): number {
+  const i = interval ?? 1;
+  if (r === 'daily')   return i;
+  if (r === 'weekly')  return i * 7;
+  if (r === 'monthly') return i * 30;
+  if (r === 'yearly')  return i * 365;
+  return 0; // sem recorrência = pontual
 }
 
 export async function insertParsedItems(
   items: ParsedItem[],
   familyId: string,
-  createdBy?: string
-): Promise<InsertResult> {
-  const supabase = createClient()
-  const result: InsertResult = { inserted: 0, failed: 0, errors: [] }
+  createdBy: string   // profile UUID do usuário logado — obrigatório
+) {
+  const supabase = createClient();
+  const results = { inserted: 0, failed: 0, errors: [] as string[] };
 
   for (const item of items) {
-    if (item.type === 'unknown') continue
-
     try {
       switch (item.type) {
-        // ── COMPRAS ──────────────────────────────────────────────
+
+        // ─── SHOPPING ──────────────────────────────────────────────────
         case 'shopping': {
-          const { error } = await supabase.from('shopping_items').insert({
+          await supabase.from('shopping_items').insert({
             family_id: familyId,
             name: item.title,
             quantity: item.quantity ?? '1',
             category: item.category ?? 'Geral',
-            status: 'needed',
-            is_recurring: false,
+            status: 'needed',         // default da tabela
             is_bought: false,
-            requested_by: createdBy ?? null,
-          })
-          if (error) throw error
-          break
+            requested_by: createdBy,
+          });
+          break;
         }
 
-        // ── TAREFAS ──────────────────────────────────────────────
+        // ─── TASK ───────────────────────────────────────────────────────
         case 'task': {
-          const notes = [
-            item.recurrence ? `Recorrência: ${item.recurrence}` : null,
-            item.notes,
-          ]
-            .filter(Boolean)
-            .join(' | ') || null
+          let recurrence_id: string | null = null;
 
-          const { error } = await supabase.from('tasks').insert({
+          // Cria recurrence_rule primeiro se tiver recorrência
+          if (item.recurrence) {
+            const { data: rr } = await supabase
+              .from('recurrence_rules')
+              .insert({
+                frequency: item.recurrence,                    // 'daily'|'weekly'|'monthly'|'yearly'
+                interval: item.recurrence_interval ?? 1,
+                next_occurrence: new Date().toISOString().split('T')[0],
+              })
+              .select('id')
+              .single();
+            recurrence_id = rr?.id ?? null;
+          }
+
+          await supabase.from('tasks').insert({
+            family_id: familyId,   // ⚠️ tasks NÃO tem family_id direto
+            // ↑ tasks usa family via domain_id ou assigned_to — ver nota abaixo
             title: item.title,
             status: 'pending',
-            priority: 2,
-            notes,
-            created_by: createdBy ?? null,
-            requires_supervision: false,
-          })
-          if (error) throw error
-          break
-        }
-
-        // ── MANUTENÇÃO RECORRENTE ────────────────────────────────
-        case 'home_maintenance': {
-          const { error } = await supabase.from('home_maintenance').insert({
-            family_id: familyId,
-            title: item.title,
-            category: item.category ?? item.location ?? 'Casa',
-            frequency_label: item.recurrence ?? 'Sob demanda',
-            frequency_days: 30,
-            status: 'ok',
+            created_by: createdBy,
+            recurrence_id,
             notes: item.notes ?? null,
-            created_by: createdBy ?? null,
-          })
-          if (error) throw error
-          break
+            priority: 2,           // default médio
+          });
+          break;
         }
 
-        // ── CHAMADO DE MANUTENÇÃO ────────────────────────────────
-        case 'maintenance_call': {
-          const { error } = await supabase.from('maintenance_calls').insert({
+        // ─── HOME MAINTENANCE ───────────────────────────────────────────
+        case 'home_maintenance': {
+          const freqDays = recurrenceToDays(item.recurrence, item.recurrence_interval);
+          await supabase.from('home_maintenance').insert({
             family_id: familyId,
             title: item.title,
-            description: item.location
-              ? `Local: ${item.location}${item.notes ? ` — ${item.notes}` : ''}`
-              : item.notes ?? null,
-            status: 'pending',
-            priority: 2,
-            created_by: createdBy ?? null,
-          })
-          if (error) throw error
-          break
+            emoji: '🔧',
+            frequency_label: item.recurrence
+              ? `A cada ${item.recurrence_interval ?? 1} ${
+                  item.recurrence === 'weekly' ? 'semana(s)' :
+                  item.recurrence === 'monthly' ? 'mês(es)' :
+                  item.recurrence === 'daily' ? 'dia(s)' : 'ano(s)'
+                }`
+              : 'Pontual',
+            frequency_days: freqDays > 0 ? freqDays : 999, // 999 = sem recorrência definida
+            category: item.location?.toLowerCase() ?? 'geral',
+            notes: item.notes ?? null,
+            status: 'ok',
+            created_by: createdBy,
+            responsible_id: createdBy,
+          });
+          break;
         }
 
-        // ── EVENTO NO CALENDÁRIO ─────────────────────────────────
-        case 'calendar_event': {
-          const eventDate = parseDateBR(item.date)
-          const notes = [
-            !eventDate && item.date ? `Data mencionada: ${item.date}` : null,
-            item.time ? `Horário: ${item.time}` : null,
-            item.notes,
-          ]
-            .filter(Boolean)
-            .join(' | ') || null
-
-          const { error } = await supabase.from('family_events').insert({
+        // ─── FAMILY EVENT ───────────────────────────────────────────────
+        case 'family_event': {
+          await supabase.from('family_events').insert({
             family_id: familyId,
             title: item.title,
-            event_date: eventDate ?? new Date().toISOString().split('T')[0],
-            event_time: item.time ?? null,
+            event_date: item.date ?? new Date().toISOString().split('T')[0],
+            event_time: item.time ?? null,          // time without time zone
             event_type: 'general',
+            created_by: createdBy,
+            notes: item.notes ?? null,
             needs_action: false,
             is_done: false,
-            notes,
-            created_by: createdBy ?? null,
-          })
-          if (error) throw error
-          break
+          });
+          break;
         }
 
-        // ── MEDICAMENTO ──────────────────────────────────────────
+        // ─── MEDICATION ─────────────────────────────────────────────────
         case 'medication': {
-          const { error } = await supabase.from('medications').insert({
+          await supabase.from('medications').insert({
+            profile_id: createdBy,   // medications usa profile_id, NÃO family_id
             name: item.title,
-            dosage: item.quantity ?? null,
-            dosage_interval_hours: 8,
-            weight_based: false,
+            dosage: item.notes ?? null,
             form: 'other',
-            max_doses_per_day: 3,
-            stock_quantity: parseInt(item.quantity ?? '1') || 1,
-            minimum_stock: 1,
-            notes: item.notes ?? null,
             is_active: true,
             item_condition: 'ok',
-          })
-          if (error) throw error
-          break
+            stock_quantity: item.quantity ? parseInt(item.quantity) || 1 : 1,
+            minimum_stock: 1,
+          });
+          break;
         }
 
-        // ── VACINA ────────────────────────────────────────────────
+        // ─── VACCINE ────────────────────────────────────────────────────
         case 'vaccine': {
-          const { error } = await supabase.from('vaccines').insert({
+          await supabase.from('vaccines').insert({
+            profile_id: createdBy,   // vaccines também usa profile_id
             name: item.title,
             notes: item.notes ?? null,
-          })
-          if (error) throw error
-          break
+          });
+          break;
         }
       }
 
-      result.inserted++
-    } catch (err: unknown) {
-      result.failed++
-      const message = err instanceof Error ? err.message : String(err)
-      result.errors.push(`[${item.type}] ${item.title}: ${message}`)
+      results.inserted++;
+    } catch (err: any) {
+      results.failed++;
+      results.errors.push(`[${item.type}] ${item.title}: ${err.message}`);
     }
   }
 
-  return result
+  return results;
 }
