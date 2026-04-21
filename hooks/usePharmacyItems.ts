@@ -36,13 +36,15 @@ export const PRIORITY_CONFIG: Record<string, { label: string; cls: string }> = {
 }
 
 export function usePharmacyItems() {
-  const { familyId } = useFamilyStore()
+  const { family } = useFamilyStore()
+  const familyId = family?.id
   const [items, setItems] = useState<PharmacyItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => { if (familyId) load() }, [familyId])
 
   async function load() {
+    if (!familyId) return
     setIsLoading(true)
     const { data, error } = await supabase
       .from('shopping_items')
@@ -56,6 +58,7 @@ export function usePharmacyItems() {
   }
 
   async function upsert(item: Partial<PharmacyItem> & { name: string }) {
+    if (!familyId) return
     const payload = {
       ...item,
       family_id: familyId,
@@ -83,6 +86,7 @@ export function usePharmacyItems() {
   }
 
   async function clearBought() {
+    if (!familyId) return
     const { error } = await supabase
       .from('shopping_items')
       .delete()
