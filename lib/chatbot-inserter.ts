@@ -3,15 +3,25 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 import { ParsedItem } from '@/types/chatbot'
 
-// Tipos de Insert derivados do database.ts — fonte da verdade
-type ShoppingInsert      = Database['public']['Tables']['shopping_items']['Insert']
-type TaskInsert          = Database['public']['Tables']['tasks']['Insert']
-type RecurrenceInsert    = Database['public']['Tables']['recurrence_rules']['Insert']
+type ShoppingInsert        = Database['public']['Tables']['shopping_items']['Insert']
+type TaskInsert            = Database['public']['Tables']['tasks']['Insert']
 type HomeMaintenanceInsert = Database['public']['Tables']['home_maintenance']['Insert']
 type MaintenanceCallInsert = Database['public']['Tables']['maintenance_calls']['Insert']
-type FamilyEventInsert   = Database['public']['Tables']['family_events']['Insert']
-type MedicationInsert    = Database['public']['Tables']['medications']['Insert']
-type VaccineInsert       = Database['public']['Tables']['vaccines']['Insert']
+type FamilyEventInsert     = Database['public']['Tables']['family_events']['Insert']
+type MedicationInsert      = Database['public']['Tables']['medications']['Insert']
+type VaccineInsert         = Database['public']['Tables']['vaccines']['Insert']
+
+// recurrence_rules não está no database.ts — tipo inline baseado no schema real
+interface RecurrenceInsert {
+  frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+  interval?: number | null
+  day_of_week?: number | null
+  day_of_month?: number | null
+  ends_at?: string | null
+  anticipation_days?: number | null
+  next_occurrence?: string | null
+  last_generated_at?: string | null
+}
 
 function recurrenceToDays(r?: string | null, interval?: number | null): number {
   const i = interval ?? 1
@@ -33,7 +43,6 @@ export async function insertParsedItems(
     try {
       switch (item.type) {
 
-        // ── SHOPPING ────────────────────────────────────────────────────
         case 'shopping': {
           const payload: ShoppingInsert = {
             name: item.title,
@@ -54,7 +63,6 @@ export async function insertParsedItems(
           break
         }
 
-        // ── TASK ─────────────────────────────────────────────────────────
         case 'task': {
           let recurrence_id: string | null = null
 
@@ -64,7 +72,8 @@ export async function insertParsedItems(
               interval: item.recurrence_interval ?? 1,
               next_occurrence: new Date().toISOString().split('T')[0],
             }
-            const { data: rr, error: rrErr } = await supabase
+            // recurrence_rules não está tipado no cliente — usa cast seguro
+            const { data: rr, error: rrErr } = await (supabase as any)
               .from('recurrence_rules')
               .insert(rrPayload)
               .select('id')
@@ -97,7 +106,6 @@ export async function insertParsedItems(
           break
         }
 
-        // ── HOME MAINTENANCE (rotinas periódicas) ────────────────────────
         case 'home_maintenance': {
           const freqMap: Record<string, string> = {
             daily: 'dia(s)', weekly: 'semana(s)',
@@ -124,7 +132,6 @@ export async function insertParsedItems(
           break
         }
 
-        // ── MAINTENANCE CALL (reparos pontuais) ──────────────────────────
         case 'maintenance_call': {
           const payload: MaintenanceCallInsert = {
             family_id: familyId,
@@ -145,7 +152,6 @@ export async function insertParsedItems(
           break
         }
 
-        // ── FAMILY EVENT ─────────────────────────────────────────────────
         case 'family_event': {
           const payload: FamilyEventInsert = {
             family_id: familyId,
@@ -170,7 +176,6 @@ export async function insertParsedItems(
           break
         }
 
-        // ── MEDICATION ───────────────────────────────────────────────────
         case 'medication': {
           const payload: MedicationInsert = {
             profile_id: createdBy,
@@ -196,7 +201,6 @@ export async function insertParsedItems(
           break
         }
 
-        // ── VACCINE ──────────────────────────────────────────────────────
         case 'vaccine': {
           const payload: VaccineInsert = {
             profile_id: createdBy,
