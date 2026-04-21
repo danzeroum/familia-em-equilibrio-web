@@ -835,3 +835,89 @@ export interface ChecklistItem {
   text: string
   done: boolean
 }
+
+// ─── Social Events ────────────────────────────────────────────────────────────
+export interface SocialEvent {
+  id: string
+  family_id: string
+  name: string
+  event_type: string
+  description: string | null
+  event_date: string | null
+  event_time: string | null
+  status: string
+  honoree_id: string | null
+  location_name: string | null
+  address: string | null
+  location_url: string | null
+  budget_planned: number | null
+  cover_emoji: string
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface SocialEventTask {
+  id: string
+  event_id: string
+  family_id: string
+  title: string
+  due_date: string | null
+  due_time: string | null
+  assigned_to: string | null
+  priority: number
+  status: string
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface SocialEventShopping {
+  id: string
+  event_id: string
+  family_id: string
+  name: string
+  category: string | null
+  quantity: number | null
+  unit: string | null
+  estimated_price: number | null
+  actual_price: number | null
+  store: string | null
+  is_bought: boolean
+  assigned_to: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface SocialEventContact {
+  id: string
+  event_id: string
+  family_id: string
+  name: string
+  role: string
+  phone: string | null
+  email: string | null
+  rsvp_status: string
+  party_size: number
+  vendor_type: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface SocialEventExpense {
+  id: string
+  event_id: string
+  family_id: string
+  description: string
+  category: string | null
+  planned_amount: number | null
+  actual_amount: number | null
+  vendor_id: string | null
+  payment_status: string
+  due_date: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}

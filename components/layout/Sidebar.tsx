@@ -15,6 +15,7 @@ import {
   Heart,
   Wallet,
   Tag,
+  PartyPopper,
   ChevronRight,
 } from 'lucide-react'
 
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/',             label: 'Painel',      icon: LayoutDashboard,  emoji: '🎯' },
   { href: '/familia',      label: 'Família',     icon: Users,            emoji: '👨‍👩‍👧‍👦' },
   { href: '/tarefas',      label: 'Tarefas',     icon: CheckSquare,      emoji: '✅' },
+  { href: '/social',       label: 'Social',      icon: PartyPopper,      emoji: '🎉' },
   { href: '/casa',         label: 'Casa',        icon: Home,             emoji: '🏠' },
   { href: '/educacao',     label: 'Educação',    icon: BookOpen,         emoji: '📚' },
   { href: '/alimentacao',  label: 'Alimentação', icon: UtensilsCrossed,  emoji: '🍽️' },
