@@ -16,21 +16,23 @@ import {
   Wallet,
   Tag,
   PartyPopper,
+  Sparkles,
   ChevronRight,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/',             label: 'Painel',      icon: LayoutDashboard,  emoji: '🎯' },
-  { href: '/familia',      label: 'Família',     icon: Users,            emoji: '👨‍👩‍👧‍👦' },
-  { href: '/tarefas',      label: 'Tarefas',     icon: CheckSquare,      emoji: '✅' },
-  { href: '/social',       label: 'Social',      icon: PartyPopper,      emoji: '🎉' },
-  { href: '/casa',         label: 'Casa',        icon: Home,             emoji: '🏠' },
-  { href: '/educacao',     label: 'Educação',    icon: BookOpen,         emoji: '📚' },
-  { href: '/alimentacao',  label: 'Alimentação', icon: UtensilsCrossed,  emoji: '🍽️' },
-  { href: '/veiculos',     label: 'Veículos',    icon: Car,              emoji: '🚗' },
-  { href: '/saude',        label: 'Saúde',       icon: Heart,            emoji: '🩺' },
-  { href: '/financeiro',   label: 'Financeiro',  icon: Wallet,           emoji: '💰' },
-  { href: '/categorias',   label: 'Categorias',  icon: Tag,              emoji: '🏷️' },
+  { href: '/',            label: 'Painel',      icon: LayoutDashboard, emoji: '🎯' },
+  { href: '/familia',     label: 'Família',     icon: Users,           emoji: '👨‍👩‍👧‍👦' },
+  { href: '/tarefas',     label: 'Tarefas',     icon: CheckSquare,     emoji: '✅' },
+  { href: '/social',      label: 'Social',      icon: PartyPopper,     emoji: '🎉' },
+  { href: '/casa',        label: 'Casa',        icon: Home,            emoji: '🏠' },
+  { href: '/educacao',    label: 'Educação',    icon: BookOpen,        emoji: '📚' },
+  { href: '/alimentacao', label: 'Alimentação', icon: UtensilsCrossed, emoji: '🍽️' },
+  { href: '/veiculos',    label: 'Veículos',    icon: Car,             emoji: '🚗' },
+  { href: '/saude',       label: 'Saúde',       icon: Heart,           emoji: '🩺' },
+  { href: '/financeiro',  label: 'Financeiro',  icon: Wallet,          emoji: '💰' },
+  { href: '/categorias',  label: 'Categorias',  icon: Tag,             emoji: '🏷️' },
+  { href: '/chatbot',     label: 'Assistente',  icon: Sparkles,        emoji: '✨' },
 ]
 
 interface SidebarProps {
@@ -106,7 +108,13 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps = {}
                   {m.nickname ?? m.name.split(' ')[0]}
                 </span>
                 <span className="text-xs text-muted-foreground ml-auto capitalize">
-                  {m.role === 'adult' ? 'adulto' : m.role === 'child' ? 'criança' : m.role === 'teen' ? 'teen' : ''}
+                  {m.role === 'adult'
+                    ? 'adulto'
+                    : m.role === 'child'
+                    ? 'criança'
+                    : m.role === 'teen'
+                    ? 'teen'
+                    : ''}
                 </span>
               </div>
             ))}
