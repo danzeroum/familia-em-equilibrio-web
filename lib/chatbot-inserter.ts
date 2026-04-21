@@ -72,7 +72,6 @@ export async function insertParsedItems(
               interval: item.recurrence_interval ?? 1,
               next_occurrence: new Date().toISOString().split('T')[0],
             }
-            // recurrence_rules não está tipado no cliente — usa cast seguro
             const { data: rr, error: rrErr } = await (supabase as any)
               .from('recurrence_rules')
               .insert(rrPayload)
@@ -151,7 +150,7 @@ export async function insertParsedItems(
           break
         }
 
-        case 'family_event': {
+        case 'calendar_event': {
           const payload: FamilyEventInsert = {
             family_id: familyId,
             title: item.title,
