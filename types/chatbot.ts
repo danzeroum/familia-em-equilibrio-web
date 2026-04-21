@@ -15,7 +15,8 @@ export interface ParsedItem {
   title: string
   quantity?: string | null
   category?: string | null
-  recurrence?: string | null
+  recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly'; // tasks
+  recurrence_interval?: number; // ex: a cada 1 semana = interval:1
   location?: string | null
   date?: string | null
   time?: string | null
