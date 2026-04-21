@@ -53,7 +53,7 @@ export function usePharmacyItems() {
       .eq('category', 'Farmácia')
       .order('created_at', { ascending: false })
     if (error) console.error('[usePharmacyItems]', error)
-    setItems((data ?? []) as PharmacyItem[])
+    setItems((data ?? []) as unknown as PharmacyItem[])
     setIsLoading(false)
   }
 
