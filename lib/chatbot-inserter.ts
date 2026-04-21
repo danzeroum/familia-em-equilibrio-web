@@ -7,22 +7,20 @@ function recurrenceToDays(r?: string | null, interval?: number | null): number {
   if (r === 'weekly')  return i * 7;
   if (r === 'monthly') return i * 30;
   if (r === 'yearly')  return i * 365;
-  return 365; // fallback seguro para home_maintenance NOT NULL
+  return 365;
 }
 
 export async function insertParsedItems(
   items: ParsedItem[],
   familyId: string,
-  createdBy: string  // UUID do profile logado — obrigatório para RLS
+  createdBy: string
 ) {
-  const supabase = createClient();
   const results = { inserted: 0, failed: 0, errors: [] as string[] };
 
   for (const item of items) {
     try {
       switch (item.type) {
 
-        // ── SHOPPING ────────────────────────────────────────────────────
         case 'shopping': {
           await supabase.from('shopping_items').insert({
             family_id: familyId,
@@ -37,8 +35,6 @@ export async function insertParsedItems(
           break;
         }
 
-        // ── TASK ─────────────────────────────────────────────────────────
-        // tasks NÃO tem family_id — RLS é resolvido via created_by → profiles.family_id
         case 'task': {
           let recurrence_id: string | null = null;
 
@@ -58,7 +54,7 @@ export async function insertParsedItems(
           await supabase.from('tasks').insert({
             title: item.title,
             status: 'pending',
-            created_by: createdBy,     // ← vínculo com família via profile
+            created_by: createdBy,
             recurrence_id,
             notes: item.notes ?? null,
             priority: 2,
@@ -66,8 +62,6 @@ export async function insertParsedItems(
           break;
         }
 
-        // ── HOME MAINTENANCE (rotinas periódicas) ────────────────────────
-        // Ex: "Lavar louça todo dia", "Trocar roupa de cama 1x/semana"
         case 'home_maintenance': {
           await supabase.from('home_maintenance').insert({
             family_id: familyId,
@@ -75,8 +69,8 @@ export async function insertParsedItems(
             emoji: '🔧',
             frequency_label: item.recurrence
               ? `A cada ${item.recurrence_interval ?? 1} ${
-                  { daily:'dia(s)', weekly:'semana(s)',
-                    monthly:'mês(es)', yearly:'ano(s)' }[item.recurrence]
+                  ({ daily:'dia(s)', weekly:'semana(s)',
+                    monthly:'mês(es)', yearly:'ano(s)' } as Record<string,string>)[item.recurrence] ?? item.recurrence
                 }`
               : 'Pontual',
             frequency_days: recurrenceToDays(item.recurrence, item.recurrence_interval),
@@ -89,8 +83,6 @@ export async function insertParsedItems(
           break;
         }
 
-        // ── MAINTENANCE CALL (reparos pontuais) ──────────────────────────
-        // Ex: "Fixar tampas das privadas", "Arrumar tomadas", "Instalar ralo"
         case 'maintenance_call': {
           await supabase.from('maintenance_calls').insert({
             family_id: familyId,
@@ -103,7 +95,6 @@ export async function insertParsedItems(
           break;
         }
 
-        // ── FAMILY EVENT ─────────────────────────────────────────────────
         case 'family_event': {
           await supabase.from('family_events').insert({
             family_id: familyId,
@@ -119,8 +110,6 @@ export async function insertParsedItems(
           break;
         }
 
-        // ── MEDICATION ───────────────────────────────────────────────────
-        // medications usa profile_id (NÃO family_id)
         case 'medication': {
           await supabase.from('medications').insert({
             profile_id: createdBy,
@@ -138,8 +127,6 @@ export async function insertParsedItems(
           break;
         }
 
-        // ── VACCINE ──────────────────────────────────────────────────────
-        // vaccines usa profile_id (NÃO family_id)
         case 'vaccine': {
           await supabase.from('vaccines').insert({
             profile_id: createdBy,
