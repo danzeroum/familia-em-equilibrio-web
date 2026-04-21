@@ -13,18 +13,39 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Parse usando modelo da VPS
-  const parseResult = await parseUserInput(text, modelId as LLMModelId | undefined)
-
-  if (!autoInsert) {
-    return NextResponse.json({ preview: parseResult.items })
+  // Valida configuração do LLM antes de tentar
+  const llmBase = process.env.LLM_API_BASE
+  if (!llmBase) {
+    console.error('[chatbot] LLM_API_BASE não definido nas variáveis de ambiente')
+    return NextResponse.json(
+      { error: 'Configuração do LLM ausente. Defina LLM_API_BASE no .env' },
+      { status: 500 }
+    )
   }
 
-  const insertResult = await insertParsedItems(
-    parseResult.items,
-    familyId,
-    createdBy
-  )
+  try {
+    const parseResult = await parseUserInput(text, modelId as LLMModelId | undefined)
 
-  return NextResponse.json({ ...parseResult, insertResult })
+    if (!autoInsert) {
+      return NextResponse.json({ preview: parseResult.items })
+    }
+
+    const insertResult = await insertParsedItems(
+      parseResult.items,
+      familyId,
+      createdBy
+    )
+
+    return NextResponse.json({ ...parseResult, insertResult })
+  } catch (err: any) {
+    // Log completo no servidor + mensagem útil para o cliente
+    console.error('[chatbot] Erro na pipeline:', err?.message ?? err)
+    return NextResponse.json(
+      {
+        error: err?.message ?? 'Erro interno',
+        detail: err?.cause ?? null,
+      },
+      { status: 500 }
+    )
+  }
 }
