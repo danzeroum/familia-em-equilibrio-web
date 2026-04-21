@@ -608,7 +608,6 @@ export default function SaudePage() {
         onClose={() => setEmotionalOpen(false)}
         practice={selectedPractice}
         onSave={handleSavePractice}
-        members={members}
       />
       <PharmacyItemSheet
         open={pharmacyOpen}
