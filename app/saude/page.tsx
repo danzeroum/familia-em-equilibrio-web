@@ -6,20 +6,23 @@ import { useMedications } from '@/hooks/useMedications'
 import { useVaccines } from '@/hooks/useVaccines'
 import { useHealthTracking } from '@/hooks/useHealthTracking'
 import { useEmotionalPractices } from '@/hooks/useEmotionalPractices'
+import { usePharmacyItems, STATUS_CONFIG, PRIORITY_CONFIG } from '@/hooks/usePharmacyItems'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { MedicationSheet } from '@/components/sheets/MedicationSheet'
 import { VaccineSheet } from '@/components/sheets/VaccineSheet'
 import { HealthTrackingSheet } from '@/components/sheets/HealthTrackingSheet'
 import { EmotionalPracticeSheet } from '@/components/sheets/EmotionalPracticeSheet'
+import { PharmacyItemSheet } from '@/components/sheets/PharmacyItemSheet'
 import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
 import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import { formatDate } from '@/lib/utils'
 import type { Medication, Vaccine } from '@/types/database'
 import type { HealthTrackingItem } from '@/hooks/useHealthTracking'
 import type { EmotionalPractice } from '@/hooks/useEmotionalPractices'
+import type { PharmacyItem } from '@/hooks/usePharmacyItems'
 
-type Tab = 'medicamentos' | 'acompanhamento' | 'calculadora' | 'emocional'
+type Tab = 'medicamentos' | 'acompanhamento' | 'calculadora' | 'emocional' | 'farmacia'
 
 type PedMed = { id: number; name: string; dosePerKg: number; concMgMl: number }
 
@@ -35,18 +38,6 @@ function calcMl(weightKg: number, dosePerKg: number, concMgMl: number): string {
   return `${ml.toFixed(1)} ml`
 }
 
-function alertBadge(level: 'ok' | 'due_soon' | 'overdue', days: number | null) {
-  if (level === 'overdue')  return { label: '🔴 Atrasado',  cls: 'bg-red-100 text-red-700'    }
-  if (level === 'due_soon') return { label: days !== null ? `🟡 ${days}d` : '🟡 Pendente', cls: 'bg-yellow-100 text-yellow-700' }
-  return { label: days !== null ? `🟢 ${days}d` : '🟢 OK', cls: 'bg-green-100 text-green-700' }
-}
-
-const STATUS_CYCLE: Record<string, { label: string; cls: string }> = {
-  pending: { label: '⏳ Pendente', cls: 'bg-yellow-100 text-yellow-700' },
-  done:    { label: '✅ Feito',    cls: 'bg-green-100 text-green-700'   },
-  skipped: { label: '⏭️ Pulado',   cls: 'bg-gray-100 text-gray-500'     },
-}
-
 const EMPTY_NEW_MED = { name: '', dosePerKg: '', concMgMl: '' }
 
 export default function SaudePage() {
@@ -55,6 +46,7 @@ export default function SaudePage() {
   const { vaccines, upsert: upsertVac, remove: removeVac } = useVaccines()
   const health = useHealthTracking()
   const emotional = useEmotionalPractices()
+  const pharmacy = usePharmacyItems()
 
   const [tab, setTab] = useState<Tab>('medicamentos')
 
@@ -73,6 +65,10 @@ export default function SaudePage() {
   // Emotional practice sheet
   const [emotionalOpen, setEmotionalOpen] = useState(false)
   const [selectedPractice, setSelectedPractice] = useState<EmotionalPractice | null>(null)
+
+  // Pharmacy sheet
+  const [pharmacyOpen, setPharmacyOpen] = useState(false)
+  const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyItem | null>(null)
 
   const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
@@ -108,10 +104,11 @@ export default function SaudePage() {
   }
 
   const TABS = [
-    { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',   alerts: alerts.length },
-    { id: 'acompanhamento' as Tab, label: '🩺 Acompanhamento', alerts: healthAlerts  },
-    { id: 'calculadora'    as Tab, label: '⚕️ Calculadora',     alerts: 0             },
-    { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional', alerts: 0             },
+    { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',   alerts: alerts.length         },
+    { id: 'acompanhamento' as Tab, label: '🩺 Acompanhamento', alerts: healthAlerts           },
+    { id: 'calculadora'    as Tab, label: '⚕️ Calculadora',     alerts: 0                     },
+    { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional', alerts: 0                     },
+    { id: 'farmacia'       as Tab, label: '🛒 Farmácia',        alerts: pharmacy.pending.length },
   ]
 
   function handleSavePractice(data: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>) {
@@ -141,6 +138,9 @@ export default function SaudePage() {
           ) : tab === 'calculadora' ? (
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setShowAddMed(true); setAddMedError('') }}>+ Adicionar</button>
+          ) : tab === 'farmacia' ? (
+            <button className="text-sm text-teal-600 font-medium hover:underline"
+              onClick={() => { setSelectedPharmacy(null); setPharmacyOpen(true) }}>+ Item</button>
           ) : null
         }
       />
@@ -285,270 +285,337 @@ export default function SaudePage() {
         </div>
       )}
 
-      {/* ══ ABA: ACOMPANHAMENTO DE SAÚDE ══ */}
+      {/* ══ ABA: ACOMPANHAMENTO ══ */}
       {tab === 'acompanhamento' && (
-        <div className="rounded-xl border bg-white overflow-hidden">
-          {health.isLoading ? (
-            <div className="p-8 text-center text-gray-400">Carregando...</div>
-          ) : health.items.length === 0 ? (
-            <EmptyState
-              emoji="🩺"
-              title="Nenhum acompanhamento"
-              description="Cadastre consultas, dentista e rotinas de saúde."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                  <tr>
-                    <th className="px-4 py-3 text-left">🏷️ Item</th>
-                    <th className="px-4 py-3 text-left">👤 Para</th>
-                    <th className="px-4 py-3 text-left">🔁 Frequência</th>
-                    <th className="px-4 py-3 text-left">👥 Responsável</th>
-                    <th className="px-4 py-3 text-left">📅 Última vez</th>
-                    <th className="px-4 py-3 text-left">📅 Próxima</th>
-                    <th className="px-4 py-3 text-left">⏳ Dias</th>
-                    <th className="px-4 py-3 text-left">🚦 Alerta</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {health.items.map(i => {
-                    const badge = alertBadge(i.alertLevel, i.daysRemaining)
-                    return (
-                      <tr key={i.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-800">{i.emoji} {i.title}</td>
-                        <td className="px-4 py-3 text-gray-500">{getMemberName(i.profile_id)}</td>
-                        <td className="px-4 py-3 text-gray-500">{i.frequency_label}</td>
-                        <td className="px-4 py-3 text-gray-500">{getMemberName(i.responsible_id)}</td>
-                        <td className="px-4 py-3 text-gray-500">{formatDate(i.last_done_at)}</td>
-                        <td className="px-4 py-3 text-gray-500">{formatDate(i.next_due_at)}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {i.daysRemaining !== null ? (
-                            <span className={i.daysRemaining < 0 ? 'text-red-600 font-semibold' : ''}>
-                              {i.daysRemaining < 0 ? `${Math.abs(i.daysRemaining)}d atrás` : `${i.daysRemaining}d`}
-                            </span>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              className="text-xs text-gray-400 hover:text-gray-600"
-                              onClick={() => { setSelectedHealth(i); setHealthOpen(true) }}>Editar</button>
-                            <button
-                              title="Criar agendamento"
-                              onClick={() => schedule(`🏥 ${i.title}`, i.next_due_at)}
-                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
-                            <button
-                              className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
-                              onClick={() => health.markDone(i.id)}>✓ Feito</button>
-                            <button className="text-xs text-red-400 hover:text-red-600"
-                              onClick={() => { if (confirm('Remover?')) health.remove(i.id) }}>×</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ══ ABA: CALCULADORA PEDIÁTRICA ══ */}
-      {tab === 'calculadora' && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Doses calculadas automaticamente com base no peso de cada membro cadastrado.
-            {members.every(m => !(m as any).weight_kg) && (
-              <span className="text-yellow-600 ml-1">⚠️ Nenhum membro com peso cadastrado — atualize os perfis em <strong>Família</strong>.</span>
-            )}
-          </p>
-
-          {/* Formulário inline para adicionar novo medicamento */}
-          {showAddMed && (
-            <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-3">
-              <h3 className="font-semibold text-teal-800 text-sm">➕ Novo medicamento</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Nome *</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Amoxicilina"
-                    value={newMed.name}
-                    onChange={e => setNewMed(p => ({ ...p, name: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Dose (mg/kg) *</label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 25"
-                    value={newMed.dosePerKg}
-                    onChange={e => setNewMed(p => ({ ...p, dosePerKg: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Concentração (mg/ml) *</label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 250"
-                    value={newMed.concMgMl}
-                    onChange={e => setNewMed(p => ({ ...p, concMgMl: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  />
-                </div>
-              </div>
-              {addMedError && <p className="text-xs text-red-600">{addMedError}</p>}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleAddMed}
-                  className="bg-teal-600 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-teal-700 transition-colors">
-                  Adicionar
-                </button>
-                <button
-                  onClick={() => { setShowAddMed(false); setNewMed(EMPTY_NEW_MED); setAddMedError('') }}
-                  className="text-sm text-gray-500 px-4 py-1.5 rounded-lg border hover:bg-gray-50 transition-colors">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="rounded-xl border bg-white overflow-hidden">
-            {pedMeds.length === 0 ? (
-              <EmptyState emoji="⚕️" title="Nenhum medicamento" description="Adicione um medicamento para calcular a dose." />
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <h2 className="font-semibold">🩺 Acompanhamentos de saúde</h2>
+              <button className="text-sm text-teal-600 font-medium hover:underline"
+                onClick={() => { setSelectedHealth(null); setHealthOpen(true) }}>+ Adicionar</button>
+            </div>
+            {health.items.length === 0 ? (
+              <EmptyState emoji="🩺" title="Nenhum acompanhamento" description="Registre consultas, exames e procedimentos." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                     <tr>
-                      <th className="px-4 py-3 text-left">💊 Medicamento</th>
-                      <th className="px-4 py-3 text-left">Dose (mg/kg)</th>
-                      <th className="px-4 py-3 text-left">Conc. (mg/ml)</th>
-                      {members.map(m => (
-                        <th key={m.id} className="px-4 py-3 text-left">
-                          {(m as any).emoji ?? '👤'} {(m as any).nickname ?? (m as any).name}
-                          {(m as any).weight_kg && (
-                            <span className="block text-gray-400 font-normal normal-case">{(m as any).weight_kg} kg</span>
-                          )}
-                        </th>
-                      ))}
-                      <th className="px-4 py-3 w-8"></th>
+                      <th className="px-4 py-2 text-left">Item</th>
+                      <th className="px-4 py-2 text-left">Membro</th>
+                      <th className="px-4 py-2 text-left">Última vez</th>
+                      <th className="px-4 py-2 text-left">Próximo</th>
+                      <th className="px-4 py-2 text-left">Status</th>
+                      <th className="px-4 py-2"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {pedMeds.map(med => (
-                      <tr key={med.id} className="hover:bg-gray-50 group">
-                        <td className="px-4 py-3 font-medium text-gray-800">{med.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{med.dosePerKg} mg/kg</td>
-                        <td className="px-4 py-3 text-gray-500">{med.concMgMl} mg/ml</td>
-                        {members.map(m => {
-                          const weight = (m as any).weight_kg ?? null
-                          const result = weight ? calcMl(weight, med.dosePerKg, med.concMgMl) : '—'
-                          return (
-                            <td key={m.id} className="px-4 py-3">
-                              {weight ? (
-                                <span className="font-semibold text-teal-700">{result}</span>
-                              ) : (
-                                <span className="text-gray-400 text-xs">sem peso</span>
-                              )}
-                            </td>
-                          )
-                        })}
-                        <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleRemoveMed(med.id)}
-                            className="text-xs text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Remover">×</button>
-                        </td>
-                      </tr>
-                    ))}
+                    {health.items.map(h => {
+                      const badge = h.alertLevel === 'overdue'
+                        ? { label: '🔴 Atrasado', cls: 'bg-red-100 text-red-700' }
+                        : h.alertLevel === 'due_soon'
+                        ? { label: `🟡 ${h.daysUntilNext}d`, cls: 'bg-yellow-100 text-yellow-700' }
+                        : { label: `🟢 ${h.daysUntilNext}d`, cls: 'bg-green-100 text-green-700' }
+                      return (
+                        <tr key={h.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 font-medium">{h.name}</td>
+                          <td className="px-4 py-2 text-gray-500">{getMemberName(h.profile_id)}</td>
+                          <td className="px-4 py-2">{h.last_done ? formatDate(h.last_done) : '—'}</td>
+                          <td className="px-4 py-2">{h.next_due ? formatDate(h.next_due) : '—'}</td>
+                          <td className="px-4 py-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+                          </td>
+                          <td className="px-4 py-2 flex gap-2">
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🩺 ${h.name}`, h.next_due)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
+                            <button className="text-xs text-gray-400 hover:text-gray-600"
+                              onClick={() => { setSelectedHealth(h); setHealthOpen(true) }}>Editar</button>
+                            <button className="text-xs text-red-400 hover:text-red-600"
+                              onClick={() => health.remove(h.id)}>×</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
-          <p className="text-xs text-gray-400">⚠️ Sempre confirme a dosagem com um profissional de saúde antes de administrar.</p>
+        </div>
+      )}
+
+      {/* ══ ABA: CALCULADORA ══ */}
+      {tab === 'calculadora' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b">
+              <h2 className="font-semibold">⚕️ Calculadora pediátrica de doses</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Informe o peso da criança para calcular a dose em ml</p>
+            </div>
+            <div className="p-4 space-y-4">
+              {members.filter(m => (m as any).is_child && (m as any).weight_kg).map(child => (
+                <div key={child.id} className="rounded-lg border p-3 space-y-2">
+                  <div className="font-medium text-sm">
+                    {(child as any).emoji} {(child as any).nickname ?? child.name}
+                    <span className="ml-2 text-gray-400 font-normal">{(child as any).weight_kg} kg</span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-500 text-xs">
+                      <tr>
+                        <th className="px-2 py-1 text-left">Medicamento</th>
+                        <th className="px-2 py-1 text-left">Dose/kg</th>
+                        <th className="px-2 py-1 text-left">Conc.</th>
+                        <th className="px-2 py-1 text-left font-bold text-teal-700">Volume</th>
+                        <th className="px-2 py-1"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {pedMeds.map(med => (
+                        <tr key={med.id}>
+                          <td className="px-2 py-1.5 font-medium">{med.name}</td>
+                          <td className="px-2 py-1.5 text-gray-500">{med.dosePerKg} mg/kg</td>
+                          <td className="px-2 py-1.5 text-gray-500">{med.concMgMl} mg/ml</td>
+                          <td className="px-2 py-1.5 font-bold text-teal-700">
+                            {calcMl((child as any).weight_kg, med.dosePerKg, med.concMgMl)}
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <button className="text-xs text-red-300 hover:text-red-500"
+                              onClick={() => handleRemoveMed(med.id)}>×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+
+              {members.filter(m => (m as any).is_child && (m as any).weight_kg).length === 0 && (
+                <EmptyState emoji="⚕️" title="Nenhuma criança com peso cadastrado"
+                  description="Adicione o peso dos membros infantis nas configurações da família." />
+              )}
+
+              {showAddMed && (
+                <div className="rounded-lg border border-dashed p-4 space-y-3">
+                  <h3 className="text-sm font-medium">Novo medicamento</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Nome</label>
+                      <input className="input-base text-sm" value={newMed.name}
+                        onChange={e => setNewMed(p => ({ ...p, name: e.target.value }))}
+                        placeholder="Ex: Amoxicilina" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Dose mg/kg</label>
+                      <input className="input-base text-sm" type="number" value={newMed.dosePerKg}
+                        onChange={e => setNewMed(p => ({ ...p, dosePerKg: e.target.value }))}
+                        placeholder="Ex: 25" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Conc. mg/ml</label>
+                      <input className="input-base text-sm" type="number" value={newMed.concMgMl}
+                        onChange={e => setNewMed(p => ({ ...p, concMgMl: e.target.value }))}
+                        placeholder="Ex: 250" />
+                    </div>
+                  </div>
+                  {addMedError && <p className="text-xs text-red-600">{addMedError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={handleAddMed}
+                      className="text-sm bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700">Salvar</button>
+                    <button onClick={() => { setShowAddMed(false); setAddMedError('') }}
+                      className="text-sm border px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Cancelar</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* ══ ABA: SAÚDE EMOCIONAL ══ */}
       {tab === 'emocional' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">Práticas de bem-estar emocional da família. Clique no status para alternar.</p>
-            <span className="text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 px-3 py-1 rounded-full">
-              ✅ {emotional.doneCount}/{emotional.total} esta semana
-            </span>
-          </div>
           <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                  <tr>
-                    <th className="px-4 py-3 text-left">🧘 Prática</th>
-                    <th className="px-4 py-3 text-left">📖 Como fazer</th>
-                    <th className="px-4 py-3 text-left">⏰ Quando usar</th>
-                    <th className="px-4 py-3 text-left">👨‍👩‍👧 Para quem</th>
-                    <th className="px-4 py-3 text-left">🔁 Frequência</th>
-                    <th className="px-4 py-3 text-left">📊 Status semana</th>
-                    <th className="px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {emotional.practices.map(p => {
-                    const st = STATUS_CYCLE[p.status]
-                    return (
-                      <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-gray-800">{p.emoji} {p.title}</td>
-                        <td className="px-4 py-3 text-gray-500 max-w-[200px]">{p.howTo}</td>
-                        <td className="px-4 py-3 text-gray-500">{p.whenToUse}</td>
-                        <td className="px-4 py-3 text-gray-500">{p.forWhom}</td>
-                        <td className="px-4 py-3 text-gray-500">{p.frequency}</td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => emotional.toggleStatus(p.id)}
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-colors ${st.cls}`}
-                          >{st.label}</button>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              className="text-xs text-gray-400 hover:text-gray-600"
-                              onClick={() => { setSelectedPractice(p); setEmotionalOpen(true) }}>Editar</button>
-                            <button
-                              className="text-xs text-red-400 hover:text-red-600"
-                              onClick={() => { if (confirm('Remover prática?')) emotional.removePractice(p.id) }}>×</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <h2 className="font-semibold">🧘 Práticas de saúde emocional</h2>
+              <button className="text-sm text-teal-600 font-medium hover:underline"
+                onClick={() => { setSelectedPractice(null); setEmotionalOpen(true) }}>+ Adicionar</button>
             </div>
+            {emotional.practices.length === 0 ? (
+              <EmptyState emoji="🧘" title="Nenhuma prática cadastrada"
+                description="Registre práticas de bem-estar como meditação, exercícios, terapia..." />
+            ) : (
+              <div className="divide-y">
+                {emotional.practices.map(p => (
+                  <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{p.name}</div>
+                      <div className="text-xs text-gray-500">{getMemberName(p.profile_id)}</div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => emotional.toggleWeekStatus(p.id, p.status)}
+                        className={`text-xs px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
+                          p.status === 'done' ? 'bg-green-100 text-green-700'
+                          : p.status === 'skipped' ? 'bg-gray-100 text-gray-500'
+                          : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                        {p.status === 'done' ? '✅ Feito' : p.status === 'skipped' ? '⏭️ Pulado' : '⏳ Pendente'}
+                      </button>
+                      <button className="text-xs text-gray-400 hover:text-gray-600"
+                        onClick={() => { setSelectedPractice(p); setEmotionalOpen(true) }}>Editar</button>
+                      <button className="text-xs text-red-400 hover:text-red-600"
+                        onClick={() => emotional.removePractice(p.id)}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-400">💡 O status é resetado a cada semana. Marque as práticas realizadas para acompanhar o progresso.</p>
         </div>
       )}
 
-      <MedicationSheet open={medOpen} onClose={() => setMedOpen(false)} medication={selectedMed} onSave={upsertMed} members={members} />
-      <VaccineSheet open={vacOpen} onClose={() => setVacOpen(false)} vaccine={selectedVac} onSave={upsertVac} members={members} />
-      <HealthTrackingSheet open={healthOpen} onClose={() => setHealthOpen(false)} item={selectedHealth} onSave={health.upsert} members={members} />
-      <EmotionalPracticeSheet open={emotionalOpen} onClose={() => setEmotionalOpen(false)} practice={selectedPractice} onSave={handleSavePractice} />
+      {/* ══ ABA: FARMÁCIA ══ */}
+      {tab === 'farmacia' && (
+        <div className="space-y-4">
 
+          {/* Resumo */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border bg-white p-3 text-center">
+              <div className="text-2xl font-bold text-yellow-600">{pharmacy.pending.length}</div>
+              <div className="text-xs text-gray-500 mt-0.5">Pendentes</div>
+            </div>
+            <div className="rounded-xl border bg-white p-3 text-center">
+              <div className="text-2xl font-bold text-green-600">{pharmacy.bought.length}</div>
+              <div className="text-xs text-gray-500 mt-0.5">Comprados</div>
+            </div>
+            <div className="rounded-xl border bg-white p-3 text-center">
+              <div className="text-2xl font-bold text-gray-400">{pharmacy.items.length}</div>
+              <div className="text-xs text-gray-500 mt-0.5">Total</div>
+            </div>
+          </div>
+
+          {/* Lista de itens */}
+          <div className="rounded-xl border bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <h2 className="font-semibold">🛒 Lista de farmácia</h2>
+              <div className="flex items-center gap-3">
+                {pharmacy.bought.length > 0 && (
+                  <button
+                    className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                    onClick={() => { if (confirm(`Limpar ${pharmacy.bought.length} item(s) comprado(s)?`)) pharmacy.clearBought() }}>
+                    🗑️ Limpar comprados
+                  </button>
+                )}
+                <button className="text-sm text-teal-600 font-medium hover:underline"
+                  onClick={() => { setSelectedPharmacy(null); setPharmacyOpen(true) }}>+ Adicionar</button>
+              </div>
+            </div>
+
+            {pharmacy.items.length === 0 ? (
+              <EmptyState emoji="🛒" title="Lista vazia" description="Adicione itens para comprar na farmácia." />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Item</th>
+                      <th className="px-4 py-2 text-left">Qtd</th>
+                      <th className="px-4 py-2 text-left">Prioridade</th>
+                      <th className="px-4 py-2 text-left">Responsável</th>
+                      <th className="px-4 py-2 text-left">Status</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {pharmacy.items.map(item => {
+                      const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending
+                      const priorityCfg = item.priority ? PRIORITY_CONFIG[item.priority] : null
+                      const isBought = item.status === 'bought'
+                      return (
+                        <tr key={item.id} className={`hover:bg-gray-50 ${isBought ? 'opacity-50' : ''}`}>
+                          <td className={`px-4 py-2 font-medium ${isBought ? 'line-through text-gray-400' : ''}`}>
+                            {item.name}
+                            {item.notes && (
+                              <div className="text-xs text-gray-400 font-normal truncate max-w-[180px]">{item.notes}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-gray-500">
+                            {item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}` : '—'}
+                          </td>
+                          <td className="px-4 py-2">
+                            {priorityCfg
+                              ? <span className={`text-xs font-medium ${priorityCfg.cls}`}>{priorityCfg.label}</span>
+                              : <span className="text-gray-300">—</span>
+                            }
+                          </td>
+                          <td className="px-4 py-2 text-gray-500">
+                            {getMemberName(item.assigned_to)}
+                          </td>
+                          <td className="px-4 py-2">
+                            <button
+                              onClick={() => pharmacy.cycleStatus(item.id, item.status)}
+                              className={`text-xs px-2 py-0.5 rounded-full cursor-pointer transition-colors ${statusCfg.cls}`}>
+                              {statusCfg.label}
+                            </button>
+                          </td>
+                          <td className="px-4 py-2 flex gap-2">
+                            <button className="text-xs text-gray-400 hover:text-gray-600"
+                              onClick={() => { setSelectedPharmacy(item); setPharmacyOpen(true) }}>Editar</button>
+                            <button className="text-xs text-red-400 hover:text-red-600"
+                              onClick={() => pharmacy.remove(item.id)}>×</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══ SHEETS ══ */}
+      <MedicationSheet
+        open={medOpen}
+        onClose={() => setMedOpen(false)}
+        medication={selectedMed}
+        onSave={upsertMed}
+        members={members}
+      />
+      <VaccineSheet
+        open={vacOpen}
+        onClose={() => setVacOpen(false)}
+        vaccine={selectedVac}
+        onSave={upsertVac}
+        members={members}
+      />
+      <HealthTrackingSheet
+        open={healthOpen}
+        onClose={() => setHealthOpen(false)}
+        item={selectedHealth}
+        onSave={health.upsert}
+        members={members}
+      />
+      <EmotionalPracticeSheet
+        open={emotionalOpen}
+        onClose={() => setEmotionalOpen(false)}
+        practice={selectedPractice}
+        onSave={handleSavePractice}
+        members={members}
+      />
+      <PharmacyItemSheet
+        open={pharmacyOpen}
+        onClose={() => setPharmacyOpen(false)}
+        item={selectedPharmacy}
+        onSave={pharmacy.upsert}
+        members={members}
+      />
       <AgendamentoSheet
         open={schedOpen}
         onClose={() => setSchedOpen(false)}
-        item={null}
-        defaultKind="task"
         prefill={schedPrefill}
         onSaveTask={upsertTask}
         onSaveEvent={upsertEvent}
