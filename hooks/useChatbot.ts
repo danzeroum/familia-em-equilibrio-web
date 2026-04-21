@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useFamilyStore } from '@/store/familyStore'
-import { createClient } e usar import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { ParsedItem } from '@/types/chatbot'
 import { LLMModelId } from '@/lib/llm-client'
 
