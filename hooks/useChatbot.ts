@@ -52,7 +52,16 @@ export function useChatbot() {
           modelId,
         }),
       })
+
       const data = await res.json()
+
+      // Expor erro real da API no chat (não mais mensagem genérica)
+      if (!res.ok) {
+        addMessage('assistant', `❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
+        setLoading(false)
+        return
+      }
+
       const items: ParsedItem[] = data.preview ?? []
       setPreview(items)
       setEditingItems(items)
@@ -61,8 +70,8 @@ export function useChatbot() {
         ? `Encontrei **${items.length} itens** para revisar antes de salvar.`
         : 'Não consegui identificar itens no texto. Tente reformular.'
       addMessage('assistant', summary)
-    } catch {
-      addMessage('assistant', 'Erro ao analisar o texto. Tente novamente.')
+    } catch (err: any) {
+      addMessage('assistant', `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`)
     }
 
     setLoading(false)
@@ -87,6 +96,13 @@ export function useChatbot() {
         }),
       })
       const data = await res.json()
+
+      if (!res.ok) {
+        addMessage('assistant', `❌ Erro ao salvar: ${data.error ?? 'Falha desconhecida'}`)
+        setLoading(false)
+        return
+      }
+
       const r = data.insertResult
       addMessage(
         'assistant',
@@ -95,8 +111,8 @@ export function useChatbot() {
       setPreview(null)
       setEditingItems([])
       return r
-    } catch {
-      addMessage('assistant', 'Erro ao salvar os itens. Tente novamente.')
+    } catch (err: any) {
+      addMessage('assistant', `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`)
     }
 
     setLoading(false)
