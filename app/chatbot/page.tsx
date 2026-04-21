@@ -63,11 +63,11 @@ export default function ChatbotPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto px-4">
-      <PageHeader
-        title="Assistente"
-        subtitle="Cole listas, mensagens do WhatsApp ou qualquer texto com itens misturados"
-        icon={<Sparkles className="w-5 h-5" />}
-      />
+    <PageHeader
+      emoji="✨"
+      title="Assistente"
+      description="Cole listas, mensagens do WhatsApp ou qualquer texto com itens misturados"
+    />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1">
