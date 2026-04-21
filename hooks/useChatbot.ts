@@ -4,6 +4,14 @@ import { supabase } from '@/lib/supabase'
 import { ParsedItem } from '@/types/chatbot'
 import { LLMModelId } from '@/lib/llm-client'
 
+// crypto.randomUUID só funciona em HTTPS — fallback para HTTP
+function genId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return Date.now().toString(36) + Math.random().toString(36).slice(2)
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
@@ -22,7 +30,7 @@ export function useChatbot() {
   const [modelId, setModelId]           = useState<LLMModelId>('qwen2.5:7b')
 
   function addMessage(role: 'user' | 'assistant', content: string) {
-    setMessages(prev => [...prev, { id: crypto.randomUUID(), role, content }])
+    setMessages(prev => [...prev, { id: genId(), role, content }])
   }
 
   async function analyzeText(text: string) {
