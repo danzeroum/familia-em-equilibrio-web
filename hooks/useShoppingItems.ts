@@ -36,6 +36,26 @@ export function useShoppingItems() {
     setIsLoading(false)
   }
 
+  async function bulkInsert(names: string[]) {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const clean = names.map(n => n.trim()).filter(Boolean)
+    if (clean.length === 0) return
+    const { data: { user } } = await supabase.auth.getUser()
+    const rows = clean.map(name => ({
+      name,
+      family_id: fid,
+      category: null,
+      status: 'needed' as const,
+      is_bought: false,
+      is_recurring: false,
+      requested_by: user?.id ?? null,
+    }))
+    const { error } = await supabase.from('shopping_items').insert(rows as any)
+    if (error) console.error('[useShoppingItems] bulkInsert error:', error.message)
+    await load()
+  }
+
   async function updateStatus(id: string, status: ShoppingItem['status'], buyerId?: string) {
     const payload = {
       status,
@@ -69,5 +89,31 @@ export function useShoppingItems() {
     await load()
   }
 
-  return { items, isLoading, updateStatus, upsert, remove, reload: load }
+  async function clearBought() {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const { error } = await supabase
+      .from('shopping_items')
+      .delete()
+      .eq('family_id', fid)
+      .or('category.is.null,category.neq.grocery')
+      .eq('status', 'bought')
+      .eq('is_recurring', false)
+    if (error) console.error('[useShoppingItems] clearBought error:', error.message)
+    await load()
+  }
+
+  async function clearAll() {
+    const fid = familyIdRef.current
+    if (!fid) return
+    const { error } = await supabase
+      .from('shopping_items')
+      .delete()
+      .eq('family_id', fid)
+      .or('category.is.null,category.neq.grocery')
+    if (error) console.error('[useShoppingItems] clearAll error:', error.message)
+    await load()
+  }
+
+  return { items, isLoading, bulkInsert, updateStatus, upsert, remove, clearBought, clearAll, reload: load }
 }
