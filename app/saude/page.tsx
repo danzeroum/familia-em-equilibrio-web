@@ -619,6 +619,7 @@ export default function SaudePage() {
       <AgendamentoSheet
         open={schedOpen}
         onClose={() => setSchedOpen(false)}
+        item={null}
         prefill={schedPrefill}
         onSaveTask={upsertTask}
         onSaveEvent={upsertEvent}
