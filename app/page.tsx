@@ -7,6 +7,10 @@ import { useMonthlyHistory } from '@/hooks/useMonthlyHistory'
 import { useSavingsGoals } from '@/hooks/useSavingsGoals'
 import { useTasks } from '@/hooks/useTasks'
 import { useFamilyEvents } from '@/hooks/useFamilyEvents'
+import { useBills } from '@/hooks/useBills'
+import { useHomeMaintenance } from '@/hooks/useHomeMaintenance'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { formatTaskDateTime } from '@/lib/formatDateTime'
@@ -60,11 +64,23 @@ function getDaysInMonth(year: number, month: number) {
   return new Date(year, month+1, 0).getDate()
 }
 
+function billDueDate(due_day: number | null): string | null {
+  if (!due_day) return null
+  const today = new Date()
+  const d = new Date(today.getFullYear(), today.getMonth(), due_day)
+  if (d < today) d.setMonth(d.getMonth() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 type TaskView = 'dia' | 'semana' | 'mes' | 'ano' | 'lista'
 
 // ─── ItemChip (tarefa ou evento) ─────────────────────────────────────────────
 
-function ItemChip({ item, memberName }: { item: AgendamentoItem; memberName: (id: string|null) => string|null }) {
+function ItemChip({ item, memberName, onClick }: {
+  item: AgendamentoItem
+  memberName: (id: string|null) => string|null
+  onClick?: (item: AgendamentoItem) => void
+}) {
   const today     = dayOnly(new Date())
   const isEvent   = item._kind === 'event'
   const dateStr   = agDate(item)
@@ -74,6 +90,7 @@ function ItemChip({ item, memberName }: { item: AgendamentoItem; memberName: (id
   const name      = memberName(item.assigned_to ?? null)
   return (
     <div
+      onClick={() => onClick?.(item)}
       title={item.title}
       className={`rounded px-1 py-0.5 text-[10px] leading-tight cursor-pointer hover:opacity-75 transition-opacity
         ${isOverdue
@@ -95,6 +112,14 @@ function ItemChip({ item, memberName }: { item: AgendamentoItem; memberName: (id
           {name && <span>{name}</span>}
         </div>
       )}
+    </div>
+  )
+}
+
+function MarkerChip({ label, cls }: { label: string; cls: string }) {
+  return (
+    <div className={`rounded px-1 py-0.5 text-[10px] leading-tight truncate ${cls}`}>
+      {label}
     </div>
   )
 }
@@ -139,10 +164,18 @@ export default function PainelPage() {
   const { goals }        = useSavingsGoals()
   const { tasks }        = useTasks()
   const { events }       = useFamilyEvents(currentFamily?.id ?? null)
+  const { bills }        = useBills()
+  const maintenance      = useHomeMaintenance()
+
+  const {
+    schedule, schedOpen, setSchedOpen, schedPrefill,
+    upsertTask, upsertEvent, schedFamilyId, schedMembers,
+  } = useQuickSchedule()
 
   // ── estado local ────────────────────────────────────────────────────────
-  const [taskView, setTaskView] = useState<TaskView>('semana')
-  const [offset,   setOffset]   = useState(0)
+  const [taskView,      setTaskView]      = useState<TaskView>('semana')
+  const [offset,        setOffset]        = useState(0)
+  const [selectedItem,  setSelectedItem]  = useState<AgendamentoItem | null>(null)
 
   const today      = useMemo(() => dayOnly(new Date()), [])
   const mergedItems: AgendamentoItem[] = useMemo(() => [
@@ -154,6 +187,31 @@ export default function PainelPage() {
   // ── dados derivados ─────────────────────────────────────────────────────
   const currentMonth = history[0] ?? null
   const mainGoal     = goals.find(g => !g.is_completed) ?? null
+
+  const calendarMarkers = useMemo(() => {
+    const markers: { date: string; label: string; cls: string }[] = []
+    for (const b of bills) {
+      if (b.status === 'paid' || b.status === 'auto_debit') continue
+      const d = b.due_date ?? billDueDate(b.due_day)
+      if (d) markers.push({ date: d, label: `💳 ${b.title}`, cls: 'bg-purple-50 text-purple-700' })
+    }
+    for (const m of maintenance.items) {
+      if (m.next_due_at) markers.push({ date: m.next_due_at.slice(0, 10), label: `🔧 ${m.title}`, cls: 'bg-orange-50 text-orange-700' })
+    }
+    return markers
+  }, [bills, maintenance.items])
+
+  const markersForDay = (day: Date) =>
+    calendarMarkers.filter(m => sameDay(dayOnly(parseLocalDate(m.date)), day))
+
+  const monthlyFallback = useMemo(() => {
+    if (currentMonth) return null
+    const total   = bills.reduce((s, b) => s + (b.amount ?? 0), 0)
+    const paid    = bills.filter(b => b.status === 'paid' || b.status === 'auto_debit').reduce((s, b) => s + (b.amount ?? 0), 0)
+    const pending = bills.filter(b => b.status === 'pending' || b.status === 'overdue').reduce((s, b) => s + (b.amount ?? 0), 0)
+    if (total === 0) return null
+    return { total, paid, pending }
+  }, [currentMonth, bills])
 
   const memberName = (id: string | null) => {
     if (!id) return null
@@ -210,10 +268,11 @@ export default function PainelPage() {
     return (
       <div>
         <NavBar label={label} onPrev={()=>setOffset(o=>o-1)} onNext={()=>setOffset(o=>o+1)} onToday={()=>setOffset(0)} showToday={offset!==0}/>
-        {noTime.length > 0 && (
+        {(noTime.length > 0 || markersForDay(currentDay).length > 0) && (
           <div className="px-3 py-2 border-b bg-gray-50 flex flex-wrap gap-1 items-center">
             <span className="text-[10px] text-gray-400 font-semibold mr-1 uppercase tracking-wide">Dia todo</span>
-            {noTime.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
+            {noTime.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName} onClick={it => { setSelectedItem(it); setSchedOpen(true) }}/>)}
+            {markersForDay(currentDay).map((m, i) => <MarkerChip key={`m-${i}`} label={m.label} cls={m.cls}/>)}
           </div>
         )}
         <div className="overflow-y-auto max-h-[420px]">
@@ -227,7 +286,7 @@ export default function PainelPage() {
               <div key={h} className={`flex border-b min-h-[44px] ${isToday && new Date().getHours()===h ? 'bg-teal-50' : ''}`}>
                 <div className="w-12 flex-shrink-0 text-[10px] text-gray-400 font-medium pt-1 pl-3">{String(h).padStart(2,'0')}h</div>
                 <div className="flex-1 p-1 flex flex-col gap-0.5">
-                  {slotItems.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
+                  {slotItems.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName} onClick={it => { setSelectedItem(it); setSchedOpen(true) }}/>)}
                 </div>
               </div>
             )
@@ -265,7 +324,8 @@ export default function PainelPage() {
                   <span className={`w-1.5 h-1.5 rounded-full mt-1 ${dt.length > 0 ? (isToday ? 'bg-teal-500' : 'bg-gray-400') : 'bg-transparent'}`}/>
                 </div>
                 <div className="flex-1 p-1 space-y-0.5 overflow-hidden">
-                  {dt.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
+                  {dt.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName} onClick={it => { setSelectedItem(it); setSchedOpen(true) }}/>)}
+                  {markersForDay(day).map((m, i) => <MarkerChip key={`m-${i}`} label={m.label} cls={m.cls}/>)}
                 </div>
               </div>
             )
@@ -322,8 +382,9 @@ export default function PainelPage() {
               <div key={i} className={`border-b min-h-[64px] flex flex-col p-0.5 ${isToday ? 'bg-teal-50' : isPast ? 'bg-gray-50/40' : 'bg-white'}`}>
                 <div className={`text-[11px] font-bold self-end w-5 h-5 flex items-center justify-center rounded-full mb-0.5 ${isToday ? 'bg-teal-600 text-white' : 'text-gray-500'}`}>{day.getDate()}</div>
                 <div className="space-y-0.5 flex-1 overflow-hidden">
-                  {visible.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName}/>)}
+                  {visible.map(it => <ItemChip key={`${it._kind}-${it.id}`} item={it} memberName={memberName} onClick={it => { setSelectedItem(it); setSchedOpen(true) }}/>)}
                   {extra > 0 && <div className="text-[10px] text-gray-400 font-medium pl-1">+{extra} mais</div>}
+                  {markersForDay(day).slice(0, 2).map((m, i) => <MarkerChip key={`m-${i}`} label={m.label} cls={m.cls}/>)}
                 </div>
               </div>
             )
@@ -485,6 +546,15 @@ export default function PainelPage() {
                   <span>↓ R$ {(currentMonth.total_paid ?? 0).toFixed(2)}</span>
                 </div>
               </>
+            ) : monthlyFallback ? (
+              <>
+                <p className="text-xl font-bold text-gray-800">R$ {monthlyFallback.pending.toFixed(2)}</p>
+                <p className="text-xs text-gray-400 mt-1">Pendente de pagamento</p>
+                <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                  <span>Total: R$ {monthlyFallback.total.toFixed(2)}</span>
+                  <span>✓ R$ {monthlyFallback.paid.toFixed(2)}</span>
+                </div>
+              </>
             ) : (
               <p className="text-sm text-gray-400 mt-2">Sem dados registados este mês.</p>
             )}
@@ -546,6 +616,11 @@ export default function PainelPage() {
                       <p className="font-semibold text-gray-800 truncate">{item.title}</p>
                       {item.subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{item.subtitle}</p>}
                     </div>
+                    <button
+                      title="Criar agendamento"
+                      onClick={() => schedule(item.title, item.due_date ?? undefined)}
+                      className="shrink-0 text-base text-blue-400 hover:text-blue-600 transition-colors"
+                    >📅</button>
                     {item.urgency === 'overdue' && (
                       <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 px-2 py-1 rounded">Atrasado</span>
                     )}
@@ -636,6 +711,18 @@ export default function PainelPage() {
           {taskView === 'lista'  && <ViewLista/>}
         </div>
       </section>
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => { setSchedOpen(false); setSelectedItem(null) }}
+        item={selectedItem}
+        defaultKind="task"
+        prefill={selectedItem ? undefined : schedPrefill}
+        onSaveTask={async (data) => { await upsertTask(data); setSchedOpen(false); setSelectedItem(null) }}
+        onSaveEvent={async (data) => { await upsertEvent(data); setSchedOpen(false); setSelectedItem(null) }}
+        familyId={schedFamilyId}
+        members={schedMembers}
+      />
 
     </div>
   )
