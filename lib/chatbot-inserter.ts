@@ -37,27 +37,16 @@ export async function insertParsedItems(
         }
 
         case 'task': {
-          let recurrence_id: string | null = null
-
-          if (item.recurrence) {
-            const { data: rr, error: rrErr } = await supabase
-              .from('recurrence_rules')
-              .insert({
-                frequency: item.recurrence,
-                interval: item.recurrence_interval ?? 1,
-                next_occurrence: new Date().toISOString().split('T')[0],
-              } as any)
-              .select('id')
-              .single()
-            if (!rrErr) recurrence_id = rr?.id ?? null
-          }
+          const recurrenceNote = item.recurrence
+            ? `[Recorrência: ${item.recurrence}${item.recurrence_interval ? ` a cada ${item.recurrence_interval}` : ''}]`
+            : null
+          const notes = [recurrenceNote, item.notes].filter(Boolean).join(' ') || null
 
           const { error } = await supabase.from('tasks').insert({
             title: item.title,
             status: 'pending',
             created_by: createdBy,
-            recurrence_id,
-            notes: item.notes ?? null,
+            notes,
             priority: 2,
           } as any)
           if (error) throw new Error(error.message)
