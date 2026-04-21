@@ -1,20 +1,19 @@
 import { createClient } from '@/lib/supabase';
 import { ParsedItem } from '@/types/chatbot';
 
-// Mapeia texto de recorrência para frequency_days (home_maintenance)
-function recurrenceToDays(r?: string, interval?: number): number {
+function recurrenceToDays(r?: string | null, interval?: number | null): number {
   const i = interval ?? 1;
   if (r === 'daily')   return i;
   if (r === 'weekly')  return i * 7;
   if (r === 'monthly') return i * 30;
   if (r === 'yearly')  return i * 365;
-  return 0; // sem recorrência = pontual
+  return 365; // fallback seguro para home_maintenance NOT NULL
 }
 
 export async function insertParsedItems(
   items: ParsedItem[],
   familyId: string,
-  createdBy: string   // profile UUID do usuário logado — obrigatório
+  createdBy: string  // UUID do profile logado — obrigatório para RLS
 ) {
   const supabase = createClient();
   const results = { inserted: 0, failed: 0, errors: [] as string[] };
@@ -23,30 +22,31 @@ export async function insertParsedItems(
     try {
       switch (item.type) {
 
-        // ─── SHOPPING ──────────────────────────────────────────────────
+        // ── SHOPPING ────────────────────────────────────────────────────
         case 'shopping': {
           await supabase.from('shopping_items').insert({
             family_id: familyId,
             name: item.title,
             quantity: item.quantity ?? '1',
             category: item.category ?? 'Geral',
-            status: 'needed',         // default da tabela
+            status: 'needed',
             is_bought: false,
+            is_recurring: false,
             requested_by: createdBy,
           });
           break;
         }
 
-        // ─── TASK ───────────────────────────────────────────────────────
+        // ── TASK ─────────────────────────────────────────────────────────
+        // tasks NÃO tem family_id — RLS é resolvido via created_by → profiles.family_id
         case 'task': {
           let recurrence_id: string | null = null;
 
-          // Cria recurrence_rule primeiro se tiver recorrência
           if (item.recurrence) {
             const { data: rr } = await supabase
               .from('recurrence_rules')
               .insert({
-                frequency: item.recurrence,                    // 'daily'|'weekly'|'monthly'|'yearly'
+                frequency: item.recurrence,
                 interval: item.recurrence_interval ?? 1,
                 next_occurrence: new Date().toISOString().split('T')[0],
               })
@@ -56,49 +56,60 @@ export async function insertParsedItems(
           }
 
           await supabase.from('tasks').insert({
-            family_id: familyId,   // ⚠️ tasks NÃO tem family_id direto
-            // ↑ tasks usa family via domain_id ou assigned_to — ver nota abaixo
             title: item.title,
             status: 'pending',
-            created_by: createdBy,
+            created_by: createdBy,     // ← vínculo com família via profile
             recurrence_id,
             notes: item.notes ?? null,
-            priority: 2,           // default médio
+            priority: 2,
           });
           break;
         }
 
-        // ─── HOME MAINTENANCE ───────────────────────────────────────────
+        // ── HOME MAINTENANCE (rotinas periódicas) ────────────────────────
+        // Ex: "Lavar louça todo dia", "Trocar roupa de cama 1x/semana"
         case 'home_maintenance': {
-          const freqDays = recurrenceToDays(item.recurrence, item.recurrence_interval);
           await supabase.from('home_maintenance').insert({
             family_id: familyId,
             title: item.title,
             emoji: '🔧',
             frequency_label: item.recurrence
               ? `A cada ${item.recurrence_interval ?? 1} ${
-                  item.recurrence === 'weekly' ? 'semana(s)' :
-                  item.recurrence === 'monthly' ? 'mês(es)' :
-                  item.recurrence === 'daily' ? 'dia(s)' : 'ano(s)'
+                  { daily:'dia(s)', weekly:'semana(s)',
+                    monthly:'mês(es)', yearly:'ano(s)' }[item.recurrence]
                 }`
               : 'Pontual',
-            frequency_days: freqDays > 0 ? freqDays : 999, // 999 = sem recorrência definida
+            frequency_days: recurrenceToDays(item.recurrence, item.recurrence_interval),
             category: item.location?.toLowerCase() ?? 'geral',
-            notes: item.notes ?? null,
             status: 'ok',
+            notes: item.notes ?? null,
             created_by: createdBy,
             responsible_id: createdBy,
           });
           break;
         }
 
-        // ─── FAMILY EVENT ───────────────────────────────────────────────
+        // ── MAINTENANCE CALL (reparos pontuais) ──────────────────────────
+        // Ex: "Fixar tampas das privadas", "Arrumar tomadas", "Instalar ralo"
+        case 'maintenance_call': {
+          await supabase.from('maintenance_calls').insert({
+            family_id: familyId,
+            title: item.title,
+            description: item.location ? `Local: ${item.location}` : null,
+            status: 'pending',
+            priority: 2,
+            created_by: createdBy,
+          });
+          break;
+        }
+
+        // ── FAMILY EVENT ─────────────────────────────────────────────────
         case 'family_event': {
           await supabase.from('family_events').insert({
             family_id: familyId,
             title: item.title,
             event_date: item.date ?? new Date().toISOString().split('T')[0],
-            event_time: item.time ?? null,          // time without time zone
+            event_time: item.time ?? null,
             event_type: 'general',
             created_by: createdBy,
             notes: item.notes ?? null,
@@ -108,25 +119,30 @@ export async function insertParsedItems(
           break;
         }
 
-        // ─── MEDICATION ─────────────────────────────────────────────────
+        // ── MEDICATION ───────────────────────────────────────────────────
+        // medications usa profile_id (NÃO family_id)
         case 'medication': {
           await supabase.from('medications').insert({
-            profile_id: createdBy,   // medications usa profile_id, NÃO family_id
+            profile_id: createdBy,
             name: item.title,
             dosage: item.notes ?? null,
             form: 'other',
             is_active: true,
             item_condition: 'ok',
-            stock_quantity: item.quantity ? parseInt(item.quantity) || 1 : 1,
+            stock_quantity: item.quantity ? (parseInt(item.quantity) || 1) : 1,
             minimum_stock: 1,
+            weight_based: false,
+            dosage_interval_hours: 6,
+            max_doses_per_day: 4,
           });
           break;
         }
 
-        // ─── VACCINE ────────────────────────────────────────────────────
+        // ── VACCINE ──────────────────────────────────────────────────────
+        // vaccines usa profile_id (NÃO family_id)
         case 'vaccine': {
           await supabase.from('vaccines').insert({
-            profile_id: createdBy,   // vaccines também usa profile_id
+            profile_id: createdBy,
             name: item.title,
             notes: item.notes ?? null,
           });
