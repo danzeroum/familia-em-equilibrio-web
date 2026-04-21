@@ -1,80 +1,113 @@
-import { createLLMClient, DEFAULT_MODEL, type LLMModelId } from './llm-client'
-import type { ParseResult, ParsedItem } from '@/types/chatbot'
+// lib/chatbot-parser.ts
+import OpenAI from 'openai'
+import { ParseResult } from '@/types/chatbot'
 
-const SYSTEM_PROMPT = `Você é um assistente de organização doméstica para uma família brasileira.
-Analise o texto e classifique CADA item em uma categoria. Responda APENAS com JSON válido, sem texto antes ou depois.
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-Categorias disponíveis:
-- "shopping": item de compra (mercado, farmácia, higiene, alimentos)
-- "task": tarefa doméstica com ou sem recorrência
-- "home_maintenance": reparo ou manutenção recorrente da casa (ex: lâmpadas, limpeza de cortinas)
-- "maintenance_call": conserto pontual que precisa ser feito uma vez (ex: fixar torneira, arrumar tomada)
-- "family_event": evento com data/hora específica
-- "medication": remédio, suplemento ou item de saúde pessoal
-- "pantry": alimento/ingrediente para estoque da despensa
+const SYSTEM_PROMPT = `Você é um assistente de organização doméstica para famílias brasileiras.
+Analise o texto recebido — que pode ser uma lista do WhatsApp, notas ou mensagens misturadas — e classifique cada item em uma das categorias abaixo.
 
-Formato obrigatório da resposta:
-{
-  "items": [
-    {
-      "type": "shopping",
-      "title": "Nome do item",
-      "quantity": "2" ou null,
-      "category": "farmácia" ou null,
-      "recurrence": "1x por semana" ou null,
-      "location": "Banheiro" ou null,
-      "date": "2026-04-26" ou null,
-      "time": "13:30" ou null,
-      "notes": "observação" ou null
-    }
-  ]
-}`
+CATEGORIAS:
+- shopping: item para comprar (mercado, farmácia, higiene, alimentos, etc.)
+- task: tarefa doméstica (limpar, organizar, lavar, cozinhar, etc.)
+- home_maintenance: manutenção recorrente da casa (verificar lâmpadas, desentupir, etc.)
+- maintenance_call: reparo pontual que precisa de chamado/conserto físico (fixar torneira, arrumar tomada, instalar algo)
+- calendar_event: evento com data/hora específica mencionada
+- medication: remédio, medicamento, suplemento, item de saúde da farmácia
+- vaccine: vacina
 
-// Extrai JSON mesmo se o modelo colocar texto ao redor
-function extractJSON(raw: string): any {
-  // Tenta parse direto
-  try { return JSON.parse(raw) } catch {}
-  // Busca bloco ```json ... ```
-  const fence = raw.match(/```json\s*([\s\S]*?)\s*```/)
-  if (fence) try { return JSON.parse(fence[1]) } catch {}
-  // Busca primeiro { ... } balanceado
-  const start = raw.indexOf('{')
-  const end   = raw.lastIndexOf('}')
-  if (start !== -1 && end !== -1) {
-    try { return JSON.parse(raw.slice(start, end + 1)) } catch {}
-  }
-  return null
+REGRAS:
+1. Para shopping: extraia quantidade quando mencionada (ex: "2 gorgonzola" → quantity: "2", "4 seringas de 10ml" → quantity: "4", title: "Seringas 10ml")
+2. Para tasks: detecte recorrência (ex: "1x por semana", "todo dia", "diário")
+3. Para maintenance_call: use o campo "location" para o cômodo (ex: "Banheiro", "Escritório", "Quintal")
+4. Para calendar_event: extraia data e hora no campo "date" e "time" separados
+5. Itens de farmácia SEM indicação de dosagem → shopping. COM dosagem/uso médico → medication
+6. Ignore preços (R$ ...), nomes de pessoas (ex: "Mariana Chernow"), timestamps de WhatsApp ([13:25, 21/04/2026])
+7. Se não conseguir classificar com confiança > 0.5 → use "unknown"
+8. Não duplique itens, consolide se o mesmo aparecer duas vezes
+9. confidence deve ser entre 0 e 1
+
+Responda APENAS com o JSON estruturado, sem texto adicional.`
+
+const RESPONSE_SCHEMA = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'parse_result',
+    strict: true,
+    schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: [
+                  'shopping',
+                  'task',
+                  'home_maintenance',
+                  'maintenance_call',
+                  'calendar_event',
+                  'medication',
+                  'vaccine',
+                  'unknown',
+                ],
+              },
+              title: { type: 'string' },
+              quantity: { type: ['string', 'null'] },
+              category: { type: ['string', 'null'] },
+              recurrence: { type: ['string', 'null'] },
+              location: { type: ['string', 'null'] },
+              date: { type: ['string', 'null'] },
+              time: { type: ['string', 'null'] },
+              notes: { type: ['string', 'null'] },
+              confidence: { type: 'number' },
+            },
+            required: [
+              'type',
+              'title',
+              'confidence',
+              'quantity',
+              'category',
+              'recurrence',
+              'location',
+              'date',
+              'time',
+              'notes',
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['items'],
+      additionalProperties: false,
+    },
+  },
 }
 
-export async function parseUserInput(
-  rawText: string,
-  modelId: LLMModelId = DEFAULT_MODEL
-): Promise<ParseResult> {
-  const client = createLLMClient(modelId)
-
-  const response = await client.chat.completions.create({
-    model: modelId,
+export async function parseUserInput(rawText: string): Promise<ParseResult> {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user',   content: rawText },
+      { role: 'user', content: rawText },
     ],
+    response_format: RESPONSE_SCHEMA as Parameters<
+      typeof openai.chat.completions.create
+    >[0]['response_format'],
     temperature: 0.1,
-    // Sem response_format — Ollama não suporta json_schema strict
   })
 
-  const raw = response.choices[0]?.message?.content ?? '{}'
-  const parsed = extractJSON(raw)
+  const content = response.choices[0].message.content
+  if (!content) throw new Error('OpenAI retornou resposta vazia')
 
-  if (!parsed?.items) {
-    console.error('[chatbot-parser] Resposta inválida do modelo:', raw)
-    return { items: [], rawText, parsedAt: new Date().toISOString(), modelUsed: modelId }
+  const parsed = JSON.parse(content)
+
+  return {
+    items: parsed.items,
+    rawText,
+    parsedAt: new Date().toISOString(),
   }
-
-  // Adiciona confidence padrão se o modelo omitir
-  const items: ParsedItem[] = parsed.items.map((item: any) => ({
-    ...item,
-    confidence: item.confidence ?? 0.8,
-  }))
-
-  return { items, rawText, parsedAt: new Date().toISOString(), modelUsed: modelId }
 }
