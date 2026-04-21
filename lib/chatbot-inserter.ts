@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase'
 import { ParsedItem } from '@/types/chatbot';
 
 function recurrenceToDays(r?: string | null, interval?: number | null): number {
