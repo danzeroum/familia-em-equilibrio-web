@@ -12,6 +12,8 @@ import { VehicleSheet } from '@/components/sheets/VehicleSheet'
 import { VehicleDocumentSheet } from '@/components/sheets/VehicleDocumentSheet'
 import { VehicleMaintenanceSheet } from '@/components/sheets/VehicleMaintenanceSheet'
 import { VehicleCallSheet } from '@/components/sheets/VehicleCallSheet'
+import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
+import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import type { Vehicle, VehicleDocument, VehicleMaintenance, VehicleCall } from '@/types/database'
 
 // ─── helpers ───────────────────────────────────────────────────────────────────
@@ -107,6 +109,8 @@ export default function VeiculosPage() {
 
   const [callOpen, setCallOpen]           = useState(false)
   const [selectedCall, setSelectedCall]   = useState<VehicleCall | null>(null)
+
+  const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
   const getMemberName = (id: string | null) => {
     if (!id) return 'Família'
@@ -329,6 +333,10 @@ export default function VeiculosPage() {
                                 onClick={() => documents.markPaid(d.id)}
                               >✓ Pago</button>
                             )}
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`📋 ${d.title}`, d.due_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedDoc(d); setDocOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -393,6 +401,10 @@ export default function VeiculosPage() {
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100 transition-colors"
                               onClick={() => maintenance.markDone(m.id)}
                             >✓ Feito</button>
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🔧 Manutenção: ${m.title}`, m.next_due_at)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedMaint(m); setMaintOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -448,6 +460,10 @@ export default function VeiculosPage() {
                             <button
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => calls.markDone(c.id)}>✓ Resolvido</button>
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🔨 Reparo: ${c.title}`, c.scheduled_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedCall(c); setCallOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -491,6 +507,10 @@ export default function VeiculosPage() {
                             <button
                               className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => calls.markDone(c.id)}>✓ Resolvido</button>
+                            <button
+                              title="Criar agendamento"
+                              onClick={() => schedule(`🔨 Reparo: ${c.title}`, c.scheduled_date)}
+                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedCall(c); setCallOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -568,6 +588,18 @@ export default function VeiculosPage() {
         onSave={calls.upsert}
         vehicles={vehicles.items}
         defaultVehicleId={filterVehicle !== 'all' ? filterVehicle : null}
+      />
+
+      <AgendamentoSheet
+        open={schedOpen}
+        onClose={() => setSchedOpen(false)}
+        item={null}
+        defaultKind="task"
+        prefill={schedPrefill}
+        onSaveTask={upsertTask}
+        onSaveEvent={upsertEvent}
+        familyId={schedFamilyId}
+        members={schedMembers}
       />
     </div>
   )
