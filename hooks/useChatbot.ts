@@ -11,7 +11,9 @@ export interface ChatMessage {
 }
 
 export function useChatbot() {
-  const { familyId } = useFamilyStore()
+  const { family, currentUser } = useFamilyStore()
+  const familyId = family?.id ?? null
+
   const [loading, setLoading]           = useState(false)
   const [preview, setPreview]           = useState<ParsedItem[] | null>(null)
   const [editingItems, setEditingItems] = useState<ParsedItem[]>([])
@@ -37,7 +39,7 @@ export function useChatbot() {
         body: JSON.stringify({
           text,
           familyId,
-          createdBy: user?.id,
+          createdBy: user?.id ?? currentUser?.id,
           autoInsert: false,
           modelId,
         }),
@@ -70,10 +72,10 @@ export function useChatbot() {
         body: JSON.stringify({
           text: rawText,
           familyId,
-          createdBy: user?.id,
+          createdBy: user?.id ?? currentUser?.id,
           autoInsert: true,
           modelId,
-          items, // envia os itens editados pelo usuário
+          items,
         }),
       })
       const data = await res.json()
