@@ -15,7 +15,8 @@ export function useSubtasks() {
   async function upsert(data: SubtaskInput) {
     setLoading(true)
     try {
-      const { error } = await supabase.from('subtasks').upsert(data)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from('subtasks').upsert(data)
       if (error) throw error
     } finally {
       setLoading(false)

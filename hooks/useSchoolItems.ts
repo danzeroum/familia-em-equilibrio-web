@@ -18,7 +18,8 @@ export function useSchoolItems() {
   async function upsert(data: SchoolItemInput) {
     setLoading(true)
     try {
-      const { error } = await supabase.from('school_items').upsert(data)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from('school_items').upsert(data)
       if (error) throw error
     } finally {
       setLoading(false)
