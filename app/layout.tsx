@@ -12,16 +12,7 @@ import { QuickEntryProvider } from '@/components/quick-entry/QuickEntryProvider'
 
 import { QuickRegisterModal } from '@/components/quick-register/QuickRegisterModal'
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="pt">
-      <body>
-        {children}
-        <QuickRegisterModal />
-      </body>
-    </html>
-  )
-}
+e
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -48,6 +39,7 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
             <Toaster />
             <QuickEntryProvider />
+            <QuickRegisterModal /> 
           </FamilyProvider>
         </AuthProvider>
       </body>
