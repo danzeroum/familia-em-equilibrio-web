@@ -12,7 +12,7 @@ import { QuickEntryProvider } from '@/components/quick-entry/QuickEntryProvider'
 
 import { QuickRegisterModal } from '@/components/quick-register/QuickRegisterModal'
 
-e
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
