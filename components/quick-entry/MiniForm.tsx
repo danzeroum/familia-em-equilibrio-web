@@ -12,7 +12,24 @@ import { useShoppingItems } from '@/hooks/useShoppingItems'
 import { useHomeMaintenance } from '@/hooks/useHomeMaintenance'
 import { useFamilyEvents } from '@/hooks/useFamilyEvents'
 import { useEmotionalCheckins } from '@/hooks/useEmotionalCheckins'
-import { TextField, NumberField, DateField, MemberSelect, SelectField, MoodSlider } from './fields'
+// Novos hooks — certifica que existem ou cria seguindo o padrão
+import { useSubtasks } from '@/hooks/useSubtasks'
+import { useHealthTracking } from '@/hooks/useHealthTracking'
+import { useHomework } from '@/hooks/useHomework'
+import { useSchoolItems } from '@/hooks/useSchoolItems'
+import { useEmergencyContacts } from '@/hooks/useEmergencyContacts'
+import { useGratitudeNotes } from '@/hooks/useGratitudeNotes'
+import { useMaintenanceCalls } from '@/hooks/useMaintenanceCalls'
+import {
+  TextField,
+  NumberField,
+  DateField,
+  MemberSelect,
+  SelectField,
+  MoodSlider,
+  TextareaField,   // novo — adicionar em fields.tsx (ver abaixo)
+} from './fields'
+import { useSupabaseClient } from '@supabase/auth-helpers-react'
 
 const PRACTICES = [
   { value: 'Respiração', label: 'Respiração' },
@@ -20,6 +37,16 @@ const PRACTICES = [
   { value: 'Exercício', label: 'Exercício' },
   { value: 'Conversa', label: 'Conversa' },
   { value: 'Meditação', label: 'Meditação' },
+]
+
+const HEALTH_METRICS = [
+  { value: 'weight',         label: '⚖️ Peso (kg)' },
+  { value: 'temperature',    label: '🌡️ Temperatura (°C)' },
+  { value: 'blood_pressure', label: '🩸 Pressão arterial' },
+  { value: 'glucose',        label: '🍬 Glicemia (mg/dL)' },
+  { value: 'heart_rate',     label: '❤️ Freq. cardíaca (bpm)' },
+  { value: 'sleep_hours',    label: '😴 Horas de sono' },
+  { value: 'other',          label: '📊 Outro' },
 ]
 
 function today(): string {
@@ -35,39 +62,74 @@ export function MiniForm({ entity, onSaved }: Props) {
   const { family, currentUser, members } = useFamilyStore()
   const { addToast } = useUIStore()
   const familyId = family?.id ?? null
+  const supabase = useSupabaseClient()
 
-  const tasks = useTasks()
-  const bills = useBills()
-  const meds = useMedications()
-  const vaccines = useVaccines()
-  const shopping = useShoppingItems()
+  // Hooks existentes
+  const tasks       = useTasks()
+  const bills       = useBills()
+  const meds        = useMedications()
+  const vaccines    = useVaccines()
+  const shopping    = useShoppingItems()
   const maintenance = useHomeMaintenance()
-  const events = useFamilyEvents(familyId)
-  const checkins = useEmotionalCheckins(familyId)
+  const events      = useFamilyEvents(familyId)
+  const checkins    = useEmotionalCheckins(familyId)
+
+  // Hooks novos
+  const subtasks        = useSubtasks()
+  const healthTracking  = useHealthTracking()
+  const homework        = useHomework()
+  const schoolItems     = useSchoolItems()
+  const emergencyContacts = useEmergencyContacts()
+  const gratitudeNotes  = useGratitudeNotes()
+  const maintenanceCalls = useMaintenanceCalls()
 
   const initialMemberId = currentUser?.id ?? members[0]?.id ?? ''
 
-  // Campos partilhados entre entidades
-  const [title, setTitle] = useState('')
+  // Campos partilhados
+  const [title,    setTitle]    = useState('')
   const [memberId, setMemberId] = useState(initialMemberId)
-  const [date, setDate] = useState(today())
+  const [date,     setDate]     = useState(today())
 
-  // Campos específicos
-  const [amount, setAmount] = useState('')
-  const [dueDay, setDueDay] = useState('')
+  // Campos específicos — existentes
+  const [amount,   setAmount]   = useState('')
+  const [dueDay,   setDueDay]   = useState('')
   const [quantity, setQuantity] = useState('')
-  const [mood, setMood] = useState(3)
+  const [mood,     setMood]     = useState(3)
   const [practice, setPractice] = useState(PRACTICES[0]!.value)
-  const [saving, setSaving] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+
+  // Campos específicos — novos
+  const [taskParentId,  setTaskParentId]  = useState('')
+  const [parentTasks,   setParentTasks]   = useState<{ id: string; title: string }[]>([])
+  const [healthMetric,  setHealthMetric]  = useState(HEALTH_METRICS[0]!.value)
+  const [healthValue,   setHealthValue]   = useState('')
+  const [subject,       setSubject]       = useState('')
+  const [phone,         setPhone]         = useState('')
+  const [relation,      setRelation]      = useState('')
+  const [gratitudeText, setGratitudeText] = useState('')
+  const [provider,      setProvider]      = useState('')
 
   const titleRef = useRef<HTMLInputElement>(null)
+
+  // Busca tarefas abertas para o select de subtarefa
+  useEffect(() => {
+    if (entity !== 'subtask' || !familyId) return
+    supabase
+      .from('tasks')
+      .select('id, title')
+      .eq('family_id', familyId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => setParentTasks(data ?? []))
+  }, [entity, familyId])
 
   function focusTitle() {
     titleRef.current?.focus()
     titleRef.current?.select()
   }
 
-  // Reset ao trocar de entidade (evita título de tarefa poluindo form de conta)
+  // Reset ao trocar de entidade
   useEffect(() => {
     setTitle('')
     setAmount('')
@@ -77,43 +139,74 @@ export function MiniForm({ entity, onSaved }: Props) {
     setPractice(PRACTICES[0]!.value)
     setDate(today())
     setMemberId(initialMemberId)
-    // Foco no título ao trocar
+    setTaskParentId('')
+    setHealthMetric(HEALTH_METRICS[0]!.value)
+    setHealthValue('')
+    setSubject('')
+    setPhone('')
+    setRelation('')
+    setGratitudeText('')
+    setProvider('')
     const t = setTimeout(() => titleRef.current?.focus(), 30)
     return () => clearTimeout(t)
   }, [entity, initialMemberId])
 
   const canSave = (() => {
     if (saving) return false
-    if (entity === 'checkin') return !!memberId && !!practice
-    if (entity === 'bill') return title.trim().length > 0
-    if (entity === 'event') return title.trim().length > 0 && !!date
-    if (entity === 'vaccine' || entity === 'medication') return title.trim().length > 0 && !!memberId
-    return title.trim().length > 0
+    switch (entity) {
+      case 'checkin':           return !!memberId && !!practice
+      case 'bill':              return title.trim().length > 0
+      case 'event':             return title.trim().length > 0 && !!date
+      case 'vaccine':
+      case 'medication':        return title.trim().length > 0 && !!memberId
+      case 'subtask':           return title.trim().length > 0 && !!taskParentId
+      case 'health_tracking':   return !!memberId && !!healthMetric && !!healthValue
+      case 'homework':          return title.trim().length > 0 && !!memberId
+      case 'school_item':       return title.trim().length > 0 && !!memberId
+      case 'emergency_contact': return title.trim().length > 0 && phone.trim().length > 0
+      case 'gratitude':         return gratitudeText.trim().length > 0
+      case 'maintenance_call':  return title.trim().length > 0
+      default:                  return title.trim().length > 0
+    }
   })()
 
-  const titleLabel =
-    entity === 'medication' || entity === 'vaccine' || entity === 'shopping'
-      ? 'Nome'
-      : entity === 'checkin'
-        ? ''
-        : 'Título'
+  const titleLabel = {
+    medication:        'Nome',
+    vaccine:           'Nome',
+    shopping:          'Nome',
+    subtask:           'Título',
+    homework:          'Título',
+    school_item:       'Nome',
+    emergency_contact: 'Nome',
+    maintenance_call:  'Serviço / problema',
+    checkin:           '',
+    gratitude:         '',
+  }[entity] ?? 'Título'
 
   const titlePlaceholder = {
-    task: 'Ex: Levar a Ana ao médico',
-    bill: 'Ex: Conta de luz',
-    medication: 'Ex: Paracetamol',
-    vaccine: 'Ex: BCG',
-    shopping: 'Ex: Arroz 5kg',
-    maintenance: 'Ex: Limpar filtro de ar',
-    event: 'Ex: Aniversário da Ana',
-    checkin: '',
+    task:              'Ex: Levar a Ana ao médico',
+    bill:              'Ex: Conta de luz',
+    medication:        'Ex: Paracetamol',
+    vaccine:           'Ex: BCG',
+    shopping:          'Ex: Arroz 5kg',
+    maintenance:       'Ex: Limpar filtro de ar',
+    event:             'Ex: Aniversário da Ana',
+    checkin:           '',
+    subtask:           'Ex: Comprar remédio',
+    health_tracking:   '',
+    homework:          'Ex: Exercícios de matemática',
+    school_item:       'Ex: Caderno quadriculado',
+    emergency_contact: 'Ex: Dr. João',
+    gratitude:         '',
+    maintenance_call:  'Ex: Torneira com vazamento',
   }[entity]
 
   async function save() {
-    if (!canSave) return
+    if (!canSave || !familyId) return
     setSaving(true)
     try {
       switch (entity) {
+        // ── existentes ──────────────────────────────────────────────────────
         case 'task': {
           await tasks.upsert({
             title: title.trim(),
@@ -126,12 +219,10 @@ export function MiniForm({ entity, onSaved }: Props) {
           break
         }
         case 'bill': {
-          const parsedAmount = amount ? Number(amount) : null
-          const parsedDueDay = dueDay ? Number(dueDay) : null
           await bills.upsert({
             title: title.trim(),
-            amount: parsedAmount,
-            due_day: parsedDueDay,
+            amount: amount ? Number(amount) : null,
+            due_day: dueDay ? Number(dueDay) : null,
             status: 'pending',
             is_recurring: false,
             assigned_to: memberId || null,
@@ -155,10 +246,9 @@ export function MiniForm({ entity, onSaved }: Props) {
           break
         }
         case 'shopping': {
-          const qty = quantity ? Number(quantity) : 1
           await shopping.upsert({
             name: title.trim(),
-            quantity: qty,
+            quantity: quantity ? Number(quantity) : 1,
             status: 'needed',
             is_recurring: false,
             requested_by: currentUser?.id ?? null,
@@ -194,14 +284,90 @@ export function MiniForm({ entity, onSaved }: Props) {
           })
           break
         }
+
+        // ── novos ────────────────────────────────────────────────────────────
+        case 'subtask': {
+          await subtasks.upsert({
+            title: title.trim(),
+            task_id: taskParentId,
+            assigned_to: memberId || null,
+            status: 'pending',
+            family_id: familyId,
+          } as any)
+          break
+        }
+        case 'health_tracking': {
+          await healthTracking.upsert({
+            profile_id: memberId,
+            metric: healthMetric,
+            value: Number(healthValue),
+            recorded_at: date,
+            family_id: familyId,
+          } as any)
+          break
+        }
+        case 'homework': {
+          await homework.upsert({
+            title: title.trim(),
+            profile_id: memberId,
+            due_date: date || null,
+            subject: subject.trim() || null,
+            status: 'pending',
+            family_id: familyId,
+          } as any)
+          break
+        }
+        case 'school_item': {
+          await schoolItems.upsert({
+            name: title.trim(),
+            profile_id: memberId,
+            quantity: quantity ? Number(quantity) : 1,
+            status: 'needed',
+            family_id: familyId,
+          } as any)
+          break
+        }
+        case 'emergency_contact': {
+          await emergencyContacts.upsert({
+            name: title.trim(),
+            phone: phone.trim(),
+            relation: relation.trim() || null,
+            family_id: familyId,
+          } as any)
+          break
+        }
+        case 'gratitude': {
+          await gratitudeNotes.upsert({
+            content: gratitudeText.trim(),
+            profile_id: memberId || null,
+            family_id: familyId,
+          } as any)
+          break
+        }
+        case 'maintenance_call': {
+          await maintenanceCalls.upsert({
+            title: title.trim(),
+            provider: provider.trim() || null,
+            scheduled_date: date || null,
+            status: 'pending',
+            family_id: familyId,
+          } as any)
+          break
+        }
       }
 
-      // Reset apenas dos campos "de linha" — mantém contexto (membro, data) para cadastro em série
+      // Reset campos de linha; mantém contexto (membro, data) para série
       setTitle('')
       setAmount('')
       setQuantity('')
+      setTaskParentId('')
+      setHealthValue('')
+      setSubject('')
+      setPhone('')
+      setRelation('')
+      setGratitudeText('')
+      setProvider('')
       onSaved()
-      // Devolve foco ao título para fluxo Arroz → Feijão → Detergente
       setTimeout(() => focusTitle(), 0)
     } catch (err: any) {
       addToast({
@@ -214,6 +380,13 @@ export function MiniForm({ entity, onSaved }: Props) {
     }
   }
 
+  const showTitleField = !['checkin', 'health_tracking', 'gratitude'].includes(entity)
+  const showMemberSelect = !['shopping', 'maintenance', 'emergency_contact'].includes(entity)
+  const isChildContext = ['homework', 'school_item'].includes(entity)
+  const childrenOnly = isChildContext ? members.filter((m) => m.is_child) : []
+  const memberList = childrenOnly.length > 0 ? childrenOnly : members
+  const includeNone = ['task', 'bill', 'event', 'maintenance', 'subtask', 'maintenance_call'].includes(entity)
+
   return (
     <form
       onSubmit={(e) => {
@@ -222,7 +395,8 @@ export function MiniForm({ entity, onSaved }: Props) {
       }}
       className="space-y-3"
     >
-      {entity !== 'checkin' && (
+      {/* Título / Nome genérico */}
+      {showTitleField && (
         <TextField
           ref={titleRef}
           label={titleLabel}
@@ -233,14 +407,30 @@ export function MiniForm({ entity, onSaved }: Props) {
         />
       )}
 
-      {/* Membro — aparece em quase todas as entidades */}
-      {entity !== 'shopping' && entity !== 'maintenance' && members.length > 0 && (
+      {/* Tarefa pai — apenas subtarefa */}
+      {entity === 'subtask' && (
+        <SelectField
+          label="Tarefa pai *"
+          value={taskParentId}
+          onChange={setTaskParentId}
+          options={parentTasks.map((t) => ({ value: t.id, label: t.title }))}
+        />
+      )}
+
+      {/* Membro */}
+      {showMemberSelect && members.length > 0 && (
         <MemberSelect
-          label={entity === 'bill' || entity === 'task' || entity === 'event' ? 'Responsável' : 'Para quem'}
+          label={
+            entity === 'bill' || entity === 'task' || entity === 'event' || entity === 'maintenance_call'
+              ? 'Responsável'
+              : entity === 'checkin' || entity === 'health_tracking'
+                ? 'Quem?'
+                : 'Para quem'
+          }
           value={memberId}
           onChange={setMemberId}
-          members={members}
-          includeNone={entity === 'task' || entity === 'bill' || entity === 'event'}
+          members={memberList}
+          includeNone={includeNone}
         />
       )}
 
@@ -254,7 +444,7 @@ export function MiniForm({ entity, onSaved }: Props) {
         />
       )}
 
-      {/* Campos específicos por entidade */}
+      {/* ── Campos específicos existentes ── */}
       {(entity === 'task' || entity === 'event' || entity === 'vaccine') && (
         <DateField
           label={entity === 'event' ? 'Data do evento' : entity === 'vaccine' ? 'Data da aplicação' : 'Data'}
@@ -265,45 +455,67 @@ export function MiniForm({ entity, onSaved }: Props) {
 
       {entity === 'bill' && (
         <div className="grid grid-cols-2 gap-3">
-          <NumberField
-            label="Valor (R$)"
-            value={amount}
-            onChange={setAmount}
-            placeholder="0,00"
-            min={0}
-            step={0.01}
-          />
-          <NumberField
-            label="Vence dia"
-            value={dueDay}
-            onChange={setDueDay}
-            placeholder="10"
-            min={1}
-            max={31}
-          />
+          <NumberField label="Valor (R$)" value={amount} onChange={setAmount} placeholder="0,00" min={0} step={0.01} />
+          <NumberField label="Vence dia"  value={dueDay} onChange={setDueDay} placeholder="10" min={1} max={31} />
         </div>
       )}
 
       {entity === 'shopping' && (
-        <NumberField
-          label="Quantidade"
-          value={quantity}
-          onChange={setQuantity}
-          placeholder="1"
-          min={1}
-          step={1}
-        />
+        <NumberField label="Quantidade" value={quantity} onChange={setQuantity} placeholder="1" min={1} step={1} />
       )}
 
       {entity === 'checkin' && (
         <>
-          <SelectField
-            label="Prática"
-            value={practice}
-            onChange={setPractice}
-            options={PRACTICES}
-          />
+          <SelectField label="Prática" value={practice} onChange={setPractice} options={PRACTICES} />
           <MoodSlider value={mood} onChange={setMood} />
+        </>
+      )}
+
+      {/* ── Campos específicos novos ── */}
+      {entity === 'health_tracking' && (
+        <>
+          <SelectField label="Métrica *" value={healthMetric} onChange={setHealthMetric} options={HEALTH_METRICS} />
+          <NumberField label="Valor *" value={healthValue} onChange={setHealthValue} placeholder="Ex: 70" step={0.1} />
+          <DateField label="Data" value={date} onChange={setDate} />
+        </>
+      )}
+
+      {entity === 'homework' && (
+        <>
+          <TextField label="Disciplina" value={subject} onChange={setSubject} placeholder="Ex: Matemática" />
+          <DateField label="Entregar até" value={date} onChange={setDate} />
+        </>
+      )}
+
+      {entity === 'school_item' && (
+        <NumberField label="Quantidade" value={quantity} onChange={setQuantity} placeholder="1" min={1} step={1} />
+      )}
+
+      {entity === 'emergency_contact' && (
+        <>
+          <TextField label="Telefone *" value={phone} onChange={setPhone} placeholder="Ex: +55 11 99999-9999" />
+          <TextField label="Relação" value={relation} onChange={setRelation} placeholder="Ex: Médico, Vizinho" />
+        </>
+      )}
+
+      {entity === 'gratitude' && (
+        <>
+          <TextareaField
+            label="Pelo que és grato hoje? *"
+            value={gratitudeText}
+            onChange={setGratitudeText}
+            placeholder="Ex: Pela saúde da família..."
+          />
+          {members.length > 0 && (
+            <MemberSelect label="Quem regista?" value={memberId} onChange={setMemberId} members={members} includeNone />
+          )}
+        </>
+      )}
+
+      {entity === 'maintenance_call' && (
+        <>
+          <TextField label="Prestador / empresa" value={provider} onChange={setProvider} placeholder="Ex: Elétrica Silva" />
+          <DateField label="Data agendada" value={date} onChange={setDate} />
         </>
       )}
 
