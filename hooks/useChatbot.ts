@@ -1,10 +1,10 @@
-import { useState } from 'react'
+// hooks/useChatbot.ts
+import { useState, useRef } from 'react'
 import { useFamilyStore } from '@/store/familyStore'
 import { supabase } from '@/lib/supabase'
 import { ParsedItem } from '@/types/chatbot'
 import { LLMModelId } from '@/lib/llm-client'
 
-// crypto.randomUUID só funciona em HTTPS — fallback para HTTP
 function genId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -16,6 +16,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  streaming?: boolean   // ← NOVO: true enquanto o typewriter ainda digita
 }
 
 export function useChatbot() {
@@ -29,8 +30,56 @@ export function useChatbot() {
   const [rawText, setRawText]           = useState('')
   const [modelId, setModelId]           = useState<LLMModelId>('qwen2.5:7b')
 
+  // Ref para cancelar typewriter em andamento se o usuário enviar nova msg
+  const typewriterRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   function addMessage(role: 'user' | 'assistant', content: string) {
     setMessages(prev => [...prev, { id: genId(), role, content }])
+  }
+
+  /**
+   * Adiciona uma mensagem do assistente com efeito typewriter (letra por letra).
+   * Retorna uma Promise que resolve quando a animação termina.
+   */
+  function addAssistantStreaming(content: string): Promise<void> {
+    // Cancela qualquer typewriter anterior
+    if (typewriterRef.current) {
+      clearInterval(typewriterRef.current)
+      typewriterRef.current = null
+      // Finaliza a mensagem anterior imediatamente
+      setMessages(prev =>
+        prev.map(m => m.streaming ? { ...m, streaming: false } : m)
+      )
+    }
+
+    const id = genId()
+
+    // Insere a mensagem vazia com streaming: true
+    setMessages(prev => [...prev, { id, role: 'assistant', content: '', streaming: true }])
+
+    return new Promise(resolve => {
+      let index = 0
+      const SPEED_MS = 10 // ms por caractere — ajuste: 6 (rápido) ~ 20 (lento)
+
+      typewriterRef.current = setInterval(() => {
+        index++
+        const partial = content.slice(0, index)
+
+        setMessages(prev =>
+          prev.map(m => m.id === id ? { ...m, content: partial } : m)
+        )
+
+        if (index >= content.length) {
+          clearInterval(typewriterRef.current!)
+          typewriterRef.current = null
+          // Remove o flag streaming ao terminar
+          setMessages(prev =>
+            prev.map(m => m.id === id ? { ...m, streaming: false } : m)
+          )
+          resolve()
+        }
+      }, SPEED_MS)
+    })
   }
 
   async function analyzeText(text: string) {
@@ -41,47 +90,50 @@ export function useChatbot() {
     const { data: { user } } = await supabase.auth.getUser()
 
     try {
-    const res = await fetch('/api/chatbot', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        familyId,
-        createdBy: user?.id ?? currentUser?.id,
-        autoInsert: false,
-        modelId,
-      }),
-    })
+      const res = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          familyId,
+          createdBy: user?.id ?? currentUser?.id,
+          autoInsert: false,
+          modelId,
+        }),
+      })
 
-    const data = await res.json()
+      const data = await res.json()
 
-    if (!res.ok) {
-      addMessage('assistant', `❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
-      setLoading(false)
-      return
+      if (!res.ok) {
+        await addAssistantStreaming(`❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
+        setLoading(false)
+        return
+      }
+
+      // ── Modo pergunta: exibe resposta com typewriter ──
+      if (data.mode === 'query') {
+        await addAssistantStreaming(data.answer)
+        setLoading(false)
+        return
+      }
+
+      // ── Modo inserção: exibe preview para confirmação ──
+      const items: ParsedItem[] = data.preview ?? []
+      setPreview(items)
+      setEditingItems(items)
+
+      const summary = items.length > 0
+        ? `Encontrei **${items.length} itens** para revisar antes de salvar.`
+        : 'Não consegui identificar itens no texto. Tente reformular.'
+
+      await addAssistantStreaming(summary)
+    } catch (err: any) {
+      await addAssistantStreaming(
+        `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`
+      )
     }
 
-    // ── Modo pergunta: exibe resposta diretamente ──
-    if (data.mode === 'query') {
-      addMessage('assistant', data.answer)
-      setLoading(false)
-      return
-    }
-
-    // ── Modo inserção: exibe preview para confirmação ──
-    const items: ParsedItem[] = data.preview ?? []
-    setPreview(items)
-    setEditingItems(items)
-
-    const summary = items.length > 0
-      ? `Encontrei **${items.length} itens** para revisar antes de salvar.`
-      : 'Não consegui identificar itens no texto. Tente reformular.'
-    addMessage('assistant', summary)
-  } catch (err: any) {
-    addMessage('assistant', `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`)
-  }
-
-  setLoading(false)
+    setLoading(false)
   }
 
   async function confirmInsert(items: ParsedItem[]) {
@@ -105,21 +157,22 @@ export function useChatbot() {
       const data = await res.json()
 
       if (!res.ok) {
-        addMessage('assistant', `❌ Erro ao salvar: ${data.error ?? 'Falha desconhecida'}`)
+        await addAssistantStreaming(`❌ Erro ao salvar: ${data.error ?? 'Falha desconhecida'}`)
         setLoading(false)
         return
       }
 
       const r = data.insertResult
-      addMessage(
-        'assistant',
+      await addAssistantStreaming(
         `✅ **${r?.inserted ?? 0} itens salvos** com sucesso!${r?.failed ? ` ⚠️ ${r.failed} falharam.` : ''}`
       )
       setPreview(null)
       setEditingItems([])
       return r
     } catch (err: any) {
-      addMessage('assistant', `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`)
+      await addAssistantStreaming(
+        `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`
+      )
     }
 
     setLoading(false)
@@ -128,7 +181,7 @@ export function useChatbot() {
   function cancelPreview() {
     setPreview(null)
     setEditingItems([])
-    addMessage('assistant', 'Operação cancelada.')
+    addAssistantStreaming('Operação cancelada.')
   }
 
   function removeEditingItem(index: number) {
