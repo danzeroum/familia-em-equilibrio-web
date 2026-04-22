@@ -8,10 +8,6 @@ import { Toaster } from '@/components/ui/Toaster'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { FamilyProvider } from '@/components/providers/FamilyProvider'
 import { QuickEntryProvider } from '@/components/quick-entry/QuickEntryProvider'
-// No seu layout.tsx raiz, adicionar o componente e o trigger do teclado
-
-import { QuickRegisterModal } from '@/components/quick-register/QuickRegisterModal'
-
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -39,7 +35,6 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
             <Toaster />
             <QuickEntryProvider />
-            <QuickRegisterModal /> 
           </FamilyProvider>
         </AuthProvider>
       </body>

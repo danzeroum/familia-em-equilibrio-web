@@ -6,18 +6,12 @@ export function useSchoolItems() {
   const { family } = useFamilyStore()
   const familyId = family?.id ?? null
   const [loading, setLoading] = useState(false)
-
   async function upsert(data: Record<string, any>) {
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('school_items')
-        .upsert({ ...data, family_id: familyId })
+      const { error } = await supabase.from('school_items').upsert({ ...data, family_id: familyId })
       if (error) throw error
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
-
   return { loading, upsert }
 }
