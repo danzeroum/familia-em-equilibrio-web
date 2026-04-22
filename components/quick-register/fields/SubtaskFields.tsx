@@ -11,19 +11,19 @@ interface Props {
 }
 
 export function SubtaskFields({ data, onChange, members }: Props) {
-  const { familyId } = useFamilyStore()
+  const { currentFamily } = useFamilyStore()
   const [tasks, setTasks] = useState<{ id: string; title: string }[]>([])
 
   useEffect(() => {
     supabase
       .from('tasks')
       .select('id, title')
-      .eq('family_id', familyId)
+      .eq('family_id', currentFamily?.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => setTasks(data ?? []))
-  }, [familyId])
+  }, [currentFamily?.id])
 
   return (
     <>
