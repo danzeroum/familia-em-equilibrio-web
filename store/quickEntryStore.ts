@@ -9,6 +9,15 @@ export type QuickEntryEntity =
   | 'maintenance'
   | 'event'
   | 'checkin'
+  // Onda 1 — novos
+  | 'subtask'
+  | 'health_tracking'
+  | 'homework'
+  | 'school_item'
+  // Onda 2 — novos
+  | 'emergency_contact'
+  | 'gratitude'
+  | 'maintenance_call'
 
 interface QuickEntryStore {
   open: boolean
