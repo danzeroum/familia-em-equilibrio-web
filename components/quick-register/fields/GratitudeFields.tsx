@@ -1,10 +1,10 @@
 'use client'
-import { Member } from '@/store/familyStore'
+import type { Profile } from '@/types/database'
 
 interface Props {
   data: Record<string, unknown>
   onChange: (key: string, value: unknown) => void
-  members: Member[]
+  members: Profile[]
 }
 
 export function GratitudeFields({ data, onChange, members }: Props) {

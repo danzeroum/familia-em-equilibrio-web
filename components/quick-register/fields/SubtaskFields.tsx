@@ -2,12 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useSupabaseClient } from '@supabase/auth-helpers-react'
 import { useFamilyStore } from '@/store/familyStore'
-import { Member } from '@/store/familyStore'
+import type { Profile } from '@/types/database'
 
 interface Props {
   data: Record<string, unknown>
   onChange: (key: string, value: unknown) => void
-  members: Member[]
+  members: Profile[]
 }
 
 export function SubtaskFields({ data, onChange, members }: Props) {
