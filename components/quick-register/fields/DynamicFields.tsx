@@ -56,7 +56,7 @@ export function DynamicFields({ type, data, onChange, members }: Props) {
             <option value="">— Ninguém —</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.emoji} {m.nickname}
+                {m.nickname ?? m.name}
               </option>
             ))}
           </select>
