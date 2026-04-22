@@ -117,7 +117,7 @@ export function MiniForm({ entity, onSaved }: Props) {
     supabase
       .from('tasks')
       .select('id, title')
-      .eq('family_id', familyId)
+      .eq('family_id' as any, familyId)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(30)
