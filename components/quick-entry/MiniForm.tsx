@@ -79,7 +79,7 @@ export function MiniForm({ entity, onSaved }: Props) {
   const healthTracking  = useHealthTracking()
   const homework        = useHomework()
   const schoolItems     = useSchoolItems()
-  const emergencyContacts = useEmergencyContacts()
+  const emergencyContacts = useEmergencyContacts(familyId)
   const gratitudeNotes  = useGratitudeNotes()
   const maintenanceCalls = useMaintenanceCalls()
 
