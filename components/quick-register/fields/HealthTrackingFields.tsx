@@ -29,7 +29,7 @@ export function HealthTrackingFields({ data, onChange, members }: Props) {
         <option value="">— Quem? * —</option>
         {members.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.emoji} {m.nickname}
+            {(m.nickname ?? m.name) ?? m.name}
           </option>
         ))}
       </select>

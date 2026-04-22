@@ -26,7 +26,7 @@ export function GratitudeFields({ data, onChange, members }: Props) {
         <option value="">— Quem registra? —</option>
         {members.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.emoji} {m.nickname}
+            {(m.nickname ?? m.name) ?? m.name}
           </option>
         ))}
       </select>

@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function HomeworkFields({ data, onChange, members }: Props) {
-  const children = members.filter((m) => m.is_child)
+  const children = members.filter((m) => (m.role === 'child' || m.role === 'teen'))
 
   return (
     <>
@@ -28,7 +28,7 @@ export function HomeworkFields({ data, onChange, members }: Props) {
         <option value="">— Para quem? * —</option>
         {(children.length > 0 ? children : members).map((m) => (
           <option key={m.id} value={m.id}>
-            {m.emoji} {m.nickname}
+            {(m.nickname ?? m.name) ?? m.name}
           </option>
         ))}
       </select>

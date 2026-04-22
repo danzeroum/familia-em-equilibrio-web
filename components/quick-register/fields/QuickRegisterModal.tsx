@@ -144,7 +144,7 @@ export function QuickRegisterModal() {
                       onClick={() => handleSelectType(item.type)}
                       className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
                     >
-                      <span className="text-xl">{item.emoji}</span>
+                      <span className="text-xl">{ite(m as any).emoji}</span>
                       <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
                         {item.label}
                       </span>
@@ -163,7 +163,7 @@ export function QuickRegisterModal() {
                           onClick={() => handleSelectType(item.type)}
                           className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
                         >
-                          <span className="text-xl">{item.emoji}</span>
+                          <span className="text-xl">{ite(m as any).emoji}</span>
                           <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
                             {item.label}
                           </span>
@@ -182,7 +182,7 @@ export function QuickRegisterModal() {
                           onClick={() => handleSelectType(item.type)}
                           className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
                         >
-                          <span className="text-xl">{item.emoji}</span>
+                          <span className="text-xl">{ite(m as any).emoji}</span>
                           <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
                             {item.label}
                           </span>
