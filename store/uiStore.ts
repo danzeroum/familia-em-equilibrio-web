@@ -27,6 +27,7 @@ export type QuickRegisterType =
   | 'shopping'
   | 'checkin'
   | 'maintenance'
+  | 'maintenance_call'
 
 interface UIStore {
   activeSheet: SheetType
