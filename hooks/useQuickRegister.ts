@@ -1,9 +1,9 @@
-import { useSupabaseClient } from '@supabase/auth-helpers-react'
+import { createClient } from '@/lib/supabase/client'
 import { useFamilyStore } from '@/store/familyStore'
 import { QuickRegisterType } from '@/types/database'
 
 export function useQuickRegister() {
-  const supabase = useSupabaseClient()
+  const supabase = createClient()
   const { familyId } = useFamilyStore()
 
   async function save(type: QuickRegisterType, data: Record<string, unknown>) {
