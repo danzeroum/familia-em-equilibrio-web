@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import { QuickRegisterType } from '@/types/database'
 
