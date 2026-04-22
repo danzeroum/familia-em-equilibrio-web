@@ -7,6 +7,7 @@ import { useFamilyStore } from '@/store/familyStore'
 import {
   LayoutDashboard,
   CheckSquare,
+  MessageCircle,
   Home,
   BookOpen,
   UtensilsCrossed,
@@ -20,7 +21,8 @@ import {
 
 const NAV_ITEMS = [
   { href: '/',             label: 'Painel',       icon: LayoutDashboard, emoji: '🎯' },
-  { href: '/tarefas',      label: 'Tarefas',       icon: CheckSquare,     emoji: '✅' },
+  { href: '/tarefas',      label: 'Agendamentos',       icon: CheckSquare,     emoji: '✅' },
+  { href: '/chatbot',      label: 'Assistente IA',  icon: MessageCircle,   emoji: '🤖' },
   { href: '/casa',         label: 'Casa',          icon: Home,            emoji: '🏠' },
   { href: '/alimentacao',  label: 'Alimentação',   icon: UtensilsCrossed, emoji: '🍽️' },
   { href: '/saude',        label: 'Saúde',         icon: Heart,           emoji: '🩺' },
