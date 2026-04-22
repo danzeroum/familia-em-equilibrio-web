@@ -1,17 +1,29 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useFamilyStore } from '@/store/familyStore'
+
+interface SchoolItemInput {
+  id?: string
+  profile_id?: string | null
+  name: string
+  status?: string | null
+  due_date?: string | null
+  quantity?: string | null
+  notes?: string | null
+  created_at?: string | null
+}
 
 export function useSchoolItems() {
-  const { family } = useFamilyStore()
-  const familyId = family?.id ?? null
   const [loading, setLoading] = useState(false)
-  async function upsert(data: Record<string, any>) {
+
+  async function upsert(data: SchoolItemInput) {
     setLoading(true)
     try {
-      const { error } = await supabase.from('school_items').upsert({ ...data, family_id: familyId })
+      const { error } = await supabase.from('school_items').upsert(data)
       if (error) throw error
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
+
   return { loading, upsert }
 }

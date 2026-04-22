@@ -3,8 +3,8 @@ import { useFamilyStore } from '@/store/familyStore'
 import { QuickRegisterType } from '@/types/database'
 
 export function useQuickRegister() {
-  const supabase = supabase
-  const { familyId } = useFamilyStore()
+  const { currentFamily } = useFamilyStore()
+  const familyId = currentFamily?.id ?? null
 
   async function save(type: QuickRegisterType, data: Record<string, unknown>) {
     const payload = { ...data, family_id: familyId }
@@ -30,7 +30,7 @@ export function useQuickRegister() {
     const table = tableMap[type]
     if (!table) throw new Error(`Tipo desconhecido: ${type}`)
 
-    const { error } = await supabase.from(table).insert(payload)
+    const { error } = await (supabase.from(table as any) as any).insert(payload)
     if (error) throw error
   }
 
