@@ -51,29 +51,23 @@ export default function SaudePage() {
 
   const [tab, setTab] = useState<Tab>('farmacia')
 
-  // Medication sheet
   const [medOpen, setMedOpen] = useState(false)
   const [selectedMed, setSelectedMed] = useState<Medication | null>(null)
 
-  // Vaccine sheet
   const [vacOpen, setVacOpen] = useState(false)
   const [selectedVac, setSelectedVac] = useState<Vaccine | null>(null)
 
-  // Health tracking sheet
   const [healthOpen, setHealthOpen] = useState(false)
   const [selectedHealth, setSelectedHealth] = useState<HealthTrackingItem | null>(null)
 
-  // Emotional practice sheet
   const [emotionalOpen, setEmotionalOpen] = useState(false)
   const [selectedPractice, setSelectedPractice] = useState<EmotionalPractice | null>(null)
 
-  // Pharmacy sheet
   const [pharmacyOpen, setPharmacyOpen] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyItem | null>(null)
 
   const { schedule, schedOpen, setSchedOpen, schedPrefill, upsertTask, upsertEvent, schedFamilyId, schedMembers } = useQuickSchedule()
 
-  // ── Calculadora: lista editável em memória ──
   const [pedMeds, setPedMeds] = useState<PedMed[]>(DEFAULT_MEDS)
   const [showAddMed, setShowAddMed] = useState(false)
   const [newMed, setNewMed] = useState(EMPTY_NEW_MED)
@@ -104,7 +98,6 @@ export default function SaudePage() {
     return members.find(m => m.id === id)?.nickname ?? members.find(m => m.id === id)?.name ?? '—'
   }
 
-  // Handler QuickAddList para farmácia
   const handleBulkAddPharmacy = async (names: string[]) => {
     for (const name of names) {
       await pharmacy.upsert({
@@ -119,12 +112,10 @@ export default function SaudePage() {
     }
   }
 
-  // Separar itens por status para layout estilo lista de compras
-  const pharmacyInCart  = pharmacy.items.filter(i => i.status === 'in_cart')
-  const pharmacyPending = pharmacy.items.filter(i => i.status === 'pending')
-  const pharmacyBought  = pharmacy.items.filter(i => i.status === 'bought')
+  const pharmacyPending   = pharmacy.items.filter(i => i.status === 'pending')
+  const pharmacyBought    = pharmacy.items.filter(i => i.status === 'bought')
+  const pharmacyCancelled = pharmacy.items.filter(i => i.status === 'cancelled')
 
-  // TABS reordenadas: Farmácia em 1ª posição
   const TABS = [
     { id: 'farmacia'       as Tab, label: '🛒 Compras (Farmácia)', alerts: pharmacy.pending.length },
     { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',        alerts: alerts.length          },
@@ -210,45 +201,6 @@ export default function SaudePage() {
             />
           ) : (
             <>
-              {/* No Carrinho (prioridade) */}
-              {pharmacyInCart.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <h3 className="text-yellow-800 font-semibold mb-3">⚠️ No Carrinho (Prioridade)</h3>
-                  <div className="space-y-2">
-                    {pharmacyInCart.map(item => {
-                      const priorityCfg = item.priority ? PRIORITY_CONFIG[item.priority] : null
-                      return (
-                        <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded shadow-sm">
-                          <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="w-5 h-5 accent-teal-600"
-                              onChange={() => pharmacy.cycleStatus(item.id, item.status)}
-                            />
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''} · ` : ''}
-                                {priorityCfg ? priorityCfg.label : ''}
-                                {item.notes ? ` · ${item.notes}` : ''}
-                              </p>
-                            </div>
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => { setSelectedPharmacy(item); setPharmacyOpen(true) }}
-                              className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
-                            <button
-                              onClick={() => pharmacy.remove(item.id)}
-                              className="text-red-400 text-sm hover:text-red-600">×</button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
               {/* A Comprar */}
               {pharmacyPending.length > 0 && (
                 <div>
@@ -310,6 +262,30 @@ export default function SaudePage() {
                               {item.quantity}{item.unit ? ` ${item.unit}` : ''}
                             </span>
                           )}
+                        </label>
+                        <button
+                          onClick={() => pharmacy.remove(item.id)}
+                          className="text-red-300 text-sm hover:text-red-500">×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Cancelados */}
+              {pharmacyCancelled.length > 0 && (
+                <div className="opacity-60">
+                  <h3 className="text-gray-400 font-medium mb-3 text-sm">⏭️ Cancelados ({pharmacyCancelled.length})</h3>
+                  <div className="space-y-1.5">
+                    {pharmacyCancelled.map(item => (
+                      <div key={item.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded text-sm">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 accent-teal-600"
+                            onChange={() => pharmacy.cycleStatus(item.id, item.status)}
+                          />
+                          <span className="text-gray-400 line-through">{item.name}</span>
                         </label>
                         <button
                           onClick={() => pharmacy.remove(item.id)}
@@ -600,7 +576,7 @@ export default function SaudePage() {
         </div>
       )}
 
-      {/* ══ ABA: SAÚDE EMOCIONAL ══ */}
+      {/* ══ ABA: SAÚDDE EMOCIONAL ══ */}
       {tab === 'emocional' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
