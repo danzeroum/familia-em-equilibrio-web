@@ -20,7 +20,6 @@ import { AgendamentoSheet } from '@/components/sheets/AgendamentoSheet'
 import { useQuickSchedule } from '@/hooks/useQuickSchedule'
 import type { WardrobeItem, HomeMaintenance, ShoppingItem, Medication } from '@/types/database'
 
-// ─── helpers ───────────────────────────────────────────────────────────────────
 const SEASON_LABEL: Record<string, string> = { summer: '☀️ Verão', winter: '❄️ Inverno', all: '🔄 Todas' }
 const WARDROBE_STATUS: Record<string, { label: string; cls: string }> = {
   fitting:  { label: '✅ Serve',    cls: 'bg-green-100 text-green-700' },
@@ -68,7 +67,6 @@ function formatDate(d: string | null) {
 
 type Tab = 'vestuario' | 'medicamentos' | 'manutencao' | 'consertos' | 'compras'
 
-// ═══════════════════════════════════════════════════════════════════════════════
 export default function CasaPage() {
   const { members, currentUser } = useFamilyStore()
   const wardrobe    = useWardrobe()
@@ -77,7 +75,7 @@ export default function CasaPage() {
   const shopping    = useShoppingItems()
   const calls       = useMaintenanceCalls()
 
-  const [tab, setTab] = useState<Tab>('vestuario')
+  const [tab, setTab] = useState<Tab>('compras')
   const [filterMember, setFilterMember] = useState<string>('all')
   const [showDoneCalls, setShowDoneCalls] = useState(false)
 
@@ -131,12 +129,13 @@ export default function CasaPage() {
     }
   }
 
+  // TABS reordenadas: Compras em 1ª posição
   const TABS = [
+    { id: 'compras'      as Tab, label: '🛒 Compras',                   alerts: shoppingAlerts },
     { id: 'vestuario'    as Tab, label: '🧥 Vestuário',                 alerts: wardrobeAlerts },
     { id: 'medicamentos' as Tab, label: '💊 Med. & Primeiros Socorros', alerts: medAlerts      },
     { id: 'manutencao'   as Tab, label: '🛠️ Manutenção',               alerts: maintAlerts   },
     { id: 'consertos'    as Tab, label: '🔧 Consertos',                 alerts: calls.alerts  },
-    { id: 'compras'      as Tab, label: '🛒 Compras',                   alerts: shoppingAlerts },
   ]
 
   return (
@@ -192,7 +191,137 @@ export default function CasaPage() {
         ))}
       </div>
 
-      {/* ══ BLOCO A — VESTUÁRIO ══ */}
+      {/* ══ BLOCO A — COMPRAS ══ */}
+      {tab === 'compras' && (
+        <div className="space-y-5">
+          {members.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              {[{ id: 'all', label: 'Todos' }, ...members.map(m => ({ id: m.id, label: m.nickname ?? m.name }))].map(opt => (
+                <button key={opt.id}
+                  onClick={() => setFilterMember(opt.id)}
+                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                    filterMember === opt.id
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'border-gray-200 text-gray-600 hover:border-teal-400'
+                  }`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <QuickAddList
+            onAdd={shopping.bulkInsert}
+            placeholder="Cole sua lista ou digite um item e aperte Enter..."
+          />
+
+          {shopping.isLoading ? (
+            <div className="p-8 text-center text-gray-400">Carregando...</div>
+          ) : filteredShopping.length === 0 ? (
+            <EmptyState
+              emoji="🛒"
+              title="Lista vazia"
+              description="Adicione itens no campo acima — cole uma lista inteira ou digite um por vez."
+            />
+          ) : (
+            <>
+              {runningOut.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <h3 className="text-yellow-800 font-semibold mb-3">⚠️ A Acabar (Prioridade)</h3>
+                  <div className="space-y-2">
+                    {runningOut.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-white p-3 rounded shadow-sm">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
+                          <div>
+                            <p className="font-medium">{i.name}</p>
+                            {(i.quantity || i.requested_by) && (
+                              <p className="text-xs text-gray-500">
+                                {i.quantity && <span>{i.quantity}</span>}
+                                {i.quantity && i.requested_by && <span> · </span>}
+                                {i.requested_by && <span>{getMemberName(i.requested_by)}</span>}
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button title="Criar agendamento" onClick={() => schedule(`🛒 Comprar: ${i.name}`)} className="text-xs text-blue-400 hover:text-blue-600">📅</button>
+                          <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                          <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {needed.length > 0 && (
+                <div>
+                  <h3 className="text-gray-700 font-medium mb-3">A Comprar ({needed.length})</h3>
+                  <div className="space-y-2">
+                    {needed.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-white border p-3 rounded hover:border-teal-300 transition-colors">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
+                          <div>
+                            <p className="font-medium text-gray-800">{i.name}</p>
+                            {(i.quantity || i.requested_by) && (
+                              <p className="text-xs text-gray-500">
+                                {i.quantity && <span>{i.quantity}</span>}
+                                {i.quantity && i.requested_by && <span> · </span>}
+                                {i.requested_by && <span>{getMemberName(i.requested_by)}</span>}
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button title="Criar agendamento" onClick={() => schedule(`🛒 Comprar: ${i.name}`)} className="text-xs text-blue-400 hover:text-blue-600">📅</button>
+                          <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                          <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {boughtRecurring.length > 0 && (
+                <div className="opacity-70">
+                  <h3 className="text-gray-500 font-medium mb-3 text-sm">🔄 Recorrentes em Stock (Comprados)</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {boughtRecurring.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border p-2 rounded text-sm">
+                        <span className="text-gray-500 line-through">{i.name}</span>
+                        <button onClick={() => handleToggleBuy(i)} className="text-teal-600 font-medium text-xs bg-teal-50 px-2 py-1 rounded hover:bg-teal-100">Pôr na Lista</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {boughtNonRec.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-gray-500 font-medium text-sm">✅ Comprados ({boughtNonRec.length})</h3>
+                    <button onClick={() => { if (confirm('Remover todos os itens comprados?')) shopping.clearBought() }} className="text-xs text-red-500 hover:underline">🗑 Limpar comprados</button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {boughtNonRec.map(i => (
+                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded text-sm">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input type="checkbox" checked className="w-4 h-4 accent-teal-600" onChange={() => handleToggleBuy(i)} />
+                          <span className="text-gray-400 line-through">{i.name}</span>
+                          {i.requested_by && <span className="text-[10px] text-gray-400">· {getMemberName(i.requested_by)}</span>}
+                        </label>
+                        <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-300 text-sm hover:text-red-500">×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ══ BLOCO B — VESTUÁRIO ══ */}
       {tab === 'vestuario' && (
         <div className="space-y-4">
           <div className="flex gap-2 flex-wrap">
@@ -276,7 +405,7 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ══ BLOCO B — MEDICAMENTOS ══ */}
+      {/* ══ BLOCO C — MEDICAMENTOS ══ */}
       {tab === 'medicamentos' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -341,7 +470,7 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ══ BLOCO C — MANUTENÇÃO PROGRAMADA ══ */}
+      {/* ══ BLOCO D — MANUTENÇÃO PROGRAMADA ══ */}
       {tab === 'manutencao' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -389,14 +518,9 @@ export default function CasaPage() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2 justify-end">
-                              <button
-                                className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100 transition-colors"
-                                onClick={() => maintenance.markDone(i.id)}
-                              >✓ Feito</button>
-                              <button
-                                title="Criar agendamento"
-                                onClick={() => schedule(`🔧 ${i.title}`, i.next_due_at)}
-                                className="text-xs text-blue-400 hover:text-blue-600">📅</button>
+                              <button className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100 transition-colors"
+                                onClick={() => maintenance.markDone(i.id)}>✓ Feito</button>
+                              <button title="Criar agendamento" onClick={() => schedule(`🔧 ${i.title}`, i.next_due_at)} className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                               <button className="text-xs text-gray-400 hover:text-teal-600"
                                 onClick={() => { setSelectedMaint(i); setMaintOpen(true) }}>✏️</button>
                               <button className="text-xs text-red-400 hover:text-red-600"
@@ -414,7 +538,7 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ══ BLOCO D — CONSERTOS PONTUAIS ══ */}
+      {/* ══ BLOCO E — CONSERTOS PONTUAIS ══ */}
       {tab === 'consertos' && (
         <div className="space-y-5">
           {calls.isLoading ? (
@@ -427,7 +551,6 @@ export default function CasaPage() {
             />
           ) : (
             <>
-              {/* Pendentes */}
               {calls.pending.length > 0 && (
                 <div className="rounded-xl border bg-white overflow-hidden">
                   <div className="px-4 py-3 bg-orange-50 border-b">
@@ -452,13 +575,9 @@ export default function CasaPage() {
                             )}
                           </div>
                           <div className="flex gap-2 ml-3 shrink-0">
-                            <button
-                              className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
+                            <button className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => calls.markDone(c.id)}>✓ Resolvido</button>
-                            <button
-                              title="Criar agendamento"
-                              onClick={() => schedule(`🔨 ${c.title}`, c.scheduled_date)}
-                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
+                            <button title="Criar agendamento" onClick={() => schedule(`🔨 ${c.title}`, c.scheduled_date)} className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedCall(c); setCallOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -471,7 +590,6 @@ export default function CasaPage() {
                 </div>
               )}
 
-              {/* Agendados */}
               {calls.scheduled.length > 0 && (
                 <div className="rounded-xl border bg-white overflow-hidden">
                   <div className="px-4 py-3 bg-blue-50 border-b">
@@ -499,13 +617,9 @@ export default function CasaPage() {
                             )}
                           </div>
                           <div className="flex gap-2 ml-3 shrink-0">
-                            <button
-                              className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
+                            <button className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-1 rounded hover:bg-teal-100"
                               onClick={() => calls.markDone(c.id)}>✓ Resolvido</button>
-                            <button
-                              title="Criar agendamento"
-                              onClick={() => schedule(`🔨 ${c.title}`, c.scheduled_date)}
-                              className="text-xs text-blue-400 hover:text-blue-600">📅</button>
+                            <button title="Criar agendamento" onClick={() => schedule(`🔨 ${c.title}`, c.scheduled_date)} className="text-xs text-blue-400 hover:text-blue-600">📅</button>
                             <button className="text-xs text-gray-400 hover:text-teal-600"
                               onClick={() => { setSelectedCall(c); setCallOpen(true) }}>✏️</button>
                             <button className="text-xs text-red-400 hover:text-red-600"
@@ -518,7 +632,6 @@ export default function CasaPage() {
                 </div>
               )}
 
-              {/* Resolvidos — colapsável */}
               {calls.done.length > 0 && (
                 <div className="rounded-xl border bg-white overflow-hidden">
                   <button
@@ -554,194 +667,12 @@ export default function CasaPage() {
         </div>
       )}
 
-      {/* ══ BLOCO E — COMPRAS ══ */}
-      {tab === 'compras' && (
-        <div className="space-y-5">
-          {members.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
-              {[{ id: 'all', label: 'Todos' }, ...members.map(m => ({ id: m.id, label: m.nickname ?? m.name }))].map(opt => (
-                <button key={opt.id}
-                  onClick={() => setFilterMember(opt.id)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    filterMember === opt.id
-                      ? 'bg-teal-600 text-white border-teal-600'
-                      : 'border-gray-200 text-gray-600 hover:border-teal-400'
-                  }`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <QuickAddList
-            onAdd={shopping.bulkInsert}
-            placeholder="Cole sua lista ou digite um item e aperte Enter..."
-          />
-
-          {shopping.isLoading ? (
-            <div className="p-8 text-center text-gray-400">Carregando...</div>
-          ) : filteredShopping.length === 0 ? (
-            <EmptyState
-              emoji="🛒"
-              title="Lista vazia"
-              description="Adicione itens no campo acima — cole uma lista inteira ou digite um por vez."
-            />
-          ) : (
-            <>
-              {runningOut.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <h3 className="text-yellow-800 font-semibold mb-3">⚠️ A Acabar (Prioridade)</h3>
-                  <div className="space-y-2">
-                    {runningOut.map(i => (
-                      <div key={i.id} className="flex items-center justify-between bg-white p-3 rounded shadow-sm">
-                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                          <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
-                          <div>
-                            <p className="font-medium">{i.name}</p>
-                            {(i.quantity || i.requested_by) && (
-                              <p className="text-xs text-gray-500">
-                                {i.quantity && <span>{i.quantity}</span>}
-                                {i.quantity && i.requested_by && <span> · </span>}
-                                {i.requested_by && <span>{getMemberName(i.requested_by)}</span>}
-                              </p>
-                            )}
-                          </div>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <button
-                            title="Criar agendamento"
-                            onClick={() => schedule(`🛒 Comprar: ${i.name}`)}
-                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
-                          <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
-                          <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {needed.length > 0 && (
-                <div>
-                  <h3 className="text-gray-700 font-medium mb-3">A Comprar ({needed.length})</h3>
-                  <div className="space-y-2">
-                    {needed.map(i => (
-                      <div key={i.id} className="flex items-center justify-between bg-white border p-3 rounded hover:border-teal-300 transition-colors">
-                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                          <input type="checkbox" className="w-5 h-5 accent-teal-600" onChange={() => handleToggleBuy(i)} />
-                          <div>
-                            <p className="font-medium text-gray-800">{i.name}</p>
-                            {(i.quantity || i.requested_by) && (
-                              <p className="text-xs text-gray-500">
-                                {i.quantity && <span>{i.quantity}</span>}
-                                {i.quantity && i.requested_by && <span> · </span>}
-                                {i.requested_by && <span>{getMemberName(i.requested_by)}</span>}
-                              </p>
-                            )}
-                          </div>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <button
-                            title="Criar agendamento"
-                            onClick={() => schedule(`🛒 Comprar: ${i.name}`)}
-                            className="text-xs text-blue-400 hover:text-blue-600">📅</button>
-                          <button onClick={() => { setSelectedItem(i); setShoppingOpen(true) }} className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
-                          <button onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }} className="text-red-400 text-sm hover:text-red-600">×</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {boughtRecurring.length > 0 && (
-                <div className="opacity-70">
-                  <h3 className="text-gray-500 font-medium mb-3 text-sm">🔄 Recorrentes em Stock (Comprados)</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {boughtRecurring.map(i => (
-                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border p-2 rounded text-sm">
-                        <span className="text-gray-500 line-through">{i.name}</span>
-                        <button
-                          onClick={() => handleToggleBuy(i)}
-                          className="text-teal-600 font-medium text-xs bg-teal-50 px-2 py-1 rounded hover:bg-teal-100"
-                        >Pôr na Lista</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {boughtNonRec.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-gray-500 font-medium text-sm">✅ Comprados ({boughtNonRec.length})</h3>
-                    <button
-                      onClick={() => { if (confirm('Remover todos os itens comprados?')) shopping.clearBought() }}
-                      className="text-xs text-red-500 hover:underline"
-                    >🗑 Limpar comprados</button>
-                  </div>
-                  <div className="space-y-1.5">
-                    {boughtNonRec.map(i => (
-                      <div key={i.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded text-sm">
-                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked
-                            className="w-4 h-4 accent-teal-600"
-                            onChange={() => handleToggleBuy(i)}
-                          />
-                          <span className="text-gray-400 line-through">{i.name}</span>
-                          {i.requested_by && (
-                            <span className="text-[10px] text-gray-400">· {getMemberName(i.requested_by)}</span>
-                          )}
-                        </label>
-                        <button
-                          onClick={() => { if (confirm('Remover?')) shopping.remove(i.id) }}
-                          className="text-red-300 text-sm hover:text-red-500"
-                        >×</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
       {/* Sheets */}
-      <WardrobeSheet
-        open={wardrobeOpen}
-        onClose={() => setWardrobeOpen(false)}
-        item={selectedWardrobe}
-        onSave={wardrobe.upsert}
-        members={members}
-      />
-      <MaintenanceSheet
-        open={maintOpen}
-        onClose={() => setMaintOpen(false)}
-        item={selectedMaint}
-        onSave={maintenance.upsert}
-        members={members}
-      />
-      <MaintenanceCallSheet
-        open={callOpen}
-        onClose={() => setCallOpen(false)}
-        call={selectedCall}
-        onSave={calls.upsert}
-        members={members}
-      />
-      <ShoppingSheet
-        open={shoppingOpen}
-        onClose={() => setShoppingOpen(false)}
-        item={selectedItem}
-        onSave={shopping.upsert}
-      />
-      <MedicationSheet
-        open={medOpen}
-        onClose={() => setMedOpen(false)}
-        medication={selectedMed}
-        onSave={upsertMed}
-        members={members}
-      />
-
+      <WardrobeSheet open={wardrobeOpen} onClose={() => setWardrobeOpen(false)} item={selectedWardrobe} onSave={wardrobe.upsert} members={members} />
+      <MaintenanceSheet open={maintOpen} onClose={() => setMaintOpen(false)} item={selectedMaint} onSave={maintenance.upsert} members={members} />
+      <MaintenanceCallSheet open={callOpen} onClose={() => setCallOpen(false)} call={selectedCall} onSave={calls.upsert} members={members} />
+      <ShoppingSheet open={shoppingOpen} onClose={() => setShoppingOpen(false)} item={selectedItem} onSave={shopping.upsert} />
+      <MedicationSheet open={medOpen} onClose={() => setMedOpen(false)} medication={selectedMed} onSave={upsertMed} members={members} />
       <AgendamentoSheet
         open={schedOpen}
         onClose={() => setSchedOpen(false)}
