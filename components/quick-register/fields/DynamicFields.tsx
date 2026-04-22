@@ -1,14 +1,14 @@
 'use client'
 import { QuickRegisterType } from '@/types/database'
 import type { Profile } from '@/types/database'
-import { TaskFields } from './fields/TaskFields'
-import { SubtaskFields } from './fields/SubtaskFields'
-import { HealthTrackingFields } from './fields/HealthTrackingFields'
-import { HomeworkFields } from './fields/HomeworkFields'
-import { SchoolItemFields } from './fields/SchoolItemFields'
-import { EmergencyContactFields } from './fields/EmergencyContactFields'
-import { GratitudeFields } from './fields/GratitudeFields'
-import { MaintenanceCallFields } from './fields/MaintenanceCallFields'
+import { TaskFields } from './TaskFields'
+import { SubtaskFields } from './SubtaskFields'
+import { HealthTrackingFields } from './HealthTrackingFields'
+import { HomeworkFields } from './HomeworkFields'
+import { SchoolItemFields } from './SchoolItemFields'
+import { EmergencyContactFields } from './EmergencyContactFields'
+import { GratitudeFields } from './GratitudeFields'
+import { MaintenanceCallFields } from './MaintenanceCallFields'
 
 interface Props {
   type: QuickRegisterType
