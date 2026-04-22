@@ -947,3 +947,149 @@ export type SocialEventTask     = Database['public']['Tables']['social_event_tas
 export type SocialEventShopping = Database['public']['Tables']['social_event_shopping']['Row']
 export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
 export type SocialEventExpense  = Database['public']['Tables']['social_event_expenses']['Row']
+
+
+
+
+// Adicionar ao arquivo existente types/database.ts
+
+export type QuickRegisterType =
+  | 'task'
+  | 'subtask'
+  | 'medication'
+  | 'bill'
+  | 'shopping'
+  | 'maintenance'
+  | 'event'
+  | 'vaccine'
+  | 'mood'
+  | 'health_tracking'
+  | 'homework'
+  | 'school_item'
+  | 'emergency_contact'
+  | 'gratitude'
+  | 'maintenance_call'
+
+export interface QuickRegisterItem {
+  type: QuickRegisterType
+  label: string
+  emoji: string
+  wave: 1 | 2 | 3
+}
+
+export const QUICK_REGISTER_ITEMS: QuickRegisterItem[] = [
+  // Onda 1 — já existentes
+  { type: 'task', label: 'Tarefa', emoji: '✅', wave: 1 },
+  { type: 'medication', label: 'Remédio', emoji: '💊', wave: 1 },
+  { type: 'bill', label: 'Conta', emoji: '💳', wave: 1 },
+  { type: 'shopping', label: 'Compra', emoji: '🛒', wave: 1 },
+  { type: 'maintenance', label: 'Casa', emoji: '🔧', wave: 1 },
+  { type: 'event', label: 'Evento', emoji: '📅', wave: 1 },
+  { type: 'vaccine', label: 'Vacina', emoji: '💉', wave: 1 },
+  { type: 'mood', label: 'Humor', emoji: '😊', wave: 1 },
+  // Onda 1 — novos
+  { type: 'subtask', label: 'Subtarefa', emoji: '↳', wave: 1 },
+  { type: 'health_tracking', label: 'Saúde', emoji: '🩺', wave: 1 },
+  { type: 'homework', label: 'Lição', emoji: '📚', wave: 1 },
+  { type: 'school_item', label: 'Escola', emoji: '🎒', wave: 1 },
+  // Onda 2 — novos
+  { type: 'emergency_contact', label: 'Contato', emoji: '☎️', wave: 2 },
+  { type: 'gratitude', label: 'Gratidão', emoji: '🙏', wave: 2 },
+  { type: 'maintenance_call', label: 'Chamada', emoji: '🛠️', wave: 2 },
+]
+
+// Tipos de payload por tipo de registro
+export interface QuickRegisterPayload {
+  task: {
+    title: string
+    assigned_to?: string
+    due_date?: string
+    family_id: string
+  }
+  subtask: {
+    title: string
+    task_id: string
+    assigned_to?: string
+    family_id: string
+  }
+  medication: {
+    name: string
+    member_id: string
+    frequency?: string
+    family_id: string
+  }
+  bill: {
+    title: string
+    amount?: number
+    due_date?: string
+    family_id: string
+  }
+  shopping: {
+    name: string
+    quantity?: number
+    assigned_to?: string
+    family_id: string
+  }
+  maintenance: {
+    title: string
+    assigned_to?: string
+    due_date?: string
+    family_id: string
+  }
+  event: {
+    title: string
+    date?: string
+    assigned_to?: string
+    family_id: string
+  }
+  vaccine: {
+    name: string
+    member_id: string
+    date?: string
+    family_id: string
+  }
+  mood: {
+    member_id: string
+    score: number
+    note?: string
+    family_id: string
+  }
+  health_tracking: {
+    member_id: string
+    metric: string
+    value: number
+    unit?: string
+    date?: string
+    family_id: string
+  }
+  homework: {
+    title: string
+    member_id: string
+    due_date?: string
+    subject?: string
+    family_id: string
+  }
+  school_item: {
+    name: string
+    member_id: string
+    quantity?: number
+    family_id: string
+  }
+  emergency_contact: {
+    name: string
+    phone: string
+    relation?: string
+    family_id: string
+  }
+  gratitude: {
+    content: string
+    member_id?: string
+    family_id: string
+  }
+  maintenance_call: {
+    title: string
+    provider?: string
+    scheduled_date?: string
+    family_id: string
+  }
+}
