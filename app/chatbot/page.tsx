@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Sparkles,
   ChevronDown,
 } from 'lucide-react'
 
@@ -63,11 +62,11 @@ export default function ChatbotPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto px-4">
-    <PageHeader
-      emoji="✨"
-      title="Assistente"
-      description="Cole listas, mensagens do WhatsApp ou qualquer texto com itens misturados"
-    />
+      <PageHeader
+        emoji="✨"
+        title="Assistente"
+        description="Cole listas, mensagens do WhatsApp ou qualquer texto com itens misturados"
+      />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1">
@@ -82,12 +81,19 @@ export default function ChatbotPage() {
                   ? 'bg-primary text-white rounded-br-sm'
                   : 'bg-surface border border-border rounded-bl-sm'
               }`}
-              dangerouslySetInnerHTML={{
-                __html: msg.content
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\n/g, '<br/>'),
-              }}
-            />
+            >
+              <span
+                dangerouslySetInnerHTML={{
+                  __html:
+                    msg.content
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\n/g, '<br/>') +
+                    (msg.streaming
+                      ? '<span class="streaming-cursor">▋</span>'
+                      : ''),
+                }}
+              />
+            </div>
           </div>
         ))}
 
