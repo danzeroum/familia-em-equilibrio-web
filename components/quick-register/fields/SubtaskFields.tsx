@@ -17,8 +17,7 @@ export function SubtaskFields({ data, onChange, members }: Props) {
   useEffect(() => {
     supabase
       .from('tasks')
-      .select('id, title')
-      .eq('family_id', currentFamily?.id)
+      .select('id, title, domain:domain_id(family_id)')
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(20)
