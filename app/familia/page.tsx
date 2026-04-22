@@ -8,6 +8,11 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { MemberSheet } from '@/components/sheets/MemberSheet'
 import { EmergencyContactSheet } from '@/components/sheets/EmergencyContactSheet'
 import type { Profile, EmergencyContact } from '@/types/database'
+import { redirect } from 'next/navigation'
+
+export default function FamiliaPage() {
+  redirect('/configuracoes?tab=membros')
+}
 
 const ROLE_LABEL: Record<string, string> = {
   adult: '👤 Adulto',
