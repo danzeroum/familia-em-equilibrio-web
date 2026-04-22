@@ -41,40 +41,47 @@ export function useChatbot() {
     const { data: { user } } = await supabase.auth.getUser()
 
     try {
-      const res = await fetch('/api/chatbot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          familyId,
-          createdBy: user?.id ?? currentUser?.id,
-          autoInsert: false,
-          modelId,
-        }),
-      })
+    const res = await fetch('/api/chatbot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        familyId,
+        createdBy: user?.id ?? currentUser?.id,
+        autoInsert: false,
+        modelId,
+      }),
+    })
 
-      const data = await res.json()
+    const data = await res.json()
 
-      // Expor erro real da API no chat (não mais mensagem genérica)
-      if (!res.ok) {
-        addMessage('assistant', `❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
-        setLoading(false)
-        return
-      }
-
-      const items: ParsedItem[] = data.preview ?? []
-      setPreview(items)
-      setEditingItems(items)
-
-      const summary = items.length > 0
-        ? `Encontrei **${items.length} itens** para revisar antes de salvar.`
-        : 'Não consegui identificar itens no texto. Tente reformular.'
-      addMessage('assistant', summary)
-    } catch (err: any) {
-      addMessage('assistant', `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`)
+    if (!res.ok) {
+      addMessage('assistant', `❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
+      setLoading(false)
+      return
     }
 
-    setLoading(false)
+    // ── Modo pergunta: exibe resposta diretamente ──
+    if (data.mode === 'query') {
+      addMessage('assistant', data.answer)
+      setLoading(false)
+      return
+    }
+
+    // ── Modo inserção: exibe preview para confirmação ──
+    const items: ParsedItem[] = data.preview ?? []
+    setPreview(items)
+    setEditingItems(items)
+
+    const summary = items.length > 0
+      ? `Encontrei **${items.length} itens** para revisar antes de salvar.`
+      : 'Não consegui identificar itens no texto. Tente reformular.'
+    addMessage('assistant', summary)
+  } catch (err: any) {
+    addMessage('assistant', `❌ Erro de conexão: ${err?.message ?? 'Sem resposta do servidor'}`)
+  }
+
+  setLoading(false)
   }
 
   async function confirmInsert(items: ParsedItem[]) {
