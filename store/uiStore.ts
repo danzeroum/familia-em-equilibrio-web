@@ -26,6 +26,12 @@ interface UIStore {
   toasts: Toast[]
   addToast: (toast: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
+
+  quickRegisterOpen: boolean
+  quickRegisterType: QuickRegisterType | null
+  openQuickRegister: (type?: QuickRegisterType) => void
+  closeQuickRegister: () => void
+  setQuickRegisterType: (type: QuickRegisterType | null) => void
 }
 
 interface Toast {
@@ -59,4 +65,12 @@ export const useUIStore = create<UIStore>((set) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
+
+  quickRegisterOpen: false,
+  quickRegisterType: null,
+  openQuickRegister: (type = null) =>
+    set({ quickRegisterOpen: true, quickRegisterType: type }),
+  closeQuickRegister: () =>
+    set({ quickRegisterOpen: false, quickRegisterType: null }),
+  setQuickRegisterType: (type) => set({ quickRegisterType: type }),
 }))
