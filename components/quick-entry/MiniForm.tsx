@@ -29,7 +29,7 @@ import {
   MoodSlider,
   TextareaField,   // novo — adicionar em fields.tsx (ver abaixo)
 } from './fields'
-import { useSupabaseClient } from '@supabase/auth-helpers-react'
+import { supabase } from '@/lib/supabase'
 
 const PRACTICES = [
   { value: 'Respiração', label: 'Respiração' },
@@ -62,7 +62,7 @@ export function MiniForm({ entity, onSaved }: Props) {
   const { family, currentUser, members } = useFamilyStore()
   const { addToast } = useUIStore()
   const familyId = family?.id ?? null
-  const supabase = useSupabaseClient()
+  
 
   // Hooks existentes
   const tasks       = useTasks()
