@@ -388,7 +388,7 @@ export function MiniForm({ entity, onSaved }: Props) {
   const showTitleField = !['checkin', 'health_tracking', 'gratitude'].includes(entity)
   const showMemberSelect = !['shopping', 'maintenance', 'emergency_contact'].includes(entity)
   const isChildContext = ['homework', 'school_item'].includes(entity)
-  const childrenOnly = isChildContext ? members.filter((m) => m.is_child) : []
+  const childrenOnly = isChildContext ? members.filter((m) => m.role === 'child' || m.role === 'teen') : []
   const memberList = childrenOnly.length > 0 ? childrenOnly : members
   const includeNone = ['task', 'bill', 'event', 'maintenance', 'subtask', 'maintenance_call'].includes(entity)
 
