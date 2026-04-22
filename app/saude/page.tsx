@@ -9,6 +9,7 @@ import { useEmotionalPractices } from '@/hooks/useEmotionalPractices'
 import { usePharmacyItems, STATUS_CONFIG, PRIORITY_CONFIG } from '@/hooks/usePharmacyItems'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { QuickAddList } from '@/components/food/QuickAddList'
 import { MedicationSheet } from '@/components/sheets/MedicationSheet'
 import { VaccineSheet } from '@/components/sheets/VaccineSheet'
 import { HealthTrackingSheet } from '@/components/sheets/HealthTrackingSheet'
@@ -48,7 +49,7 @@ export default function SaudePage() {
   const emotional = useEmotionalPractices()
   const pharmacy = usePharmacyItems()
 
-  const [tab, setTab] = useState<Tab>('medicamentos')
+  const [tab, setTab] = useState<Tab>('farmacia')
 
   // Medication sheet
   const [medOpen, setMedOpen] = useState(false)
@@ -103,12 +104,33 @@ export default function SaudePage() {
     return members.find(m => m.id === id)?.nickname ?? members.find(m => m.id === id)?.name ?? '—'
   }
 
+  // Handler QuickAddList para farmácia
+  const handleBulkAddPharmacy = async (names: string[]) => {
+    for (const name of names) {
+      await pharmacy.upsert({
+        name,
+        status: 'pending',
+        priority: null,
+        quantity: null,
+        unit: null,
+        notes: null,
+        assigned_to: null,
+      } as Omit<PharmacyItem, 'id' | 'family_id' | 'created_at' | 'updated_at'>)
+    }
+  }
+
+  // Separar itens por status para layout estilo lista de compras
+  const pharmacyInCart  = pharmacy.items.filter(i => i.status === 'in_cart')
+  const pharmacyPending = pharmacy.items.filter(i => i.status === 'pending')
+  const pharmacyBought  = pharmacy.items.filter(i => i.status === 'bought')
+
+  // TABS reordenadas: Farmácia em 1ª posição
   const TABS = [
-    { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',   alerts: alerts.length         },
-    { id: 'acompanhamento' as Tab, label: '🩺 Acompanhamento', alerts: healthAlerts           },
-    { id: 'calculadora'    as Tab, label: '⚕️ Calculadora',     alerts: 0                     },
-    { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional', alerts: 0                     },
-    { id: 'farmacia'       as Tab, label: '🛒 Farmácia',        alerts: pharmacy.pending.length },
+    { id: 'farmacia'       as Tab, label: '🛒 Compras (Farmácia)', alerts: pharmacy.pending.length },
+    { id: 'medicamentos'   as Tab, label: '💊 Medicamentos',        alerts: alerts.length          },
+    { id: 'acompanhamento' as Tab, label: '🩺 Acompanhamento',      alerts: healthAlerts           },
+    { id: 'calculadora'    as Tab, label: '⚕️ Calculadora',          alerts: 0                     },
+    { id: 'emocional'      as Tab, label: '🧘 Saúde Emocional',     alerts: 0                     },
   ]
 
   function handleSavePractice(data: Omit<EmotionalPractice, 'status' | 'lastDoneWeek'>) {
@@ -139,8 +161,17 @@ export default function SaudePage() {
             <button className="text-sm text-teal-600 font-medium hover:underline"
               onClick={() => { setShowAddMed(true); setAddMedError('') }}>+ Adicionar</button>
           ) : tab === 'farmacia' ? (
-            <button className="text-sm text-teal-600 font-medium hover:underline"
-              onClick={() => { setSelectedPharmacy(null); setPharmacyOpen(true) }}>+ Item</button>
+            <div className="flex items-center gap-3">
+              {pharmacyBought.length > 0 && (
+                <button
+                  className="text-sm text-gray-400 hover:text-red-500 transition-colors"
+                  onClick={() => { if (confirm(`Limpar ${pharmacyBought.length} item(s) comprado(s)?`)) pharmacy.clearBought() }}>
+                  🗑️ Limpar comprados
+                </button>
+              )}
+              <button className="text-sm text-teal-600 font-medium hover:underline"
+                onClick={() => { setSelectedPharmacy(null); setPharmacyOpen(true) }}>+ Item</button>
+            </div>
           ) : null
         }
       />
@@ -160,6 +191,138 @@ export default function SaudePage() {
           </button>
         ))}
       </div>
+
+      {/* ══ ABA: COMPRAS (FARMÁCIA) ══ */}
+      {tab === 'farmacia' && (
+        <div className="space-y-5">
+          <QuickAddList
+            onAdd={handleBulkAddPharmacy}
+            placeholder="Digite ou cole a lista de farmácia..."
+          />
+
+          {pharmacy.isLoading ? (
+            <div className="p-8 text-center text-gray-400">Carregando...</div>
+          ) : pharmacy.items.length === 0 ? (
+            <EmptyState
+              emoji="🛒"
+              title="Lista vazia"
+              description="Adicione itens no campo acima — cole uma lista ou digite um por vez."
+            />
+          ) : (
+            <>
+              {/* No Carrinho (prioridade) */}
+              {pharmacyInCart.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <h3 className="text-yellow-800 font-semibold mb-3">⚠️ No Carrinho (Prioridade)</h3>
+                  <div className="space-y-2">
+                    {pharmacyInCart.map(item => {
+                      const priorityCfg = item.priority ? PRIORITY_CONFIG[item.priority] : null
+                      return (
+                        <div key={item.id} className="flex items-center justify-between bg-white p-3 rounded shadow-sm">
+                          <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-5 h-5 accent-teal-600"
+                              onChange={() => pharmacy.cycleStatus(item.id, item.status)}
+                            />
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''} · ` : ''}
+                                {priorityCfg ? priorityCfg.label : ''}
+                                {item.notes ? ` · ${item.notes}` : ''}
+                              </p>
+                            </div>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => { setSelectedPharmacy(item); setPharmacyOpen(true) }}
+                              className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                            <button
+                              onClick={() => pharmacy.remove(item.id)}
+                              className="text-red-400 text-sm hover:text-red-600">×</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* A Comprar */}
+              {pharmacyPending.length > 0 && (
+                <div>
+                  <h3 className="text-gray-700 font-medium mb-3">A Comprar ({pharmacyPending.length})</h3>
+                  <div className="space-y-2">
+                    {pharmacyPending.map(item => {
+                      const priorityCfg = item.priority ? PRIORITY_CONFIG[item.priority] : null
+                      return (
+                        <div key={item.id} className="flex items-center justify-between bg-white border p-3 rounded hover:border-teal-300 transition-colors">
+                          <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="w-5 h-5 accent-teal-600"
+                              onChange={() => pharmacy.cycleStatus(item.id, item.status)}
+                            />
+                            <div>
+                              <p className="font-medium text-gray-800">{item.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}` : ''}
+                                {item.quantity && (priorityCfg || item.notes) ? ' · ' : ''}
+                                {priorityCfg ? priorityCfg.label : ''}
+                                {priorityCfg && item.notes ? ' · ' : ''}
+                                {item.notes ?? ''}
+                              </p>
+                            </div>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => { setSelectedPharmacy(item); setPharmacyOpen(true) }}
+                              className="text-gray-400 text-sm hover:text-gray-600">Editar</button>
+                            <button
+                              onClick={() => pharmacy.remove(item.id)}
+                              className="text-red-400 text-sm hover:text-red-600">×</button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Comprados */}
+              {pharmacyBought.length > 0 && (
+                <div className="opacity-70">
+                  <h3 className="text-gray-500 font-medium mb-3 text-sm">✅ Comprados ({pharmacyBought.length})</h3>
+                  <div className="space-y-1.5">
+                    {pharmacyBought.map(item => (
+                      <div key={item.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded text-sm">
+                        <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked
+                            className="w-4 h-4 accent-teal-600"
+                            onChange={() => pharmacy.cycleStatus(item.id, item.status)}
+                          />
+                          <span className="text-gray-400 line-through">{item.name}</span>
+                          {item.quantity && (
+                            <span className="text-xs text-gray-400">
+                              {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                            </span>
+                          )}
+                        </label>
+                        <button
+                          onClick={() => pharmacy.remove(item.id)}
+                          className="text-red-300 text-sm hover:text-red-500">×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* ══ ABA: MEDICAMENTOS ══ */}
       {tab === 'medicamentos' && (
@@ -285,7 +448,7 @@ export default function SaudePage() {
         </div>
       )}
 
-          {/* ══ ABA: ACOMPANHAMENTO ══ */}
+      {/* ══ ABA: ACOMPANHAMENTO ══ */}
       {tab === 'acompanhamento' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -349,6 +512,7 @@ export default function SaudePage() {
           </div>
         </div>
       )}
+
       {/* ══ ABA: CALCULADORA ══ */}
       {tab === 'calculadora' && (
         <div className="space-y-4">
@@ -436,7 +600,7 @@ export default function SaudePage() {
         </div>
       )}
 
-            {/* ══ ABA: SAÚDE EMOCIONAL ══ */}
+      {/* ══ ABA: SAÚDE EMOCIONAL ══ */}
       {tab === 'emocional' && (
         <div className="space-y-4">
           <div className="rounded-xl border bg-white overflow-hidden">
@@ -473,108 +637,6 @@ export default function SaudePage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      
-      {/* ══ ABA: FARMÁCIA ══ */}
-      {tab === 'farmacia' && (
-        <div className="space-y-4">
-
-          {/* Resumo */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border bg-white p-3 text-center">
-              <div className="text-2xl font-bold text-yellow-600">{pharmacy.pending.length}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Pendentes</div>
-            </div>
-            <div className="rounded-xl border bg-white p-3 text-center">
-              <div className="text-2xl font-bold text-green-600">{pharmacy.bought.length}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Comprados</div>
-            </div>
-            <div className="rounded-xl border bg-white p-3 text-center">
-              <div className="text-2xl font-bold text-gray-400">{pharmacy.items.length}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Total</div>
-            </div>
-          </div>
-
-          {/* Lista de itens */}
-          <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <h2 className="font-semibold">🛒 Lista de farmácia</h2>
-              <div className="flex items-center gap-3">
-                {pharmacy.bought.length > 0 && (
-                  <button
-                    className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                    onClick={() => { if (confirm(`Limpar ${pharmacy.bought.length} item(s) comprado(s)?`)) pharmacy.clearBought() }}>
-                    🗑️ Limpar comprados
-                  </button>
-                )}
-                <button className="text-sm text-teal-600 font-medium hover:underline"
-                  onClick={() => { setSelectedPharmacy(null); setPharmacyOpen(true) }}>+ Adicionar</button>
-              </div>
-            </div>
-
-            {pharmacy.items.length === 0 ? (
-              <EmptyState emoji="🛒" title="Lista vazia" description="Adicione itens para comprar na farmácia." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Item</th>
-                      <th className="px-4 py-2 text-left">Qtd</th>
-                      <th className="px-4 py-2 text-left">Prioridade</th>
-                      <th className="px-4 py-2 text-left">Responsável</th>
-                      <th className="px-4 py-2 text-left">Status</th>
-                      <th className="px-4 py-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {pharmacy.items.map(item => {
-                      const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending
-                      const priorityCfg = item.priority ? PRIORITY_CONFIG[item.priority] : null
-                      const isBought = item.status === 'bought'
-                      return (
-                        <tr key={item.id} className={`hover:bg-gray-50 ${isBought ? 'opacity-50' : ''}`}>
-                          <td className={`px-4 py-2 font-medium ${isBought ? 'line-through text-gray-400' : ''}`}>
-                            {item.name}
-                            {item.notes && (
-                              <div className="text-xs text-gray-400 font-normal truncate max-w-[180px]">{item.notes}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 text-gray-500">
-                            {item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}` : '—'}
-                          </td>
-                          <td className="px-4 py-2">
-                            {priorityCfg
-                              ? <span className={`text-xs font-medium ${priorityCfg.cls}`}>{priorityCfg.label}</span>
-                              : <span className="text-gray-300">—</span>
-                            }
-                          </td>
-                          <td className="px-4 py-2 text-gray-500">
-                            {getMemberName(item.assigned_to)}
-                          </td>
-                          <td className="px-4 py-2">
-                            <button
-                              onClick={() => pharmacy.cycleStatus(item.id, item.status)}
-                              className={`text-xs px-2 py-0.5 rounded-full cursor-pointer transition-colors ${statusCfg.cls}`}>
-                              {statusCfg.label}
-                            </button>
-                          </td>
-                          <td className="px-4 py-2 flex gap-2">
-                            <button className="text-xs text-gray-400 hover:text-gray-600"
-                              onClick={() => { setSelectedPharmacy(item); setPharmacyOpen(true) }}>Editar</button>
-                            <button className="text-xs text-red-400 hover:text-red-600"
-                              onClick={() => pharmacy.remove(item.id)}>×</button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
               </div>
             )}
           </div>
