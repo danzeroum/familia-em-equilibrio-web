@@ -1,4 +1,8 @@
 import { create } from 'zustand'
+import type { QuickRegisterType } from '@/types/database'
+
+// Re-export so existing imports from uiStore still work
+export type { QuickRegisterType }
 
 type SheetType =
   | 'add-member'
@@ -17,17 +21,6 @@ type SheetType =
   | 'add-checkin'
   | 'add-wardrobe'
   | null
-
-export type QuickRegisterType =
-  | 'task'
-  | 'bill'
-  | 'medication'
-  | 'vaccine'
-  | 'event'
-  | 'shopping'
-  | 'checkin'
-  | 'maintenance'
-  | 'maintenance_call'
 
 interface UIStore {
   activeSheet: SheetType
