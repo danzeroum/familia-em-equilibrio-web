@@ -8,11 +8,6 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { MemberSheet } from '@/components/sheets/MemberSheet'
 import { EmergencyContactSheet } from '@/components/sheets/EmergencyContactSheet'
 import type { Profile, EmergencyContact } from '@/types/database'
-import { redirect } from 'next/navigation'
-
-export default function FamiliaPage() {
-  redirect('/configuracoes?tab=membros')
-}
 
 const ROLE_LABEL: Record<string, string> = {
   adult: '👤 Adulto',
@@ -32,7 +27,7 @@ export default function FamiliaPage() {
   return (
     <div className="space-y-6">
      <PageHeader
-       emoji="👨‍👩‍👧"
+       emoji="👨\u200d👩\u200d👧"
        title="Família"
        description="Membros e contatos de emergência"
        action={
@@ -49,7 +44,7 @@ export default function FamiliaPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {members.length === 0 ? (
           <div className="col-span-full">
-            <EmptyState emoji="👨‍👩‍👧" title="Nenhum membro" description="Adicione os membros da família para começar." />
+            <EmptyState emoji="👨\u200d👩\u200d👧" title="Nenhum membro" description="Adicione os membros da família para começar." />
           </div>
         ) : (
           members.map(m => (
