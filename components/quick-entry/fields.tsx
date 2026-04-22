@@ -204,3 +204,38 @@ export const MoodSlider = memo(function MoodSlider({ value, onChange }: MoodSlid
     </div>
   )
 })
+
+// Adicionar no final de fields.tsx
+
+type TextareaFieldProps = {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  rows?: number
+}
+
+export const TextareaField = memo(function TextareaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: TextareaFieldProps) {
+  return (
+    <div>
+      <label className={LABEL_CLS}>{label}</label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className={
+          'w-full px-3 py-2.5 text-sm bg-white border border-gray-200 rounded-lg ' +
+          'outline-none placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 ' +
+          'focus:ring-teal-500/20 transition-colors resize-none'
+        }
+      />
+    </div>
+  )
+})
