@@ -36,6 +36,61 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['gratitude_notes']['Insert']>
         Relationships: []
       }
+
+      activity_feed: {
+        Row: { id: string; user_id: string | null; action: string; entity_type: string; entity_id: string | null; entity_title: string | null; created_at: string | null }
+        Insert: { id?: string; user_id?: string | null; action: string; entity_type: string; entity_id?: string | null; entity_title?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['activity_feed']['Insert']>
+        Relationships: []
+      }
+      health_protocols: {
+        Row: { id: string; profile_id: string | null; trigger_condition: string; action_text: string; priority: number | null; is_active: boolean | null; created_at: string | null }
+        Insert: { id?: string; profile_id?: string | null; trigger_condition: string; action_text: string; priority?: number | null; is_active?: boolean | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['health_protocols']['Insert']>
+        Relationships: []
+      }
+      homework: {
+        Row: { id: string; profile_id: string | null; title: string; subject: string | null; due_date: string | null; progress_pct: number | null; missing_steps: string | null; status: string | null; family_id: string | null; created_at: string | null }
+        Insert: { id?: string; profile_id?: string | null; title: string; subject?: string | null; due_date?: string | null; progress_pct?: number | null; missing_steps?: string | null; status?: string | null; family_id?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['homework']['Insert']>
+        Relationships: []
+      }
+      maintenance_calls: {
+        Row: { id: string; title: string; description: string | null; status: string | null; priority: number | null; professional_name: string | null; professional_phone: string | null; estimated_cost: number | null; scheduled_date: string | null; domain_id: number | null; created_by: string | null; completed_at: string | null; created_at: string | null; family_id: string | null }
+        Insert: { id?: string; title: string; description?: string | null; status?: string | null; priority?: number | null; professional_name?: string | null; professional_phone?: string | null; estimated_cost?: number | null; scheduled_date?: string | null; domain_id?: number | null; created_by?: string | null; completed_at?: string | null; created_at?: string | null; family_id?: string | null }
+        Update: Partial<Database['public']['Tables']['maintenance_calls']['Insert']>
+        Relationships: []
+      }
+      meal_ingredients: {
+        Row: { id: string; meal_plan_id: string | null; shopping_item_id: string | null; item_name: string | null; quantity: string | null; created_at: string | null }
+        Insert: { id?: string; meal_plan_id?: string | null; shopping_item_id?: string | null; item_name?: string | null; quantity?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['meal_ingredients']['Insert']>
+        Relationships: []
+      }
+      meal_plans: {
+        Row: { id: string; week_start: string; title: string | null; meals: any | null; created_by: string | null; created_at: string | null }
+        Insert: { id?: string; week_start: string; title?: string | null; meals?: any | null; created_by?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['meal_plans']['Insert']>
+        Relationships: []
+      }
+      recurrence_rules: {
+        Row: { id: string; frequency: string | null; interval: number | null; day_of_week: number | null; day_of_month: number | null; ends_at: string | null; anticipation_days: number | null; next_occurrence: string | null; last_generated_at: string | null }
+        Insert: { id?: string; frequency?: string | null; interval?: number | null; day_of_week?: number | null; day_of_month?: number | null; ends_at?: string | null; anticipation_days?: number | null; next_occurrence?: string | null; last_generated_at?: string | null }
+        Update: Partial<Database['public']['Tables']['recurrence_rules']['Insert']>
+        Relationships: []
+      }
+      school_items: {
+        Row: { id: string; profile_id: string | null; name: string; status: string | null; due_date: string | null; quantity: string | null; notes: string | null; created_at: string | null }
+        Insert: { id?: string; profile_id?: string | null; name: string; status?: string | null; due_date?: string | null; quantity?: string | null; notes?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['school_items']['Insert']>
+        Relationships: []
+      }
+      weekly_summaries: {
+        Row: { id: string; user_id: string | null; week_start: string; tasks_done_count: number | null; tasks_pending_count: number | null; ai_tip: string | null; created_at: string | null }
+        Insert: { id?: string; user_id?: string | null; week_start: string; tasks_done_count?: number | null; tasks_pending_count?: number | null; ai_tip?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['weekly_summaries']['Insert']>
+        Relationships: []
+      }
       profiles: {
         Row: {
           id: string
