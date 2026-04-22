@@ -18,6 +18,16 @@ type SheetType =
   | 'add-wardrobe'
   | null
 
+export type QuickRegisterType =
+  | 'task'
+  | 'bill'
+  | 'medication'
+  | 'vaccine'
+  | 'event'
+  | 'shopping'
+  | 'checkin'
+  | 'maintenance'
+
 interface UIStore {
   activeSheet: SheetType
   sheetData: Record<string, unknown> | null
@@ -68,8 +78,8 @@ export const useUIStore = create<UIStore>((set) => ({
 
   quickRegisterOpen: false,
   quickRegisterType: null,
-  openQuickRegister: (type = null) =>
-    set({ quickRegisterOpen: true, quickRegisterType: type }),
+  openQuickRegister: (type = undefined) =>
+    set({ quickRegisterOpen: true, quickRegisterType: type ?? null }),
   closeQuickRegister: () =>
     set({ quickRegisterOpen: false, quickRegisterType: null }),
   setQuickRegisterType: (type) => set({ quickRegisterType: type }),
