@@ -1,5 +1,5 @@
 // lib/chatbot-inserter.ts
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 import type { Database } from '@/types/database'
 import { ParsedItem } from '@/types/chatbot'
 
