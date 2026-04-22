@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { useFamilyStore } from '@/store/familyStore'
 import {
   LayoutDashboard,
-  Users,
   CheckSquare,
   Home,
   BookOpen,
@@ -14,25 +13,22 @@ import {
   Car,
   Heart,
   Wallet,
-  Tag,
   PartyPopper,
-  Sparkles,
+  Settings,
   ChevronRight,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/',            label: 'Painel',      icon: LayoutDashboard, emoji: '🎯' },
-  { href: '/familia',     label: 'Família',     icon: Users,           emoji: '👨‍👩‍👧‍👦' },
-  { href: '/tarefas',     label: 'Tarefas',     icon: CheckSquare,     emoji: '✅' },
-  { href: '/social',      label: 'Social',      icon: PartyPopper,     emoji: '🎉' },
-  { href: '/casa',        label: 'Casa',        icon: Home,            emoji: '🏠' },
-  { href: '/educacao',    label: 'Educação',    icon: BookOpen,        emoji: '📚' },
-  { href: '/alimentacao', label: 'Alimentação', icon: UtensilsCrossed, emoji: '🍽️' },
-  { href: '/veiculos',    label: 'Veículos',    icon: Car,             emoji: '🚗' },
-  { href: '/saude',       label: 'Saúde',       icon: Heart,           emoji: '🩺' },
-  { href: '/financeiro',  label: 'Financeiro',  icon: Wallet,          emoji: '💰' },
-  { href: '/categorias',  label: 'Categorias',  icon: Tag,             emoji: '🏷️' },
-  { href: '/chatbot',     label: 'Assistente',  icon: Sparkles,        emoji: '✨' },
+  { href: '/',             label: 'Painel',       icon: LayoutDashboard, emoji: '🎯' },
+  { href: '/tarefas',      label: 'Tarefas',       icon: CheckSquare,     emoji: '✅' },
+  { href: '/casa',         label: 'Casa',          icon: Home,            emoji: '🏠' },
+  { href: '/alimentacao',  label: 'Alimentação',   icon: UtensilsCrossed, emoji: '🍽️' },
+  { href: '/saude',        label: 'Saúde',         icon: Heart,           emoji: '🩺' },
+  { href: '/educacao',     label: 'Educação',      icon: BookOpen,        emoji: '📚' },
+  { href: '/veiculos',     label: 'Veículos',      icon: Car,             emoji: '🚗' },
+  { href: '/financeiro',   label: 'Financeiro',    icon: Wallet,          emoji: '💰' },
+  { href: '/social',       label: 'Social',        icon: PartyPopper,     emoji: '🎉' },
+  { href: '/configuracoes',label: 'Configurações', icon: Settings,        emoji: '⚙️' },
 ]
 
 interface SidebarProps {
