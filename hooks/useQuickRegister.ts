@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import { QuickRegisterType } from '@/types/database'
 
 export function useQuickRegister() {
-  const supabase = createClient()
+  const supabase = supabase
   const { familyId } = useFamilyStore()
 
   async function save(type: QuickRegisterType, data: Record<string, unknown>) {

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { Profile } from '@/types/database'
 
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function SubtaskFields({ data, onChange, members }: Props) {
-  const supabase = createClient()
+  const supabase = supabase
   const { familyId } = useFamilyStore()
   const [tasks, setTasks] = useState<{ id: string; title: string }[]>([])
 
