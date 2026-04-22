@@ -102,8 +102,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
   {
     pattern: /\b(manutenç[aã]o|revis[aã]o|rotina|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|revisão da casa|manutenções)\b/i,
     fetch: async (fid) => {
-      const now = new Date()
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      const now = new Date()  
       const { data } = await supabaseAdmin
         .from('home_maintenance')
         .select('title, status, next_due_at, frequency_label, category, notes')
@@ -137,8 +136,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
         .eq('family_id', fid)
         .ilike('title', '%carro%')
         .order('scheduled_date', { ascending: true, nullsFirst: false })
-      // fallback: buscar todos chamados com palavras de veículo
-      const keywords = ['carro', 'óleo', 'pneu', 'veículo', 'revisão', 'moto', 'ipva']
+      // fallback: buscar todos chamados com palavras de veículo      
       const allData = data ?? []
       return { label: 'Manutenções do carro/veículo', data: allData }
     },
