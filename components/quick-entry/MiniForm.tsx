@@ -170,18 +170,23 @@ export function MiniForm({ entity, onSaved }: Props) {
     }
   })()
 
-  const titleLabel = {
+  const titleLabel = ({
+    task:              'Título',
+    bill:              'Título',
     medication:        'Nome',
     vaccine:           'Nome',
     shopping:          'Nome',
+    maintenance:       'Título',
+    event:             'Título',
     subtask:           'Título',
     homework:          'Título',
     school_item:       'Nome',
     emergency_contact: 'Nome',
     maintenance_call:  'Serviço / problema',
     checkin:           '',
+    health_tracking:   '',
     gratitude:         '',
-  }[entity] ?? 'Título'
+  } as Record<string, string>)[entity] ?? 'Título'
 
   const titlePlaceholder = {
     task:              'Ex: Levar a Ana ao médico',
