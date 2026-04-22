@@ -1,6 +1,6 @@
 'use client'
 import { QuickRegisterType } from '@/types/database'
-import { Member } from '@/store/familyStore'
+import type { Profile } from '@/types/database'
 import { TaskFields } from './fields/TaskFields'
 import { SubtaskFields } from './fields/SubtaskFields'
 import { HealthTrackingFields } from './fields/HealthTrackingFields'
@@ -14,7 +14,7 @@ interface Props {
   type: QuickRegisterType
   data: Record<string, unknown>
   onChange: (key: string, value: unknown) => void
-  members: Member[]
+  members: Profile[]
 }
 
 export function DynamicFields({ type, data, onChange, members }: Props) {

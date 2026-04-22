@@ -117,7 +117,7 @@ export const MemberSelect = memo(function MemberSelect({
   onChange,
   members,
   includeNone = false,
-}: MemberSelectProps) {
+}: ProfileSelectProps) {
   return (
     <div>
       <label className={LABEL_CLS}>{label}</label>
