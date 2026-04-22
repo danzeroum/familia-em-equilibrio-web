@@ -11,7 +11,6 @@ interface Props {
 }
 
 export function SubtaskFields({ data, onChange, members }: Props) {
-  const supabase = supabase
   const { familyId } = useFamilyStore()
   const [tasks, setTasks] = useState<{ id: string; title: string }[]>([])
 
