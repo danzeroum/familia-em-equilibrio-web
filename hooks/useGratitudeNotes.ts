@@ -9,7 +9,7 @@ export function useGratitudeNotes() {
   async function upsert(data: Record<string, any>) {
     setLoading(true)
     try {
-      const { error } = await supabase.from('gratitude_notes').upsert({ ...data, family_id: familyId })
+      const { error } = await supabase.from('gratitude_notes').upsert({ ...data })
       if (error) throw error
     } finally { setLoading(false) }
   }

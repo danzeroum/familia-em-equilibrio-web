@@ -18,6 +18,24 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['families']['Insert']>
         Relationships: never[]
       }
+      gratitude_notes: {
+        Row: {
+          id: string
+          from_user_id: string | null
+          to_user_id: string | null
+          message: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          from_user_id?: string | null
+          to_user_id?: string | null
+          message: string
+          created_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['gratitude_notes']['Insert']>
+        Relationships: []
+      }
       profiles: {
         Row: {
           id: string
