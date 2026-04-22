@@ -4,9 +4,7 @@ import { createLLMClient, DEFAULT_MODEL, LLMModelId } from '@/lib/llm-client'
 
 // ─── Detecção de intenção ────────────────────────────────────────────────────
 
-// Padrões que indicam PERGUNTA (não inserção)
 const QUESTION_PATTERNS = [
-  // quantificadores
   /\bquant(as?|os?|idade)\b/i,
   /\bquais?\b/i,
   /\bqual\b/i,
@@ -15,15 +13,12 @@ const QUESTION_PATTERNS = [
   /\bquem\b/i,
   /\bpor que\b/i,
   /\bcomo (está|estão|anda|ficou)\b/i,
-  // verbos de consulta
   /\b(me (diga|fala|mostra|lista|conta|diz))\b/i,
   /\b(lista[rm]?|mostre?|verifique?|cheque?|confira?)\b/i,
   /\b(tem |há |existe[m]?|possui)\b/i,
   /\b(está[o]?|ficou|ficaram)\b/i,
-  // perguntas diretas
   /\?$/,
   /^(o que|qual|quais|quando|onde|quem|como|por que|quanto)/i,
-  // contexto de consulta
   /\b(próxim[ao]s?|previsão|venc[ei]|atrasad[ao]s?|pendente[s]?)\b/i,
   /\b(resumo|balanço|situação|status|overview)\b/i,
   /\b(hoje|essa semana|este mês|semana que vem)\b/i,
@@ -31,6 +26,23 @@ const QUESTION_PATTERNS = [
 
 export function isQuestion(text: string): boolean {
   return QUESTION_PATTERNS.some(p => p.test(text))
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Retorna IDs dos membros da família para usar em tabelas sem family_id direto */
+async function getMemberIds(familyId: string): Promise<string[]> {
+  const { data } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('family_id', familyId)
+  return (data ?? []).map(m => m.id)
+}
+
+/** Fallback seguro para .in() — evita erro com array vazio */
+const EMPTY_UUID = '00000000-0000-0000-0000-000000000000'
+function safeIds(ids: string[]): string[] {
+  return ids.length > 0 ? ids : [EMPTY_UUID]
 }
 
 // ─── Mapeamento texto → tabelas ──────────────────────────────────────────────
@@ -41,7 +53,7 @@ interface ContextFetcher {
 }
 
 const CONTEXT_FETCHERS: ContextFetcher[] = [
-  // COMPRAS — lista de mercado / geral
+  // COMPRAS — lista geral
   {
     pattern: /\b(compr[ao]s?|mercado|lista|mantimento|falt[ao]|precis[ao]|itens?|pedir|carrinho|supermercado|feira|comprinhas)\b/i,
     fetch: async (fid) => {
@@ -55,7 +67,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // COMPRAS — só alimentos/mercado
+  // COMPRAS — alimentos
   {
     pattern: /\b(aliment[oa]s?|frutas?|verdura[s]?|legume[s]?|carne[s]?|laticíni[oa]s?|bebida[s]?|mercearia|hortifruti|padaria)\b/i,
     fetch: async (fid) => {
@@ -69,9 +81,9 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // COMPRAS — farmácia / higiene
+  // COMPRAS — farmácia
   {
-    pattern: /\b(farmácia|remédio[s]?|medicament[oa]s?|fralda[s]?|higiene|lenço[s]?|cotonete[s]?|absorvente[s]?|curativ[oa]s?)\b/i,
+    pattern: /\b(farmácia|fralda[s]?|higiene|lenço[s]?|cotonete[s]?|absorvente[s]?|curativ[oa]s?)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
         .from('shopping_items')
@@ -83,14 +95,15 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // TAREFAS
+  // TAREFAS — tasks não tem family_id, acessa via profiles
   {
     pattern: /\b(tarefa[s]?|afazere[s]?|pendência[s]?|to.?do|fazer|incumbência[s]?|dever[s]?|obrigaç[aã]o|atividade[s]?)\b/i,
     fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
       const { data } = await supabaseAdmin
         .from('tasks')
         .select('title, status, due_date, due_time, assigned_to, priority, notes')
-        .eq('family_id', fid)
+        .in('assigned_to', safeIds(memberIds))
         .neq('status', 'done')
         .order('due_date', { ascending: true, nullsFirst: false })
         .limit(30)
@@ -98,11 +111,10 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // MANUTENÇÃO DA CASA — rotinas periódicas
+  // MANUTENÇÃO DA CASA — home_maintenance tem family_id ✅
   {
-    pattern: /\b(manutenç[aã]o|revis[aã]o|rotina|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|revisão da casa|manutenções)\b/i,
+    pattern: /\b(manutenç[aã]o|rotina|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|revisão da casa|manutenções)\b/i,
     fetch: async (fid) => {
-      const now = new Date()  
       const { data } = await supabaseAdmin
         .from('home_maintenance')
         .select('title, status, next_due_at, frequency_label, category, notes')
@@ -112,9 +124,9 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // CHAMADOS / REPAROS
+  // CHAMADOS / REPAROS — maintenance_calls tem family_id ✅
   {
-    pattern: /\b(chamado[s]?|reparo[s]?|conserto[s]?|quebrad[oa]s?|vencid[oa]s?|urgente[s]?|serviço[s]?|profissional|encanador|eletricista|pedreiro|técnico)\b/i,
+    pattern: /\b(chamado[s]?|reparo[s]?|conserto[s]?|quebrad[oa]s?|urgente[s]?|serviço[s]?|profissional|encanador|eletricista|pedreiro|técnico)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
         .from('maintenance_calls')
@@ -128,7 +140,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
 
   // CARRO / VEÍCULO
   {
-    pattern: /\b(carro[s]?|veículo[s]?|óleo|revisão do carro|pneu[s]?|moto|combustível|tanque|mecânico|borracharia|revisão veicular|ipva|licenciamento|seguro do carro)\b/i,
+    pattern: /\b(carro[s]?|veículo[s]?|óleo|pneu[s]?|moto|combustível|mecânico|borracharia|ipva|licenciamento|seguro do carro)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
         .from('maintenance_calls')
@@ -136,60 +148,60 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
         .eq('family_id', fid)
         .ilike('title', '%carro%')
         .order('scheduled_date', { ascending: true, nullsFirst: false })
-      // fallback: buscar todos chamados com palavras de veículo      
-      const allData = data ?? []
-      return { label: 'Manutenções do carro/veículo', data: allData }
+      return { label: 'Manutenções do carro/veículo', data: data ?? [] }
     },
   },
 
-  // CONTAS / FINANCEIRO
+  // CONTAS / FINANCEIRO — bills tem family_id ✅, coluna é "title" (não "name"), sem "recurrence" → usa "is_recurring"
   {
     pattern: /\b(conta[s]?|financeiro|despesa[s]?|fatura[s]?|pagament[oa]s?|gasto[s]?|boleto[s]?|parcela[s]?|venciment[oa]s?|divida[s]?|mensalidade[s]?|aluguel|luz|água|internet|telefone|streaming|plano)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
         .from('bills')
-        .select('name, amount, due_day, status, category, recurrence, payment_method, notes')
+        .select('title, amount, due_day, due_date, status, category, is_recurring, payment_method')
         .eq('family_id', fid)
         .order('due_day', { ascending: true, nullsFirst: false })
       return { label: 'Contas e despesas', data: data ?? [] }
     },
   },
 
-  // REMÉDIOS / MEDICAMENTOS (estoque)
+  // REMÉDIOS / MEDICAMENTOS — medications não tem family_id, acessa via profile_id
   {
     pattern: /\b(remédio[s]?|medicament[oa]s?|medicaç[aã]o|estoque|comprimido[s]?|cápsula[s]?|xarope[s]?|pomada[s]?|dose[s]?|posologia|receita)\b/i,
     fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
       const { data } = await supabaseAdmin
         .from('medications')
         .select('name, dosage, form, is_active, stock_quantity, minimum_stock, expiry_date, notes')
-        .eq('family_id', fid)
+        .in('profile_id', safeIds(memberIds))
         .eq('is_active', true)
         .order('name')
       return { label: 'Medicamentos ativos', data: data ?? [] }
     },
   },
 
-  // VACINAS
+  // VACINAS — vaccines não tem family_id, acessa via profile_id
   {
     pattern: /\b(vacina[s]?|imunizaç[aã]o|dose[s]? da vacina|carteira de vacina|reforço|vacinação)\b/i,
     fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
       const { data } = await supabaseAdmin
         .from('vaccines')
         .select('name, applied_at, next_due, notes')
-        .eq('family_id', fid)
+        .in('profile_id', safeIds(memberIds))
         .order('next_due', { ascending: true, nullsFirst: false })
       return { label: 'Vacinas', data: data ?? [] }
     },
   },
 
-  // EVENTOS / AGENDA
+  // EVENTOS / AGENDA — family_events tem family_id ✅
   {
     pattern: /\b(evento[s]?|agenda|compromiss[oa]s?|aniversári[oa]s?|consulta[s]?|reunião|reuniões|appointment|birthday|próxim[oa]s? eventos?|calendário|programação)\b/i,
     fetch: async (fid) => {
       const today = new Date().toISOString().split('T')[0]
       const { data } = await supabaseAdmin
         .from('family_events')
-        .select('title, event_date, event_time, event_type, location, description, is_done')
+        .select('title, event_date, event_time, event_type, location, description, is_done, notes')
         .eq('family_id', fid)
         .gte('event_date', today)
         .order('event_date', { ascending: true })
@@ -198,17 +210,17 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // SAÚDE GERAL
+  // SAÚDE — health_tracking tem family_id ✅, colunas reais: title, category, status, next_due_at, frequency_label, profile_id
   {
-    pattern: /\b(saúde|médico[s]?|consulta[s]?|exame[s]?|resultado[s]?|peso|pressão|glicemia|acompanhament[oa] de saúde)\b/i,
+    pattern: /\b(saúde|médico[s]?|exame[s]?|resultado[s]?|peso|pressão|glicemia|acompanhament[oa] de saúde)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
         .from('health_tracking')
-        .select('member_id, tracked_at, weight_kg, blood_pressure_systolic, blood_pressure_diastolic, blood_glucose, notes')
+        .select('title, category, status, next_due_at, frequency_label, profile_id, notes')
         .eq('family_id', fid)
-        .order('tracked_at', { ascending: false })
-        .limit(10)
-      return { label: 'Registros de saúde recentes', data: data ?? [] }
+        .order('next_due_at', { ascending: true, nullsFirst: false })
+        .limit(20)
+      return { label: 'Acompanhamentos de saúde', data: data ?? [] }
     },
   },
 ]
@@ -231,18 +243,33 @@ async function fetchContext(question: string, familyId: string) {
     }
   }
 
-  // Se nenhum padrão bateu, buscar resumo geral
+  // Resumo geral — nenhum padrão bateu
   if (matched.length === 0) {
+    const memberIds = await getMemberIds(familyId)
     const [shopping, tasks, bills] = await Promise.all([
-      supabaseAdmin.from('shopping_items').select('name, is_bought').eq('family_id', familyId).eq('is_bought', false),
-      supabaseAdmin.from('tasks').select('title, status').eq('family_id', familyId).neq('status', 'done'),
-      supabaseAdmin.from('bills').select('name, amount, status').eq('family_id', familyId),
+      supabaseAdmin
+        .from('shopping_items')
+        .select('name, is_bought')
+        .eq('family_id', familyId)
+        .eq('is_bought', false),
+      supabaseAdmin
+        .from('tasks')
+        .select('title, status')
+        .in('assigned_to', safeIds(memberIds))
+        .neq('status', 'done'),
+      supabaseAdmin
+        .from('bills')
+        .select('title, amount, status')
+        .eq('family_id', familyId),
     ])
-    matched.push({ label: 'Resumo geral', data: [
-      { compras_pendentes: (shopping.data ?? []).length },
-      { tarefas_pendentes: (tasks.data ?? []).length },
-      { contas_cadastradas: (bills.data ?? []).length },
-    ]})
+    matched.push({
+      label: 'Resumo geral',
+      data: [
+        { compras_pendentes: (shopping.data ?? []).length },
+        { tarefas_pendentes: (tasks.data ?? []).length },
+        { contas_cadastradas: (bills.data ?? []).length },
+      ],
+    })
   }
 
   return matched
@@ -257,7 +284,7 @@ export async function answerQuestion(
 ): Promise<string> {
   const context = await fetchContext(question, familyId)
   const today = new Date().toLocaleDateString('pt-BR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
   const contextText = context
@@ -293,12 +320,11 @@ Pergunta: ${question}`
     return response.choices[0].message.content ?? 'Não consegui gerar uma resposta.'
   } catch (err: any) {
     console.error('[chatbot-query] erro LLM:', err?.message)
-    // Fallback: resposta sem LLM baseada nos dados brutos
     return formatFallbackAnswer(question, context)
   }
 }
 
-// ─── Fallback sem LLM (caso Ollama esteja offline) ──────────────────────────
+// ─── Fallback sem LLM ────────────────────────────────────────────────────────
 
 function formatFallbackAnswer(question: string, context: { label: string; data: any[] }[]): string {
   if (context.length === 0) return 'Não encontrei dados relacionados à sua pergunta.'
