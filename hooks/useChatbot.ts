@@ -16,7 +16,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
-  streaming?: boolean   // ← NOVO: true enquanto o typewriter ainda digita
+  streaming?: boolean   // ← true enquanto o typewriter ainda digita
 }
 
 export function useChatbot() {
@@ -59,10 +59,10 @@ export function useChatbot() {
 
     return new Promise(resolve => {
       let index = 0
-      const SPEED_MS = 10 // ms por caractere — ajuste: 6 (rápido) ~ 20 (lento)
+      const SPEED_MS = 4 // ms por caractere — reduzido para respostas mais rápidas
 
       typewriterRef.current = setInterval(() => {
-        index++
+        index += 3 // avança 3 chars por tick para mensagens longas
         const partial = content.slice(0, index)
 
         setMessages(prev =>
@@ -72,9 +72,9 @@ export function useChatbot() {
         if (index >= content.length) {
           clearInterval(typewriterRef.current!)
           typewriterRef.current = null
-          // Remove o flag streaming ao terminar
+          // Garante conteúdo completo e remove flag streaming
           setMessages(prev =>
-            prev.map(m => m.id === id ? { ...m, streaming: false } : m)
+            prev.map(m => m.id === id ? { ...m, content, streaming: false } : m)
           )
           resolve()
         }
@@ -168,6 +168,7 @@ export function useChatbot() {
       )
       setPreview(null)
       setEditingItems([])
+      setLoading(false)  // ← FIX: estava faltando aqui
       return r
     } catch (err: any) {
       await addAssistantStreaming(
