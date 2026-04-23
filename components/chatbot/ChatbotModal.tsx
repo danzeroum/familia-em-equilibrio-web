@@ -54,10 +54,12 @@ export function ChatbotModal() {
 
   return (
     <div
-      className="fixed bottom-20 right-4 z-50 flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-border sm:bottom-20 sm:right-6"
+      className="fixed bottom-20 right-4 z-[9999] flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-border sm:bottom-20 sm:right-6"
       style={{
         width: 'min(380px, calc(100vw - 2rem))',
         maxHeight: minimized ? 'auto' : 'min(560px, calc(100dvh - 5rem))',
+        backgroundColor: 'var(--color-bg)',
+        isolation: 'isolate',
         transition: 'max-height 0.3s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
@@ -101,7 +103,7 @@ export function ChatbotModal() {
         <>
           {/* Messages */}
           <div className="flex-1 overflow-y-auto space-y-3 p-3 bg-bg min-h-0"
-            style={{ maxHeight: '340px' }}
+            style={{ flex: '1 1 0', minHeight: 0 }}
           >
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 gap-3 text-center px-4">
