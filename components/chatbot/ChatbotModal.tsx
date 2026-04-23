@@ -89,9 +89,11 @@ export function ChatbotModal() {
       style={{
         width: minimized ? DEFAULT_W : Math.min(size.w, window.innerWidth - 32),
         height: minimized ? 'auto' : Math.min(size.h, maxVH),
-        backgroundColor: 'var(--color-bg)',
+        backgroundColor: 'hsl(var(--background))',
         isolation: 'isolate',
         overflow: 'hidden',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
         transition: minimized ? 'height 0.3s cubic-bezier(0.16,1,0.3,1)' : 'none',
       }}
     >
@@ -145,8 +147,8 @@ export function ChatbotModal() {
       {!minimized && (
         <>
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto space-y-3 p-3 min-h-0"
-            style={{ backgroundColor: 'var(--color-bg)' }}
+          <div className="flex-1 overflow-y-auto space-y-3 p-3 min-h-0 bg-background"
+            style={{ backgroundColor: 'hsl(var(--background))' }}
           >
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-10 gap-3 text-center px-4">
@@ -235,7 +237,7 @@ export function ChatbotModal() {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-border shrink-0" style={{ backgroundColor: 'var(--color-bg)' }}>
+          <div className="p-3 border-t border-border shrink-0" style={{ backgroundColor: 'hsl(var(--background))' }}>
             <div className="flex gap-2 items-end bg-surface border border-border rounded-xl px-3 py-2 focus-within:border-primary transition-colors">
               <textarea
                 value={input}
