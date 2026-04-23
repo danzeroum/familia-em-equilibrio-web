@@ -541,6 +541,7 @@ export default function TarefasPage() {
         prefill={prefill}
         onSaveTask={upsert as any}
         onSaveEvent={upsertEvent as any}
+        onDelete={handleRemove}
         familyId={currentFamily?.id ?? ''}
         members={members}
       />

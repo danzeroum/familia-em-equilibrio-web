@@ -37,6 +37,24 @@ export interface Database {
         Relationships: []
       }
 
+      ai_settings: {
+        Row: {
+          id: string
+          family_id: string
+          model_id: string
+          system_prompt: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          model_id?: string
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['ai_settings']['Insert']>
+        Relationships: []
+      }
       activity_feed: {
         Row: { id: string; user_id: string | null; action: string; entity_type: string; entity_id: string | null; entity_title: string | null; created_at: string | null }
         Insert: { id?: string; user_id?: string | null; action: string; entity_type: string; entity_id?: string | null; entity_title?: string | null; created_at?: string | null }
@@ -53,12 +71,6 @@ export interface Database {
         Row: { id: string; profile_id: string | null; title: string; subject: string | null; due_date: string | null; progress_pct: number | null; missing_steps: string | null; status: string | null; family_id: string | null; created_at: string | null }
         Insert: { id?: string; profile_id?: string | null; title: string; subject?: string | null; due_date?: string | null; progress_pct?: number | null; missing_steps?: string | null; status?: string | null; family_id?: string | null; created_at?: string | null }
         Update: Partial<Database['public']['Tables']['homework']['Insert']>
-        Relationships: []
-      }
-      maintenance_calls: {
-        Row: { id: string; title: string; description: string | null; status: string | null; priority: number | null; professional_name: string | null; professional_phone: string | null; estimated_cost: number | null; scheduled_date: string | null; domain_id: number | null; created_by: string | null; completed_at: string | null; created_at: string | null; family_id: string | null }
-        Insert: { id?: string; title: string; description?: string | null; status?: string | null; priority?: number | null; professional_name?: string | null; professional_phone?: string | null; estimated_cost?: number | null; scheduled_date?: string | null; domain_id?: number | null; created_by?: string | null; completed_at?: string | null; created_at?: string | null; family_id?: string | null }
-        Update: Partial<Database['public']['Tables']['maintenance_calls']['Insert']>
         Relationships: []
       }
       meal_ingredients: {

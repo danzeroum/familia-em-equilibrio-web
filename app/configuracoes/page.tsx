@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useFamilyStore } from '@/store/familyStore'
 import { useEmergencyContacts } from '@/hooks/useEmergencyContacts'
@@ -10,8 +10,10 @@ import { MemberSheet } from '@/components/sheets/MemberSheet'
 import { EmergencyContactSheet } from '@/components/sheets/EmergencyContactSheet'
 import { CategoryManager } from '@/components/categories/CategoryManager'
 import type { Profile, EmergencyContact } from '@/types/database'
+import { useAISettings } from '@/hooks/useAISettings'
+import { AVAILABLE_MODELS } from '@/lib/llm-client'
 
-type Tab = 'membros' | 'categorias'
+type Tab = 'membros' | 'categorias' | 'ia'
 
 const ROLE_LABEL: Record<string, string> = {
   adult: '👤 Adulto',
@@ -27,6 +29,10 @@ function ConfiguracoesContent() {
   const [tab, setTab] = useState<Tab>(initialTab)
   const { currentFamily, members } = useFamilyStore()
   const { contacts, upsert: upsertContact, remove: removeContact } = useEmergencyContacts(currentFamily?.id ?? null)
+  const { settings: aiSettings, isLoading: aiLoading, isSaving: aiSaving, save: saveAI, DEFAULT_PROMPT } = useAISettings(currentFamily?.id ?? null)
+  const [localModel, setLocalModel] = useState<string>('')
+  const [localPrompt, setLocalPrompt] = useState<string>('')
+  const [aiSaved, setAiSaved] = useState(false)
 
   const [memberOpen, setMemberOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null)
@@ -41,7 +47,23 @@ function ConfiguracoesContent() {
   const TABS: { id: Tab; label: string }[] = [
     { id: 'membros',    label: '👨‍👩‍👧 Membros & Família' },
     { id: 'categorias', label: '🏷️ Categorias' },
+    { id: 'ia',         label: '🤖 Assistente IA' },
   ]
+
+  // Sincroniza estado local quando settings carregam
+  useEffect(() => {
+    if (!aiLoading) {
+      setLocalModel(aiSettings.model_id)
+      setLocalPrompt(aiSettings.system_prompt)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiLoading, aiSettings.model_id, aiSettings.system_prompt])
+
+  async function handleSaveAI() {
+    await saveAI({ model_id: localModel as any, system_prompt: localPrompt })
+    setAiSaved(true)
+    setTimeout(() => setAiSaved(false), 3000)
+  }
 
   return (
     <div className="space-y-5">
@@ -187,6 +209,71 @@ function ConfiguracoesContent() {
               </ul>
             )}
           </div>
+        </div>
+      )}
+
+
+      {/* ══ ABA: ASSISTENTE IA ══ */}
+      {tab === 'ia' && (
+        <div className="space-y-6">
+          {aiLoading ? (
+            <div className="text-sm text-gray-400 py-8 text-center">Carregando configurações...</div>
+          ) : (
+            <>
+              <div className="bg-white rounded-xl border p-5 space-y-4">
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-1">🧠 Modelo de IA</h3>
+                  <p className="text-xs text-gray-400 mb-3">Escolha qual modelo será usado pelo Assistente para responder perguntas e processar comandos.</p>
+                  <select
+                    className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    value={localModel}
+                    onChange={e => setLocalModel(e.target.value)}
+                  >
+                    {AVAILABLE_MODELS.map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.recommended ? '⭐ ' : ''}{m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-800 mb-1">📝 Prompt do Sistema</h3>
+                    <p className="text-xs text-gray-400">Instrução base que define a personalidade e comportamento do Assistente.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLocalPrompt(DEFAULT_PROMPT)}
+                    className="text-xs text-teal-600 hover:underline shrink-0 ml-4"
+                  >
+                    Restaurar padrão
+                  </button>
+                </div>
+                <textarea
+                  className="w-full border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                  rows={10}
+                  value={localPrompt}
+                  onChange={e => setLocalPrompt(e.target.value)}
+                  placeholder="Descreva como o assistente deve se comportar..."
+                />
+                <p className="text-xs text-gray-400">{localPrompt.length} caracteres</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSaveAI}
+                  disabled={aiSaving}
+                  className="px-5 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                >
+                  {aiSaving ? 'Salvando...' : 'Salvar configurações'}
+                </button>
+                {aiSaved && <span className="text-sm text-green-600 font-medium">✅ Salvo com sucesso!</span>}
+              </div>
+            </>
+          )}
         </div>
       )}
 

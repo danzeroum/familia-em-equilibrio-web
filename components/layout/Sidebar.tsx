@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useFamilyStore } from '@/store/familyStore'
+import { useUIStore } from '@/store/uiStore'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -22,7 +23,6 @@ import {
 const NAV_ITEMS = [
   { href: '/',             label: 'Painel',       icon: LayoutDashboard, emoji: '🎯' },
   { href: '/tarefas',      label: 'Agendamentos',       icon: CheckSquare,     emoji: '✅' },
-  { href: '/chatbot',      label: 'Assistente IA',  icon: MessageCircle,   emoji: '🤖' },
   { href: '/casa',         label: 'Casa',          icon: Home,            emoji: '🏠' },
   { href: '/alimentacao',  label: 'Alimentação',   icon: UtensilsCrossed, emoji: '🍽️' },
   { href: '/saude',        label: 'Saúde',         icon: Heart,           emoji: '🩺' },
@@ -41,6 +41,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps = {}) {
   const pathname = usePathname()
   const { members, family } = useFamilyStore()
+  const { openChatbot } = useUIStore()
 
   return (
     <aside
@@ -88,6 +89,17 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps = {}
           )
         })}
       </nav>
+
+      {/* Botão Assistente IA */}
+      <div className="px-2 pb-2">
+        <button
+          onClick={openChatbot}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <span className="text-base">🤖</span>
+          <span className="flex-1 text-left">Assistente IA</span>
+        </button>
+      </div>
 
       {/* Membros da família */}
       {members.length > 0 && (

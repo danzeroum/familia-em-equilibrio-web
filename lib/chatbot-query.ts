@@ -2,6 +2,18 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createLLMClient, DEFAULT_MODEL, LLMModelId } from '@/lib/llm-client'
 
+// ─── Detecção de intenção de INSERÇÃO (tem prioridade sobre perguntas) ─────────
+
+const INSERT_PATTERNS = [
+  /\b(insir[ae]|adiciona[r]?|cadastra[r]?|salva[r]?|registra[r]?|coloca[r]?)\b/i,
+  /\b(comprar|compra[s]?)\b/i,
+  /^\s*[-•*\d]/m,  // linhas começando com - • * ou número (lista)
+]
+
+export function isInsertIntent(text: string): boolean {
+  return INSERT_PATTERNS.some(p => p.test(text))
+}
+
 // ─── Detecção de intenção ────────────────────────────────────────────────────
 
 const QUESTION_PATTERNS = [
@@ -14,7 +26,7 @@ const QUESTION_PATTERNS = [
   /\bpor que\b/i,
   /\bcomo (está|estão|anda|ficou)\b/i,
   /\b(me (diga|fala|mostra|lista|conta|diz))\b/i,
-  /\b(lista[rm]?|mostre?|verifique?|cheque?|confira?)\b/i,
+  /\b(mostre?|verifique?|cheque?|confira?)\b/i,
   /\b(tem |há |existe[m]?|possui)\b/i,
   /\b(está[o]?|ficou|ficaram)\b/i,
   /\?$/,
@@ -280,7 +292,8 @@ async function fetchContext(question: string, familyId: string) {
 export async function answerQuestion(
   question: string,
   familyId: string,
-  modelId?: LLMModelId
+  modelId?: LLMModelId,
+  customSystemPrompt?: string
 ): Promise<string> {
   const context = await fetchContext(question, familyId)
   const today = new Date().toLocaleDateString('pt-BR', {
@@ -291,12 +304,14 @@ export async function answerQuestion(
     .map(c => `### ${c.label}\n${JSON.stringify(c.data, null, 2)}`)
     .join('\n\n')
 
-  const systemPrompt = `Você é um assistente doméstico familiar inteligente e simpático.
-Hoje é ${today}.
+  const basePrompt = customSystemPrompt ?? `Você é um assistente doméstico familiar inteligente e simpático.
 Responda perguntas sobre a organização da família de forma direta, clara e amigável em português brasileiro.
 Use emojis quando apropriado. Seja conciso mas completo.
 Quando listar itens, use bullets ou numeração.
 Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
+  const systemPrompt = `${basePrompt}
+
+Hoje é ${today}.`
 
   const userPrompt = `Com base nos dados abaixo, responda a pergunta do usuário.
 

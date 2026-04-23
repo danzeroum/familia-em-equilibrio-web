@@ -13,6 +13,7 @@ interface Props {
   prefill?: { title?: string; date?: string; time?: string | null }
   onSaveTask: (t: any) => Promise<void>
   onSaveEvent: (e: any) => Promise<void>
+  onDelete?: (item: AgendamentoItem) => void
   familyId: string
   members: Profile[]
 }
@@ -23,7 +24,7 @@ function newItem(text = ''): ChecklistItem {
 
 export function AgendamentoSheet({
   open, onClose, item, defaultKind = 'task', prefill,
-  onSaveTask, onSaveEvent, familyId, members,
+  onSaveTask, onSaveEvent, onDelete, familyId, members,
 }: Props) {
   const { categories, load: loadCategories } = useCategoryStore()
 
@@ -489,6 +490,21 @@ export function AgendamentoSheet({
           onChange={e => setNotes(e.target.value)}
         />
       </div>
+
+      {isEdit && onDelete && (
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Tem certeza que deseja excluir?')) {
+              onDelete(item!)
+              onClose()
+            }
+          }}
+          className="w-full py-2 text-sm text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors font-medium"
+        >
+          🗑️ Excluir {kind === 'task' ? 'tarefa' : 'evento'}
+        </button>
+      )}
 
       <SaveCancel onSave={save} onClose={onClose} />
     </SlideOver>

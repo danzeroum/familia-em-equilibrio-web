@@ -31,6 +31,10 @@ interface UIStore {
   addToast: (toast: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
 
+  chatbotOpen: boolean
+  openChatbot: () => void
+  closeChatbot: () => void
+
   quickRegisterOpen: boolean
   quickRegisterType: QuickRegisterType | null
   openQuickRegister: (type?: QuickRegisterType) => void
@@ -69,6 +73,10 @@ export const useUIStore = create<UIStore>((set) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
+
+  chatbotOpen: false,
+  openChatbot: () => set({ chatbotOpen: true }),
+  closeChatbot: () => set({ chatbotOpen: false }),
 
   quickRegisterOpen: false,
   quickRegisterType: null,
