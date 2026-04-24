@@ -176,8 +176,9 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
       const [vehicles, maintenance, docs, calls] = await Promise.all([
         supabaseAdmin
           .from('vehicles')
-          .select('name, brand, model, year, plate, color, notes')
-          .eq('family_id', fid),
+          .select('nickname, type, brand, model, year, plate, fuel_type, current_km, is_active, notes')
+          .eq('family_id', fid)
+          .eq('is_active', true),
         supabaseAdmin
           .from('vehicle_maintenance')
           .select('title, status, next_due_at, last_done_at, frequency_label, next_due_km, notes')
