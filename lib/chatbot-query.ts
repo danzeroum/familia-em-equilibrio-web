@@ -309,8 +309,9 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
           .limit(20),
         supabaseAdmin
           .from('health_protocols')
-          .select('title, category, status, notes')
-          .eq('family_id', fid)
+          .select('title, trigger_condition, action_text, priority, is_active')
+          .in('profile_id', safeIds(memberIds))
+          .eq('is_active', true)
           .limit(10),
       ])
       return {
