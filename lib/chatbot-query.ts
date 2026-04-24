@@ -2,19 +2,15 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createLLMClient, DEFAULT_MODEL, LLMModelId } from '@/lib/llm-client'
 
-// ─── Detecção de intenção de INSERÇÃO (tem prioridade sobre perguntas) ─────────
-
 const INSERT_PATTERNS = [
   /\b(insir[ae]|adiciona[r]?|cadastra[r]?|salva[r]?|registra[r]?|coloca[r]?)\b/i,
   /\b(comprar|compra[s]?)\b/i,
-  /^\s*[-•*\d]/m,  // linhas começando com - • * ou número (lista)
+  /^\s*[-•*\d]/m,
 ]
 
 export function isInsertIntent(text: string): boolean {
   return INSERT_PATTERNS.some(p => p.test(text))
 }
-
-// ─── Detecção de intenção ────────────────────────────────────────────────────
 
 const QUESTION_PATTERNS = [
   /\bquant(as?|os?|idade)\b/i,
@@ -40,9 +36,6 @@ export function isQuestion(text: string): boolean {
   return QUESTION_PATTERNS.some(p => p.test(text))
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Retorna IDs dos membros da família para usar em tabelas sem family_id direto */
 async function getMemberIds(familyId: string): Promise<string[]> {
   const { data } = await supabaseAdmin
     .from('profiles')
@@ -51,13 +44,10 @@ async function getMemberIds(familyId: string): Promise<string[]> {
   return (data ?? []).map(m => m.id)
 }
 
-/** Fallback seguro para .in() — evita erro com array vazio */
 const EMPTY_UUID = '00000000-0000-0000-0000-000000000000'
 function safeIds(ids: string[]): string[] {
   return ids.length > 0 ? ids : [EMPTY_UUID]
 }
-
-// ─── Mapeamento texto → tabelas ──────────────────────────────────────────────
 
 interface ContextFetcher {
   pattern: RegExp
@@ -79,35 +69,47 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // COMPRAS — alimentos
+  // DESPENSA / ESTOQUE
   {
-    pattern: /\b(aliment[oa]s?|frutas?|verdura[s]?|legume[s]?|carne[s]?|laticíni[oa]s?|bebida[s]?|mercearia|hortifruti|padaria)\b/i,
+    pattern: /\b(despensa|estoque|armário|geladeira|pantry|ingrediente[s]?|faltando em casa)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
-        .from('shopping_items')
-        .select('name, quantity, category, is_bought')
+        .from('pantry_items')
+        .select('name, quantity, unit, category, expiry_date, minimum_quantity, notes')
         .eq('family_id', fid)
-        .eq('category', 'grocery')
-        .eq('is_bought', false)
-      return { label: 'Itens de mercado/alimentos pendentes', data: data ?? [] }
+        .order('name')
+      return { label: 'Despensa / estoque de casa', data: data ?? [] }
     },
   },
 
-  // COMPRAS — farmácia
+  // RECEITAS
   {
-    pattern: /\b(farmácia|fralda[s]?|higiene|lenço[s]?|cotonete[s]?|absorvente[s]?|curativ[oa]s?)\b/i,
+    pattern: /\b(receita[s]?|prato[s]?|comida|cardápio|cozinha|ingrediente[s]? da receita)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
-        .from('shopping_items')
-        .select('name, quantity, category, is_bought')
+        .from('recipes')
+        .select('name, category, prep_time, servings, notes')
         .eq('family_id', fid)
-        .eq('category', 'pharmacy')
-        .eq('is_bought', false)
-      return { label: 'Itens de farmácia/higiene pendentes', data: data ?? [] }
+        .order('name')
+      return { label: 'Receitas cadastradas', data: data ?? [] }
     },
   },
 
-  // TAREFAS — tasks não tem family_id, acessa via profiles
+  // PLANO ALIMENTAR
+  {
+    pattern: /\b(plano alimentar|refeição|refeições|almoço|jantar|café da manhã|lanche|dieta|cardápio semanal)\b/i,
+    fetch: async (fid) => {
+      const { data } = await supabaseAdmin
+        .from('meal_plan')
+        .select('*')
+        .eq('family_id', fid)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      return { label: 'Plano alimentar', data: data ?? [] }
+    },
+  },
+
+  // TAREFAS
   {
     pattern: /\b(tarefa[s]?|afazere[s]?|pendência[s]?|to.?do|fazer|incumbência[s]?|dever[s]?|obrigaç[aã]o|atividade[s]?)\b/i,
     fetch: async (fid) => {
@@ -123,9 +125,90 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // MANUTENÇÃO DA CASA — home_maintenance tem family_id ✅
+  // ESCOLA — lição de casa
   {
-    pattern: /\b(manutenç[aã]o|rotina|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|revisão da casa|manutenções)\b/i,
+    pattern: /\b(lição|dever de casa|homework|escol[a]?|matéria|prova[s]?|trabalho escolar|boletim)\b/i,
+    fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
+      const [hw, shw] = await Promise.all([
+        supabaseAdmin
+          .from('homework')
+          .select('title, subject, due_date, status, notes')
+          .in('profile_id', safeIds(memberIds))
+          .order('due_date', { ascending: true }),
+        supabaseAdmin
+          .from('school_homework')
+          .select('title, subject, due_date, status, notes')
+          .eq('family_id', fid)
+          .order('due_date', { ascending: true }),
+      ])
+      return { label: 'Lições e tarefas escolares', data: [...(hw.data ?? []), ...(shw.data ?? [])] }
+    },
+  },
+
+  // ESCOLA — materiais e comunicados
+  {
+    pattern: /\b(material escolar|mochila|caderno[s]?|lápis|uniforme|comunicado|recado da escola|lista de material)\b/i,
+    fetch: async (fid) => {
+      const [supplies, comms] = await Promise.all([
+        supabaseAdmin
+          .from('school_supplies')
+          .select('name, quantity, is_bought, notes')
+          .eq('family_id', fid),
+        supabaseAdmin
+          .from('school_communications')
+          .select('title, content, received_at, is_read')
+          .eq('family_id', fid)
+          .order('received_at', { ascending: false })
+          .limit(10),
+      ])
+      return {
+        label: 'Materiais e comunicados escolares',
+        data: [...(supplies.data ?? []), ...(comms.data ?? [])],
+      }
+    },
+  },
+
+  // VEÍCULOS — tabela dedicada vehicle_maintenance + vehicles
+  {
+    pattern: /\b(carro[s]?|veículo[s]?|óleo|pneu[s]?|moto|combustível|mecânico|borracharia|ipva|licenciamento|seguro do carro|revisão|quilometragem|km|versa|frota|documento[s]? do carro)\b/i,
+    fetch: async (fid) => {
+      const [vehicles, maintenance, docs, calls] = await Promise.all([
+        supabaseAdmin
+          .from('vehicles')
+          .select('name, brand, model, year, plate, color, notes')
+          .eq('family_id', fid),
+        supabaseAdmin
+          .from('vehicle_maintenance')
+          .select('title, status, next_due_at, last_done_at, frequency_label, next_due_km, notes')
+          .eq('family_id', fid)
+          .order('next_due_at', { ascending: true, nullsFirst: false }),
+        supabaseAdmin
+          .from('vehicle_documents')
+          .select('title, expiry_date, status, notes')
+          .eq('family_id', fid)
+          .order('expiry_date', { ascending: true }),
+        supabaseAdmin
+          .from('vehicle_calls')
+          .select('title, status, scheduled_date, estimated_cost, notes')
+          .eq('family_id', fid)
+          .neq('status', 'done'),
+      ])
+      return {
+        label: 'Veículos — manutenção, documentos e chamados',
+        data: {
+          veiculos: vehicles.data ?? [],
+          manutencoes: maintenance.data ?? [],
+          documentos: docs.data ?? [],
+          chamados: calls.data ?? [],
+        } as any,
+      }
+    },
+  },
+
+  // MANUTENÇÃO DA CASA
+  {
+    pattern: /\b(manutenç[aã]o da casa|rotina da casa|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|manutenções)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
         .from('home_maintenance')
@@ -136,7 +219,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // CHAMADOS / REPAROS — maintenance_calls tem family_id ✅
+  // CHAMADOS / REPAROS
   {
     pattern: /\b(chamado[s]?|reparo[s]?|conserto[s]?|quebrad[oa]s?|urgente[s]?|serviço[s]?|profissional|encanador|eletricista|pedreiro|técnico)\b/i,
     fetch: async (fid) => {
@@ -150,21 +233,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // CARRO / VEÍCULO
-  {
-    pattern: /\b(carro[s]?|veículo[s]?|óleo|pneu[s]?|moto|combustível|mecânico|borracharia|ipva|licenciamento|seguro do carro)\b/i,
-    fetch: async (fid) => {
-      const { data } = await supabaseAdmin
-        .from('maintenance_calls')
-        .select('title, status, scheduled_date, notes, description, estimated_cost')
-        .eq('family_id', fid)
-        .ilike('title', '%carro%')
-        .order('scheduled_date', { ascending: true, nullsFirst: false })
-      return { label: 'Manutenções do carro/veículo', data: data ?? [] }
-    },
-  },
-
-  // CONTAS / FINANCEIRO — bills tem family_id ✅, coluna é "title" (não "name"), sem "recurrence" → usa "is_recurring"
+  // CONTAS / FINANCEIRO
   {
     pattern: /\b(conta[s]?|financeiro|despesa[s]?|fatura[s]?|pagament[oa]s?|gasto[s]?|boleto[s]?|parcela[s]?|venciment[oa]s?|divida[s]?|mensalidade[s]?|aluguel|luz|água|internet|telefone|streaming|plano)\b/i,
     fetch: async (fid) => {
@@ -177,9 +246,30 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // REMÉDIOS / MEDICAMENTOS — medications não tem family_id, acessa via profile_id
+  // METAS DE ECONOMIA / ORÇAMENTO
   {
-    pattern: /\b(remédio[s]?|medicament[oa]s?|medicaç[aã]o|estoque|comprimido[s]?|cápsula[s]?|xarope[s]?|pomada[s]?|dose[s]?|posologia|receita)\b/i,
+    pattern: /\b(meta[s]? de economia|poupança|economizar|reserva|orçamento|budget|meta financeira|objetivo financeiro)\b/i,
+    fetch: async (fid) => {
+      const [savings, budget] = await Promise.all([
+        supabaseAdmin
+          .from('savings_goals')
+          .select('title, target_amount, current_amount, deadline, status, notes')
+          .eq('family_id', fid),
+        supabaseAdmin
+          .from('budget_goals')
+          .select('category, limit_amount, spent_amount, period, notes')
+          .eq('family_id', fid),
+      ])
+      return {
+        label: 'Metas financeiras e orçamento',
+        data: { metas: savings.data ?? [], orcamento: budget.data ?? [] } as any,
+      }
+    },
+  },
+
+  // REMÉDIOS / MEDICAMENTOS
+  {
+    pattern: /\b(remédio[s]?|medicament[oa]s?|medicaç[aã]o|estoque|comprimido[s]?|cápsula[s]?|xarope[s]?|pomada[s]?|dose[s]?|posologia|receita médica)\b/i,
     fetch: async (fid) => {
       const memberIds = await getMemberIds(fid)
       const { data } = await supabaseAdmin
@@ -192,7 +282,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // VACINAS — vaccines não tem family_id, acessa via profile_id
+  // VACINAS
   {
     pattern: /\b(vacina[s]?|imunizaç[aã]o|dose[s]? da vacina|carteira de vacina|reforço|vacinação)\b/i,
     fetch: async (fid) => {
@@ -206,9 +296,33 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
 
-  // EVENTOS / AGENDA — family_events tem family_id ✅
+  // SAÚDE — rastreamento
   {
-    pattern: /\b(evento[s]?|agenda|compromiss[oa]s?|aniversári[oa]s?|consulta[s]?|reunião|reuniões|appointment|birthday|próxim[oa]s? eventos?|calendário|programação)\b/i,
+    pattern: /\b(saúde|médico[s]?|exame[s]?|resultado[s]?|peso|pressão|glicemia|acompanhament[oa] de saúde|protocolo de saúde)\b/i,
+    fetch: async (fid) => {
+      const [tracking, protocols] = await Promise.all([
+        supabaseAdmin
+          .from('health_tracking')
+          .select('title, category, status, next_due_at, frequency_label, profile_id, notes')
+          .eq('family_id', fid)
+          .order('next_due_at', { ascending: true, nullsFirst: false })
+          .limit(20),
+        supabaseAdmin
+          .from('health_protocols')
+          .select('title, category, status, notes')
+          .eq('family_id', fid)
+          .limit(10),
+      ])
+      return {
+        label: 'Acompanhamentos e protocolos de saúde',
+        data: [...(tracking.data ?? []), ...(protocols.data ?? [])],
+      }
+    },
+  },
+
+  // EVENTOS / AGENDA
+  {
+    pattern: /\b(evento[s]?|agenda|compromiss[oa]s?|aniversári[oa]s?|consulta[s]?|reunião|reuniões|próxim[oa]s? eventos?|calendário|programação|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|janeiro|fevereiro|março|abril)\b/i,
     fetch: async (fid) => {
       const today = new Date().toISOString().split('T')[0]
       const { data } = await supabaseAdmin
@@ -217,27 +331,103 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
         .eq('family_id', fid)
         .gte('event_date', today)
         .order('event_date', { ascending: true })
-        .limit(20)
+        .limit(30)
       return { label: 'Próximos eventos na agenda', data: data ?? [] }
     },
   },
 
-  // SAÚDE — health_tracking tem family_id ✅, colunas reais: title, category, status, next_due_at, frequency_label, profile_id
+  // EVENTOS SOCIAIS (festas, churrascos, comemorações)
   {
-    pattern: /\b(saúde|médico[s]?|exame[s]?|resultado[s]?|peso|pressão|glicemia|acompanhament[oa] de saúde)\b/i,
+    pattern: /\b(festa[s]?|churrasco[s]?|comemoração|celebração|convidado[s]?|evento social|aniversário de)\b/i,
+    fetch: async (fid) => {
+      const [events, tasks, shopping, expenses] = await Promise.all([
+        supabaseAdmin
+          .from('social_events')
+          .select('title, event_date, location, status, notes')
+          .eq('family_id', fid)
+          .order('event_date', { ascending: true }),
+        supabaseAdmin
+          .from('social_event_tasks')
+          .select('title, status, assigned_to, due_date')
+          .eq('family_id', fid),
+        supabaseAdmin
+          .from('social_event_shopping')
+          .select('name, quantity, is_bought, estimated_cost')
+          .eq('family_id', fid),
+        supabaseAdmin
+          .from('social_event_expenses')
+          .select('title, amount, category, notes')
+          .eq('family_id', fid),
+      ])
+      return {
+        label: 'Eventos sociais (festas, celebrações)',
+        data: {
+          eventos: events.data ?? [],
+          tarefas: tasks.data ?? [],
+          compras: shopping.data ?? [],
+          despesas: expenses.data ?? [],
+        } as any,
+      }
+    },
+  },
+
+  // GUARDA-ROUPA
+  {
+    pattern: /\b(roupa[s]?|guarda.?roupa|vestuário|armário de roupa|peça[s]? de roupa|uniforme[s]?|calçado[s]?|tênis|sapato[s]?)\b/i,
+    fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
+      const { data } = await supabaseAdmin
+        .from('wardrobe_items')
+        .select('name, category, color, size, season, notes')
+        .in('profile_id', safeIds(memberIds))
+        .order('name')
+      return { label: 'Guarda-roupa', data: data ?? [] }
+    },
+  },
+
+  // CONTATOS DE EMERGÊNCIA
+  {
+    pattern: /\b(emergência|contato[s]? de emergência|socorro|urgência|bombeiro|samu|polícia|vizinho[s]?|prestador[s]?)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin
-        .from('health_tracking')
-        .select('title, category, status, next_due_at, frequency_label, profile_id, notes')
+        .from('emergency_contacts')
+        .select('name, phone, relationship, notes')
         .eq('family_id', fid)
-        .order('next_due_at', { ascending: true, nullsFirst: false })
-        .limit(20)
-      return { label: 'Acompanhamentos de saúde', data: data ?? [] }
+        .order('name')
+      return { label: 'Contatos de emergência', data: data ?? [] }
+    },
+  },
+
+  // CHECKINS EMOCIONAIS
+  {
+    pattern: /\b(emocional|humor|sentimento[s]?|checkin|bem.?estar|ansiedade|estresse|feliz|triste|cansado)\b/i,
+    fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
+      const { data } = await supabaseAdmin
+        .from('emotional_checkins')
+        .select('mood, notes, created_at, profile_id')
+        .in('profile_id', safeIds(memberIds))
+        .order('created_at', { ascending: false })
+        .limit(10)
+      return { label: 'Últimos check-ins emocionais', data: data ?? [] }
+    },
+  },
+
+  // GRATIDÃO
+  {
+    pattern: /\b(gratidão|grato|agradecer|nota[s]? de gratidão|diário)\b/i,
+    fetch: async (fid) => {
+      const memberIds = await getMemberIds(fid)
+      const { data } = await supabaseAdmin
+        .from('gratitude_notes')
+        .select('content, created_at, profile_id')
+        .in('profile_id', safeIds(memberIds))
+        .order('created_at', { ascending: false })
+        .limit(10)
+      return { label: 'Notas de gratidão', data: data ?? [] }
     },
   },
 ]
-
-// ─── Busca de contexto relevante ─────────────────────────────────────────────
 
 async function fetchContext(question: string, familyId: string) {
   const matched: { label: string; data: any[] }[] = []
@@ -246,9 +436,7 @@ async function fetchContext(question: string, familyId: string) {
     if (fetcher.pattern.test(question)) {
       try {
         const result = await fetcher.fetch(familyId)
-        if (result.data.length > 0 || matched.length === 0) {
-          matched.push(result)
-        }
+        matched.push(result)
       } catch (err: any) {
         console.error(`[chatbot-query] erro ao buscar contexto:`, err?.message)
       }
@@ -258,36 +446,27 @@ async function fetchContext(question: string, familyId: string) {
   // Resumo geral — nenhum padrão bateu
   if (matched.length === 0) {
     const memberIds = await getMemberIds(familyId)
-    const [shopping, tasks, bills] = await Promise.all([
-      supabaseAdmin
-        .from('shopping_items')
-        .select('name, is_bought')
-        .eq('family_id', familyId)
-        .eq('is_bought', false),
-      supabaseAdmin
-        .from('tasks')
-        .select('title, status')
-        .in('assigned_to', safeIds(memberIds))
-        .neq('status', 'done'),
-      supabaseAdmin
-        .from('bills')
-        .select('title, amount, status')
-        .eq('family_id', familyId),
+    const [shopping, tasks, bills, events, vehicles] = await Promise.all([
+      supabaseAdmin.from('shopping_items').select('name, is_bought').eq('family_id', familyId).eq('is_bought', false),
+      supabaseAdmin.from('tasks').select('title, status').in('assigned_to', safeIds(memberIds)).neq('status', 'done'),
+      supabaseAdmin.from('bills').select('title, amount, status').eq('family_id', familyId),
+      supabaseAdmin.from('family_events').select('title, event_date').eq('family_id', familyId).gte('event_date', new Date().toISOString().split('T')[0]).limit(5),
+      supabaseAdmin.from('vehicle_maintenance').select('title, status, next_due_at').eq('family_id', familyId).limit(5),
     ])
     matched.push({
-      label: 'Resumo geral',
+      label: 'Resumo geral da família',
       data: [
         { compras_pendentes: (shopping.data ?? []).length },
         { tarefas_pendentes: (tasks.data ?? []).length },
         { contas_cadastradas: (bills.data ?? []).length },
+        { proximos_eventos: events.data ?? [] },
+        { manutencoes_veiculo: vehicles.data ?? [] },
       ],
     })
   }
 
   return matched
 }
-
-// ─── Resposta via LLM ────────────────────────────────────────────────────────
 
 export async function answerQuestion(
   question: string,
@@ -309,15 +488,9 @@ Responda perguntas sobre a organização da família de forma direta, clara e am
 Use emojis quando apropriado. Seja conciso mas completo.
 Quando listar itens, use bullets ou numeração.
 Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
-  const systemPrompt = `${basePrompt}
 
-Hoje é ${today}.`
-
-  const userPrompt = `Com base nos dados abaixo, responda a pergunta do usuário.
-
-${contextText}
-
-Pergunta: ${question}`
+  const systemPrompt = `${basePrompt}\n\nHoje é ${today}.`
+  const userPrompt = `Com base nos dados abaixo, responda a pergunta do usuário.\n\n${contextText}\n\nPergunta: ${question}`
 
   try {
     const client = createLLMClient(modelId)
@@ -338,8 +511,6 @@ Pergunta: ${question}`
     return formatFallbackAnswer(question, context)
   }
 }
-
-// ─── Fallback sem LLM ────────────────────────────────────────────────────────
 
 function formatFallbackAnswer(question: string, context: { label: string; data: any[] }[]): string {
   if (context.length === 0) return 'Não encontrei dados relacionados à sua pergunta.'
