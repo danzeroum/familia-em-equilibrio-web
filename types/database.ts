@@ -324,10 +324,12 @@ export interface Database {
       tasks: {
         Row: {
           id: string
+          family_id: string | null
           domain_id: number | null
           title: string
           description: string | null
           due_date: string | null
+          due_time: string | null
           status: 'pending' | 'in_progress' | 'done' | 'blocked'
           assigned_to: string | null
           created_by: string | null
