@@ -64,7 +64,7 @@ export function LeisurePlaceSheet({ open, onClose, item, onSave }: Props) {
   if (!open) return null
 
   const handleSave = async () => {
-    if (!name.trim()) return
+    if (!name.trim() || saving) return
     setSaving(true)
     await onSave({
       ...(item ? { id: item.id } : {}),
@@ -143,7 +143,7 @@ export function LeisurePlaceSheet({ open, onClose, item, onSave }: Props) {
         <span className="text-sm text-gray-700">⭐ Marcar como favorito</span>
       </label>
 
-      <SaveCancel onSave={handleSave} onClose={onClose} saving={saving} />
+      <SaveCancel onSave={handleSave} onClose={onClose} />
     </SlideOver>
   )
 }
