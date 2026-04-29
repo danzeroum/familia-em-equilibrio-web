@@ -913,6 +913,7 @@ export type SchoolCommunication = {
   family_id: string | null
   profile_id: string | null
   title: string
+  description: string | null
   content: string | null
   type: string | null
   date: string | null
