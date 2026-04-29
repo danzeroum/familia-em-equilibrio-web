@@ -1070,11 +1070,7 @@ export type LeisurePlaceCategory =
 export type LeisureStatus = 'wishlist' | 'planejado' | 'realizado' | 'cancelado'
 export type LeisurePriority = 'baixa' | 'media' | 'alta'
 
-export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
-export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
-export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
-
-// ─── Core Entity Aliases ─────────────────────────────────────────────────────
+// ─── All Entity Aliases ───────────────────────────────────────────────────────
 export type Family           = Database['public']['Tables']['families']['Row']
 export type Profile          = Database['public']['Tables']['profiles']['Row']
 export type FamilyEvent      = Database['public']['Tables']['family_events']['Row']
@@ -1110,17 +1106,19 @@ export type VehicleDocument    = Database['public']['Tables']['vehicle_documents
 export type VehicleMaintenance = Database['public']['Tables']['vehicle_maintenance']['Row']
 export type VehicleCall        = Database['public']['Tables']['vehicle_calls']['Row']
 
+// Social aliases
 export type SocialEvent         = Database['public']['Tables']['social_events']['Row']
 export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
 export type SocialEventExpense  = Database['public']['Tables']['social_event_expenses']['Row']
 export type SocialEventShopping = Database['public']['Tables']['social_event_shopping']['Row']
 export type SocialEventTask     = Database['public']['Tables']['social_event_tasks']['Row']
+
+// School aliases
 export type SchoolCommunication = Database['public']['Tables']['school_communications']['Row']
 export type SchoolHomework      = Database['public']['Tables']['school_homework']['Row']
 export type SchoolSupply        = Database['public']['Tables']['school_supplies']['Row']
 
 // ─── Dashboard Types ──────────────────────────────────────────────────────────
-// Shape real retornado por useDashboard (get_daily_focus RPC ou fallback JS)
 export type DailyFocusItem = {
   source: 'bill' | 'shopping' | 'task' | 'maintenance' | 'event' | 'vaccine' | 'medication'
   item_id: string
@@ -1132,7 +1130,6 @@ export type DailyFocusItem = {
   subtitle: string | null
 }
 
-// Shape real retornado por useDashboard (get_radar_90 RPC ou fallback JS)
 export type Radar90Item = {
   source: string
   item_id: string
@@ -1160,9 +1157,9 @@ export const QUICK_REGISTER_ITEMS: Array<{
   wave: string
   placeholder: string
 }> = [
-  { type: 'gratidao',    label: 'Gratid\u00e3o',    emoji: '\ud83d\ude4f', wave: 'text-amber-500',  placeholder: 'Pelo que voc\u00ea \u00e9 grato hoje?' },
-  { type: 'conquista',   label: 'Conquista',   emoji: '\ud83c\udfc6', wave: 'text-yellow-500', placeholder: 'O que voc\u00ea conquistou?' },
-  { type: 'desafio',     label: 'Desafio',     emoji: '\ud83d\udcaa', wave: 'text-blue-500',   placeholder: 'Qual desafio voc\u00ea enfrentou?' },
-  { type: 'memoria',     label: 'Mem\u00f3ria',     emoji: '\ud83d\udcf8', wave: 'text-pink-500',   placeholder: 'Que mem\u00f3ria especial quer guardar?' },
-  { type: 'aprendizado', label: 'Aprendizado', emoji: '\ud83d\udcda', wave: 'text-green-500',  placeholder: 'O que voc\u00ea aprendeu?' },
+  { type: 'gratidao',    label: 'Gratidão',    emoji: '🙏', wave: 'text-amber-500',  placeholder: 'Pelo que você é grato hoje?' },
+  { type: 'conquista',   label: 'Conquista',   emoji: '🏆', wave: 'text-yellow-500', placeholder: 'O que você conquistou?' },
+  { type: 'desafio',     label: 'Desafio',     emoji: '💪', wave: 'text-blue-500',   placeholder: 'Qual desafio você enfrentou?' },
+  { type: 'memoria',     label: 'Memória',     emoji: '📸', wave: 'text-pink-500',   placeholder: 'Que memória especial quer guardar?' },
+  { type: 'aprendizado', label: 'Aprendizado', emoji: '📚', wave: 'text-green-500',  placeholder: 'O que você aprendeu?' },
 ]
