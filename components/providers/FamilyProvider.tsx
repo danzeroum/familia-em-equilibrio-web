@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import { useAuth } from './AuthProvider'
 import { LoginScreen } from '../auth/LoginScreen'
+import type { Profile } from '@/types/database'
 
 export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const { session, loading: authLoading } = useAuth()
@@ -25,10 +26,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
           .eq('id', session!.user.id)
           .single()
 
-        console.log('[FamilyProvider] perfil do user:', profileData, profileError)
+        const profile = profileData as Profile | null
+
+        console.log('[FamilyProvider] perfil do user:', profile, profileError)
 
         // Se não tem perfil ainda, cria um básico
-        if (!profileData) {
+        if (!profile) {
           console.log('[FamilyProvider] usuário sem perfil, criando...')
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
@@ -37,33 +40,33 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
             .select()
             .single()
           console.log('[FamilyProvider] perfil criado:', newProfile, insertError)
-          if (newProfile) setCurrentUser(newProfile)
+          if (newProfile) setCurrentUser(newProfile as Profile)
           setLoading(false)
           return
         }
 
-        setCurrentUser(profileData)
+        setCurrentUser(profile)
 
         // 2. Busca membros da família
-        if (profileData.family_id) {
+        if (profile.family_id) {
           const { data: members, error: membersError } = await supabase
             .from('profiles')
             .select('*')
-            .eq('family_id', profileData.family_id)
+            .eq('family_id', profile.family_id)
             .order('birth_date', { ascending: true })
 
           console.log('[FamilyProvider] membros:', members, membersError)
-          setMembers(members ?? [])
+          setMembers((members ?? []) as Profile[])
 
           // 3. Busca dados da família
           const { data: family, error: familyError } = await supabase
             .from('families')
             .select('*')
-            .eq('id', profileData.family_id)
+            .eq('id', profile.family_id)
             .single()
 
           console.log('[FamilyProvider] família:', family, familyError)
-          if (family) setFamily(family)
+          if (family) setFamily(family as any)
         }
       } catch (err) {
         console.error('[FamilyProvider] erro inesperado:', err)
