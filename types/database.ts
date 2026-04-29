@@ -931,6 +931,8 @@ export type SchoolHomework = {
   due_date: string | null
   status: string | null
   description: string | null
+  is_project: boolean | null
+  needs_help: boolean | null
   created_at: string | null
 }
 
