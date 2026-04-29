@@ -1,70 +1,62 @@
 'use client'
-
-import { useEffect, useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useState, useCallback } from 'react'
+import { createClient } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { LeisurePlace } from '@/types/database'
 
 export function useLeisurePlaces() {
-  const familyId = useFamilyStore((s) => s.currentFamily?.id)
-
-  const [places, setPlaces] = useState<LeisurePlace[]>([])
+  const supabase = createClient()
+  const { currentUser } = useFamilyStore()
+  const [items, setItems] = useState<LeisurePlace[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const familyIdRef = useRef(familyId)
-  useEffect(() => { familyIdRef.current = familyId }, [familyId])
+  const familyId = currentUser?.family_id
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!familyId) return
-    load()
-  }, [familyId])
-
-  async function load() {
-    const fid = familyIdRef.current
-    if (!fid) return
     setIsLoading(true)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('leisure_places')
       .select('*')
-      .eq('family_id', fid)
+      .eq('family_id', familyId)
       .order('is_favorite', { ascending: false })
-      .order('visited_count', { ascending: false })
-    if (error) console.error('[useLeisurePlaces] load error:', error.message)
-    setPlaces(data ?? [])
+      .order('name')
+    setItems(data ?? [])
     setIsLoading(false)
-  }
+  }, [familyId])
 
-  async function upsert(place: Partial<LeisurePlace> & { name: string }) {
-    const fid = familyIdRef.current
-    if (!fid) return
-    if (place.id) {
-      const { id: _id, created_at: _cat, ...updateData } = place
-      await supabase.from('leisure_places').update(updateData).eq('id', place.id)
+  useEffect(() => { load() }, [load])
+
+  const upsert = async (payload: Partial<LeisurePlace>) => {
+    if (!familyId) return
+    if (payload.id) {
+      await supabase.from('leisure_places').update(payload).eq('id', payload.id)
     } else {
-      await supabase.from('leisure_places').insert({ ...place, family_id: fid } as any)
+      await supabase.from('leisure_places').insert({ ...payload, family_id: familyId })
     }
-    await load()
+    load()
   }
 
-  async function remove(id: string) {
+  const remove = async (id: string) => {
     await supabase.from('leisure_places').delete().eq('id', id)
-    await load()
+    load()
   }
 
-  async function toggleFavorite(id: string, current: boolean) {
-    await supabase.from('leisure_places').update({ is_favorite: !current }).eq('id', id)
-    await load()
-  }
-
-  async function incrementVisited(id: string, currentCount: number) {
+  const toggleFavorite = async (place: LeisurePlace) => {
     await supabase
       .from('leisure_places')
-      .update({ visited_count: currentCount + 1 })
-      .eq('id', id)
-    await load()
+      .update({ is_favorite: !place.is_favorite })
+      .eq('id', place.id)
+    load()
   }
 
-  const favorites = places.filter(p => p.is_favorite)
+  const incrementVisited = async (place: LeisurePlace) => {
+    await supabase
+      .from('leisure_places')
+      .update({ visited_count: place.visited_count + 1 })
+      .eq('id', place.id)
+    load()
+  }
 
-  return { places, favorites, isLoading, upsert, remove, toggleFavorite, incrementVisited, reload: load }
+  return { items, isLoading, upsert, remove, toggleFavorite, incrementVisited, reload: load }
 }

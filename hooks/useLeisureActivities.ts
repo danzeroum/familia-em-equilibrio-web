@@ -1,133 +1,129 @@
 'use client'
-
-import { useEffect, useRef, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useState, useCallback } from 'react'
+import { createClient } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { LeisureActivity } from '@/types/database'
 
-const PRIORITY_MAP: Record<string, number> = { baixa: 1, media: 2, alta: 3 }
-
 export function useLeisureActivities() {
-  const familyId = useFamilyStore((s) => s.currentFamily?.id)
-
+  const supabase = createClient()
+  const { currentUser } = useFamilyStore()
   const [items, setItems] = useState<LeisureActivity[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const familyIdRef = useRef(familyId)
-  useEffect(() => { familyIdRef.current = familyId }, [familyId])
+  const familyId = currentUser?.family_id
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!familyId) return
-    load()
-  }, [familyId])
-
-  async function load() {
-    const fid = familyIdRef.current
-    if (!fid) return
     setIsLoading(true)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('leisure_activities')
       .select('*')
-      .eq('family_id', fid)
+      .eq('family_id', familyId)
       .order('created_at', { ascending: false })
-    if (error) console.error('[useLeisureActivities] load error:', error.message)
     setItems(data ?? [])
     setIsLoading(false)
-  }
+  }, [familyId])
 
-  async function upsert(activity: Partial<LeisureActivity> & { title: string }) {
-    const fid = familyIdRef.current
-    if (!fid) return
-    const payload = { ...activity }
-    if (!payload.added_by) payload.added_by = null
-    if (!payload.task_id) payload.task_id = null
-    if (!payload.event_id) payload.event_id = null
+  useEffect(() => { load() }, [load])
 
+  const upsert = async (payload: Partial<LeisureActivity>) => {
+    if (!familyId) return
+    const now = new Date().toISOString()
     if (payload.id) {
-      const { id: _id, created_at: _cat, ...updateData } = payload
       await supabase
         .from('leisure_activities')
-        .update({ ...updateData, updated_at: new Date().toISOString() })
+        .update({ ...payload, updated_at: now })
         .eq('id', payload.id)
     } else {
-      const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('leisure_activities').insert({
-        ...payload,
-        family_id: fid,
-        added_by: payload.added_by ?? user?.id ?? null,
-        updated_at: new Date().toISOString(),
-      } as any)
+      await supabase
+        .from('leisure_activities')
+        .insert({ ...payload, family_id: familyId, added_by: currentUser?.id, updated_at: now })
     }
-    await load()
+    load()
   }
 
-  async function remove(id: string) {
+  const remove = async (id: string) => {
     await supabase.from('leisure_activities').delete().eq('id', id)
-    await load()
+    load()
   }
 
-  async function updateStatus(id: string, status: LeisureActivity['status']) {
+  const updateStatus = async (id: string, status: LeisureActivity['status']) => {
     await supabase
       .from('leisure_activities')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
-    await load()
+    load()
   }
 
-  // Converte atividade de lazer em tarefa
-  // domain_id é number | null na tabela tasks — não passar o family_id (string) nesse campo
-  async function convertToTask(activity: LeisureActivity) {
-    const fid = familyIdRef.current
-    if (!fid) return
-    const { data, error } = await supabase
+  // STATUS_CYCLE: wishlist -> planejado -> realizado -> cancelado
+  const cycleStatus = async (item: LeisureActivity) => {
+    const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
+    const idx = cycle.indexOf(item.status)
+    const next = cycle[(idx + 1) % cycle.length]
+    await updateStatus(item.id, next)
+  }
+
+  // Converte atividade em tarefa na tabela tasks
+  const convertToTask = async (activity: LeisureActivity) => {
+    if (!familyId) return null
+    const { data } = await supabase
       .from('tasks')
       .insert({
-        domain_id: null,
+        family_id: familyId,
         title: `${activity.emoji ?? '🎉'} ${activity.title}`,
-        description: activity.description ?? null,
-        priority: PRIORITY_MAP[activity.priority] ?? 2,
-        assigned_to: activity.added_by ?? null,
+        description: activity.description,
         status: 'pending',
-        checklist: [],
-      } as any)
+        priority: activity.priority === 'alta' ? 1 : activity.priority === 'baixa' ? 3 : 2,
+        assigned_to: activity.added_by,
+      })
       .select()
       .single()
-    if (error) { console.error('[useLeisureActivities] convertToTask error:', error.message); return }
-    await supabase
-      .from('leisure_activities')
-      .update({ task_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
-      .eq('id', activity.id)
-    await load()
+    if (data) {
+      await supabase
+        .from('leisure_activities')
+        .update({ task_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
+        .eq('id', activity.id)
+      load()
+    }
     return data
   }
 
-  // Converte atividade de lazer em evento familiar
-  async function convertToEvent(activity: LeisureActivity, eventDate: string) {
-    const fid = familyIdRef.current
-    if (!fid) return
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase
+  // Converte atividade em evento de calendário (family_events)
+  const convertToEvent = async (activity: LeisureActivity, date: string) => {
+    if (!familyId) return null
+    const { data } = await supabase
       .from('family_events')
       .insert({
-        family_id: fid,
+        family_id: familyId,
         title: `${activity.emoji ?? '🎉'} ${activity.title}`,
-        description: activity.description ?? null,
-        event_date: eventDate,
+        description: activity.description,
+        event_date: date,
         event_type: 'general',
-        budget: activity.estimated_cost ?? null,
+        location: activity.location_name,
         needs_action: false,
-        created_by: user?.id ?? null,
-      } as any)
+        is_done: false,
+      })
       .select()
       .single()
-    if (error) { console.error('[useLeisureActivities] convertToEvent error:', error.message); return }
-    await supabase
-      .from('leisure_activities')
-      .update({ event_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
-      .eq('id', activity.id)
-    await load()
+    if (data) {
+      await supabase
+        .from('leisure_activities')
+        .update({ event_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
+        .eq('id', activity.id)
+      load()
+    }
     return data
   }
 
-  return { items, isLoading, upsert, remove, updateStatus, convertToTask, convertToEvent, reload: load }
+  return {
+    items,
+    isLoading,
+    upsert,
+    remove,
+    updateStatus,
+    cycleStatus,
+    convertToTask,
+    convertToEvent,
+    reload: load,
+  }
 }
