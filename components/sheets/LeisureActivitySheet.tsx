@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { LeisureActivity, LeisureCategory, LeisurePriority } from '@/types/database'
 
 const CATEGORIES: { value: LeisureCategory; label: string; emoji: string }[] = [
@@ -11,10 +12,16 @@ const CATEGORIES: { value: LeisureCategory; label: string; emoji: string }[] = [
   { value: 'natureza',       label: 'Natureza',       emoji: '🌿' },
   { value: 'social',         label: 'Social',         emoji: '👥' },
   { value: 'educativo',      label: 'Educativo',      emoji: '📚' },
-  { value: 'outros',         label: 'Outros',         emoji: '🎯' },
+  { value: 'outros',         label: 'Outros',         emoji: '🎉' },
 ]
 
-type Member = { id: string; name: string; emoji?: string | null; nickname?: string | null }
+const PRIORITIES: { value: LeisurePriority; label: string; color: string }[] = [
+  { value: 'alta',  label: 'Alta',  color: 'text-red-500' },
+  { value: 'media', label: 'Média', color: 'text-yellow-500' },
+  { value: 'baixa', label: 'Baixa', color: 'text-green-500' },
+]
+
+interface Member { id: string; nickname?: string | null; name: string; emoji?: string | null }
 
 interface Props {
   open: boolean
@@ -27,25 +34,63 @@ interface Props {
 }
 
 export function LeisureActivitySheet({ open, onClose, item, onSave, members, onConvertToTask, onConvertToEvent }: Props) {
-  const [form, setForm] = useState<Partial<LeisureActivity>>({})
-  const [saving, setSaving] = useState(false)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [category, setCategory] = useState<LeisureCategory>('outros')
+  const [emoji, setEmoji] = useState('🎉')
+  const [forChildren, setForChildren] = useState(false)
+  const [forAdults, setForAdults] = useState(true)
+  const [estimatedCost, setEstimatedCost] = useState('')
+  const [durationHours, setDurationHours] = useState('')
+  const [locationName, setLocationName] = useState('')
+  const [locationUrl, setLocationUrl] = useState('')
+  const [priority, setPriority] = useState<LeisurePriority>('media')
+  const [tags, setTags] = useState('')
   const [eventDate, setEventDate] = useState('')
   const [showEventPicker, setShowEventPicker] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setForm(item ?? { status: 'wishlist', priority: 'media', for_adults: true, for_children: false, category: 'outros' })
+    if (item) {
+      setTitle(item.title)
+      setDescription(item.description ?? '')
+      setCategory(item.category ?? 'outros')
+      setEmoji(item.emoji ?? '🎉')
+      setForChildren(item.for_children)
+      setForAdults(item.for_adults)
+      setEstimatedCost(item.estimated_cost?.toString() ?? '')
+      setDurationHours(item.duration_hours?.toString() ?? '')
+      setLocationName(item.location_name ?? '')
+      setLocationUrl(item.location_url ?? '')
+      setPriority(item.priority)
+      setTags(item.tags.join(', '))
+    } else {
+      setTitle(''); setDescription(''); setCategory('outros'); setEmoji('🎉')
+      setForChildren(false); setForAdults(true); setEstimatedCost(''); setDurationHours('')
+      setLocationName(''); setLocationUrl(''); setPriority('media'); setTags('')
+    }
     setShowEventPicker(false)
     setEventDate('')
   }, [item, open])
 
-  if (!open) return null
-
-  const set = (k: keyof LeisureActivity, v: unknown) => setForm(f => ({ ...f, [k]: v }))
-
   const handleSave = async () => {
-    if (!form.title?.trim()) return
+    if (!title.trim()) return
     setSaving(true)
-    await onSave(form)
+    await onSave({
+      id: item?.id,
+      title: title.trim(),
+      description: description.trim() || null,
+      category,
+      emoji,
+      for_children: forChildren,
+      for_adults: forAdults,
+      estimated_cost: estimatedCost ? parseFloat(estimatedCost) : null,
+      duration_hours: durationHours ? parseFloat(durationHours) : null,
+      location_name: locationName.trim() || null,
+      location_url: locationUrl.trim() || null,
+      priority,
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+    })
     setSaving(false)
     onClose()
   }
@@ -60,223 +105,236 @@ export function LeisureActivitySheet({ open, onClose, item, onSave, members, onC
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 space-y-4"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-lg">{item ? 'Editar Atividade' : 'Nova Atividade de Lazer'}</h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 text-xl">✕</button>
-        </div>
+    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{item ? 'Editar Atividade' : 'Nova Atividade de Lazer'}</SheetTitle>
+        </SheetHeader>
 
-        {/* Emoji + Título */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="🎉"
-            value={form.emoji ?? ''}
-            onChange={e => set('emoji', e.target.value)}
-            className="w-14 border rounded-lg px-2 py-2 text-center text-xl"
-            maxLength={4}
-          />
-          <input
-            type="text"
-            placeholder="Nome da atividade *"
-            value={form.title ?? ''}
-            onChange={e => set('title', e.target.value)}
-            className="flex-1 border rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
-
-        {/* Categoria */}
-        <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Categoria</label>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(c => (
-              <button
-                key={c.value}
-                onClick={() => set('category', c.value)}
-                className={`text-xs px-3 py-1 rounded-full border transition-all ${
-                  form.category === c.value
-                    ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-                }`}
-              >
-                {c.emoji} {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Descrição */}
-        <textarea
-          placeholder="Descrição (opcional)"
-          value={form.description ?? ''}
-          onChange={e => set('description', e.target.value)}
-          rows={2}
-          className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
-        />
-
-        {/* Para quem */}
-        <div>
-          <label className="text-xs text-zinc-500 mb-2 block">Para quem</label>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={!!form.for_adults} onChange={e => set('for_adults', e.target.checked)} className="w-4 h-4 accent-emerald-600" />
-              👨 Adultos
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={!!form.for_children} onChange={e => set('for_children', e.target.checked)} className="w-4 h-4 accent-emerald-600" />
-              👧 Crianças
-            </label>
-          </div>
-        </div>
-
-        {/* Prioridade */}
-        <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Prioridade</label>
+        <div className="flex flex-col gap-4 mt-4">
+          {/* Emoji + Título */}
           <div className="flex gap-2">
-            {(['baixa', 'media', 'alta'] as LeisurePriority[]).map(p => (
-              <button
-                key={p}
-                onClick={() => set('priority', p)}
-                className={`text-xs px-3 py-1 rounded-full border transition-all ${
-                  form.priority === p
-                    ? p === 'alta' ? 'bg-red-500 text-white border-red-500'
-                      : p === 'media' ? 'bg-amber-400 text-white border-amber-400'
-                      : 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-                }`}
-              >
-                {p === 'alta' ? '🔴' : p === 'media' ? '🟡' : '🟢'} {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custo estimado + duração */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Custo estimado (R$)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0,00"
-              value={form.estimated_cost ?? ''}
-              onChange={e => set('estimated_cost', e.target.value ? Number(e.target.value) : null)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Duração (horas)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              placeholder="ex: 2.5"
-              value={form.duration_hours ?? ''}
-              onChange={e => set('duration_hours', e.target.value ? Number(e.target.value) : null)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Local */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Local</label>
             <input
               type="text"
-              placeholder="Nome do local"
-              value={form.location_name ?? ''}
-              onChange={e => set('location_name', e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={emoji}
+              onChange={e => setEmoji(e.target.value)}
+              className="w-14 text-center text-2xl border rounded-lg p-2 bg-background"
+              maxLength={4}
+            />
+            <input
+              type="text"
+              placeholder="Nome da atividade"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="flex-1 border rounded-lg px-3 py-2 bg-background text-sm"
             />
           </div>
+
+          {/* Descrição */}
+          <textarea
+            placeholder="Descrição (opcional)"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={2}
+            className="border rounded-lg px-3 py-2 bg-background text-sm resize-none"
+          />
+
+          {/* Categoria */}
           <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Link (Maps/site)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+            <div className="grid grid-cols-3 gap-2">
+              {CATEGORIES.map(c => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCategory(c.value)}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs transition-colors ${
+                    category === c.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted'
+                  }`}
+                >
+                  <span>{c.emoji}</span>
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Para quem */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Para quem</label>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={forAdults} onChange={e => setForAdults(e.target.checked)} />
+                👨 Adultos
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={forChildren} onChange={e => setForChildren(e.target.checked)} />
+                👶 Crianças
+              </label>
+            </div>
+          </div>
+
+          {/* Prioridade */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Prioridade</label>
+            <div className="flex gap-2">
+              {PRIORITIES.map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setPriority(p.value)}
+                  className={`flex-1 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                    priority === p.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Custo e duração */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Custo estimado (R$)</label>
+              <input
+                type="number"
+                value={estimatedCost}
+                onChange={e => setEstimatedCost(e.target.value)}
+                placeholder="0,00"
+                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Duração (horas)</label>
+              <input
+                type="number"
+                value={durationHours}
+                onChange={e => setDurationHours(e.target.value)}
+                placeholder="2"
+                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Localização */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Local</label>
+            <input
+              type="text"
+              value={locationName}
+              onChange={e => setLocationName(e.target.value)}
+              placeholder="Nome do local"
+              className="w-full border rounded-lg px-3 py-2 bg-background text-sm mb-2"
+            />
             <input
               type="url"
-              placeholder="https://"
-              value={form.location_url ?? ''}
-              onChange={e => set('location_url', e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={locationUrl}
+              onChange={e => setLocationUrl(e.target.value)}
+              placeholder="Link (Google Maps, site…)"
+              className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
             />
           </div>
-        </div>
 
-        {/* Botões de conversão (apenas em edição) */}
-        {item && (
-          <div className="border-t pt-4 space-y-2">
-            <p className="text-xs text-zinc-500 font-medium">Converter atividade em:</p>
-            <div className="flex gap-2">
-              {!item.task_id && onConvertToTask && (
-                <button
-                  onClick={async () => { setSaving(true); await onConvertToTask(item); setSaving(false); onClose() }}
-                  disabled={saving}
-                  className="flex-1 text-sm py-2 rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors"
-                >
-                  ⚡ Criar Tarefa
-                </button>
-              )}
-              {item.task_id && (
-                <span className="flex-1 text-sm py-2 text-center rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 border border-emerald-200">
-                  ✅ Tarefa criada
-                </span>
-              )}
-              {!item.event_id && onConvertToEvent && (
-                <button
-                  onClick={() => setShowEventPicker(v => !v)}
-                  className="flex-1 text-sm py-2 rounded-lg border border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
-                >
-                  📅 Agendar
-                </button>
-              )}
-              {item.event_id && (
-                <span className="flex-1 text-sm py-2 text-center rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 border border-blue-200">
-                  📅 Agendado
-                </span>
+          {/* Tags */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Tags (separadas por vírgula)</label>
+            <input
+              type="text"
+              value={tags}
+              onChange={e => setTags(e.target.value)}
+              placeholder="praia, verão, família"
+              className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
+            />
+          </div>
+
+          {/* Conversão — só aparece quando editando item existente */}
+          {item && (
+            <div className="border rounded-xl p-3 bg-muted/40 flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">Converter em</p>
+              <div className="flex gap-2">
+                {!item.task_id && onConvertToTask && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={async () => { setSaving(true); await onConvertToTask(item); setSaving(false); onClose() }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-background border text-xs font-medium hover:bg-muted transition-colors"
+                  >
+                    ⚡ Tarefa
+                  </button>
+                )}
+                {item.task_id && (
+                  <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-300">
+                    ✅ Tarefa criada
+                  </div>
+                )}
+                {!item.event_id && onConvertToEvent && !showEventPicker && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEventPicker(true)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-background border text-xs font-medium hover:bg-muted transition-colors"
+                  >
+                    📅 Agendar
+                  </button>
+                )}
+                {item.event_id && (
+                  <div className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300">
+                    📅 Agendado
+                  </div>
+                )}
+              </div>
+              {showEventPicker && (
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={eventDate}
+                    onChange={e => setEventDate(e.target.value)}
+                    className="flex-1 border rounded-lg px-3 py-1.5 bg-background text-sm"
+                  />
+                  <button
+                    type="button"
+                    disabled={!eventDate || saving}
+                    onClick={handleConvertToEvent}
+                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEventPicker(false)}
+                    className="px-2 py-1.5 rounded-lg border text-xs hover:bg-muted"
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
             </div>
-            {showEventPicker && (
-              <div className="flex gap-2 items-center">
-                <input
-                  type="date"
-                  value={eventDate}
-                  onChange={e => setEventDate(e.target.value)}
-                  className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                />
-                <button
-                  onClick={handleConvertToEvent}
-                  disabled={!eventDate || saving}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg disabled:opacity-50"
-                >
-                  Confirmar
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Ações */}
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 rounded-xl border text-sm font-medium text-zinc-600"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !form.title?.trim()}
-            className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium disabled:opacity-50"
-          >
-            {saving ? 'Salvando…' : 'Salvar'}
-          </button>
+          {/* Botões */}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!title.trim() || saving}
+              onClick={handleSave}
+              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
+            >
+              {saving ? 'Salvando…' : item ? 'Salvar' : 'Adicionar'}
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   )
 }
