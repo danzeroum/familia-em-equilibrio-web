@@ -127,7 +127,7 @@ export default function SocialPage() {
     return m?.nickname ?? m?.name ?? '—'
   }
 
-  const byEvent = <T extends { event_id: string }>(arr: T[]) =>
+  const byEvent = <T extends { event_id: string | null }>(arr: T[]) =>
     filterEvent === 'all' ? arr : arr.filter(i => i.event_id === filterEvent)
 
   const activeEvent = filterEvent !== 'all' ? filterEvent : (events.items[0]?.id ?? null)
