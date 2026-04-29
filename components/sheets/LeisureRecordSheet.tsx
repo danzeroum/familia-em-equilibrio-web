@@ -1,245 +1,166 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import type { LeisureRecord, LeisureActivity } from '@/types/database'
 
-interface Member { id: string; nickname?: string | null; name: string; emoji?: string | null; is_child?: boolean }
+import { useState, useEffect } from 'react'
+import { SlideOver, Field, SaveCancel } from './_shared'
+import type { LeisureRecord } from '@/types/database'
 
 interface Props {
   open: boolean
   onClose: () => void
   item: LeisureRecord | null
-  activities: LeisureActivity[]
+  defaults?: Partial<LeisureRecord>
   onSave: (payload: Partial<LeisureRecord>) => Promise<void>
-  members: Member[]
+  members: { id: string; name: string; nickname?: string | null; is_child?: boolean }[]
 }
 
-export function LeisureRecordSheet({ open, onClose, item, activities, onSave, members }: Props) {
+export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, members }: Props) {
   const [title, setTitle] = useState('')
+  const [emoji, setEmoji] = useState('📸')
   const [description, setDescription] = useState('')
   const [dateRealized, setDateRealized] = useState(new Date().toISOString().split('T')[0])
-  const [emoji, setEmoji] = useState('📸')
-  const [rating, setRating] = useState(0)
+  const [rating, setRating] = useState(5)
   const [participants, setParticipants] = useState<string[]>([])
   const [costActual, setCostActual] = useState('')
   const [locationName, setLocationName] = useState('')
   const [notes, setNotes] = useState('')
   const [wouldRepeat, setWouldRepeat] = useState(true)
-  const [activityId, setActivityId] = useState<string>('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (item) {
-      setTitle(item.title)
-      setDescription(item.description ?? '')
-      setDateRealized(item.date_realized)
-      setEmoji(item.emoji ?? '📸')
-      setRating(item.rating ?? 0)
-      setParticipants(item.participants ?? [])
-      setCostActual(item.cost_actual?.toString() ?? '')
-      setLocationName(item.location_name ?? '')
-      setNotes(item.notes ?? '')
-      setWouldRepeat(item.would_repeat)
-      setActivityId(item.activity_id ?? '')
-    } else {
-      setTitle(''); setDescription(''); setDateRealized(new Date().toISOString().split('T')[0])
-      setEmoji('📸'); setRating(0); setParticipants([]); setCostActual('')
-      setLocationName(''); setNotes(''); setWouldRepeat(true); setActivityId('')
-    }
-  }, [item, open])
+    const src = item ?? defaults ?? {}
+    setTitle((src as any).title ?? '')
+    setEmoji((src as any).emoji ?? '📸')
+    setDescription((src as any).description ?? '')
+    setDateRealized((src as any).date_realized ?? new Date().toISOString().split('T')[0])
+    setRating((src as any).rating ?? 5)
+    setParticipants((src as any).participants ?? [])
+    setCostActual((src as any).cost_actual?.toString() ?? '')
+    setLocationName((src as any).location_name ?? '')
+    setNotes((src as any).notes ?? '')
+    setWouldRepeat((src as any).would_repeat ?? true)
+  }, [item, defaults, open])
 
-  const toggleParticipant = (id: string) => {
-    setParticipants(prev =>
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    )
-  }
+  if (!open) return null
+
+  const toggleParticipant = (id: string) =>
+    setParticipants(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
 
   const handleSave = async () => {
     if (!title.trim()) return
     setSaving(true)
     await onSave({
-      id: item?.id,
+      ...(item ? { id: item.id } : {}),
       title: title.trim(),
-      description: description.trim() || null,
-      date_realized: dateRealized,
       emoji,
-      rating: rating || null,
+      description: description || null,
+      date_realized: dateRealized,
+      rating,
       participants,
       cost_actual: costActual ? parseFloat(costActual) : null,
-      location_name: locationName.trim() || null,
-      notes: notes.trim() || null,
+      location_name: locationName || null,
+      notes: notes || null,
       would_repeat: wouldRepeat,
-      activity_id: activityId || null,
     })
     setSaving(false)
     onClose()
   }
 
   return (
-    <Sheet open={open} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{item ? 'Editar Registro' : 'Registrar Lazer'}</SheetTitle>
-        </SheetHeader>
-
-        <div className="flex flex-col gap-4 mt-4">
-          {/* Emoji + Título */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={emoji}
-              onChange={e => setEmoji(e.target.value)}
-              className="w-14 text-center text-2xl border rounded-lg p-2 bg-background"
-              maxLength={4}
-            />
-            <input
-              type="text"
-              placeholder="O que fizeram?"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="flex-1 border rounded-lg px-3 py-2 bg-background text-sm"
-            />
-          </div>
-
-          {/* Data */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Data</label>
-            <input
-              type="date"
-              value={dateRealized}
-              onChange={e => setDateRealized(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
-            />
-          </div>
-
-          {/* Avaliação */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-2 block">Avaliação</label>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map(star => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star === rating ? 0 : star)}
-                  className={`text-2xl transition-transform hover:scale-110 ${
-                    star <= rating ? 'text-yellow-400' : 'text-muted-foreground/30'
-                  }`}
-                >
-                  ★
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Participantes */}
-          <div>
-            <label className="text-xs text-muted-foreground mb-2 block">Participantes</label>
-            <div className="flex flex-wrap gap-2">
-              {members.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => toggleParticipant(m.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors ${
-                    participants.includes(m.id)
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background hover:bg-muted'
-                  }`}
-                >
-                  <span>{m.emoji ?? (m.is_child ? '👶' : '👤')}</span>
-                  <span>{m.nickname ?? m.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Vinculado a atividade */}
-          {activities.length > 0 && (
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Vinculado a (opcional)</label>
-              <select
-                value={activityId}
-                onChange={e => setActivityId(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
-              >
-                <option value="">Nenhuma atividade</option>
-                {activities.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.emoji} {a.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Custo e local */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Custo real (R$)</label>
-              <input
-                type="number"
-                value={costActual}
-                onChange={e => setCostActual(e.target.value)}
-                placeholder="0,00"
-                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Local</label>
-              <input
-                type="text"
-                value={locationName}
-                onChange={e => setLocationName(e.target.value)}
-                placeholder="Onde foi?"
-                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
-              />
-            </div>
-          </div>
-
-          {/* Descrição / Notas */}
-          <textarea
-            placeholder="Como foi? Anote memórias…"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={3}
-            className="border rounded-lg px-3 py-2 bg-background text-sm resize-none"
+    <SlideOver title={item ? 'Editar Registro' : 'Registrar Lazer'} onClose={onClose}>
+      <div className="flex gap-2">
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">Emoji</label>
+          <input
+            value={emoji}
+            onChange={e => setEmoji(e.target.value)}
+            className="input-base w-16 text-center text-xl"
+            maxLength={2}
           />
+        </div>
+        <div className="flex-1">
+          <Field label="Título" value={title} onChange={setTitle} placeholder="ex: Passeio na praia" />
+        </div>
+      </div>
 
-          {/* Repetiria? */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div
-              onClick={() => setWouldRepeat(!wouldRepeat)}
-              className={`relative w-10 h-6 rounded-full transition-colors ${
-                wouldRepeat ? 'bg-primary' : 'bg-muted'
+      <Field label="Data" value={dateRealized} onChange={setDateRealized} type="date" />
+
+      <div>
+        <label className="text-sm text-gray-600 block mb-1">Avaliação</label>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map(n => (
+            <button
+              key={n}
+              onClick={() => setRating(n)}
+              className={`text-2xl transition-transform hover:scale-110 ${n <= rating ? 'opacity-100' : 'opacity-30'}`}
+            >
+              ⭐
+            </button>
+          ))}
+          <span className="ml-2 text-sm text-gray-500 self-center">{rating}/5</span>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-600 block mb-1">Participantes</label>
+        <div className="flex flex-wrap gap-2">
+          {members.map(m => (
+            <button
+              key={m.id}
+              onClick={() => toggleParticipant(m.id)}
+              className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                participants.includes(m.id)
+                  ? 'bg-teal-600 text-white border-teal-600'
+                  : 'border-gray-200 text-gray-600 hover:border-teal-400'
               }`}
             >
-              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                wouldRepeat ? 'translate-x-5' : 'translate-x-1'
-              }`} />
-            </div>
-            <span className="text-sm">🔄 Repetiria essa atividade</span>
-          </label>
-
-          {/* Botões */}
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors"
-            >
-              Cancelar
+              {m.is_child ? '🧒' : '🧑'} {m.nickname ?? m.name}
             </button>
-            <button
-              type="button"
-              disabled={!title.trim() || saving}
-              onClick={handleSave}
-              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
-            >
-              {saving ? 'Salvando…' : item ? 'Salvar' : 'Registrar'}
-            </button>
-          </div>
+          ))}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-600 block mb-1">Descrição</label>
+        <textarea
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="Como foi?"
+          rows={2}
+          className="input-base resize-none"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Custo real (R$)" value={costActual} onChange={setCostActual} type="number" placeholder="0.00" />
+        <Field label="Local" value={locationName} onChange={setLocationName} placeholder="ex: Praia" />
+      </div>
+
+      <div>
+        <label className="text-sm text-gray-600 block mb-1">Notas</label>
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Dicas, observações..."
+          rows={2}
+          className="input-base resize-none"
+        />
+      </div>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <div
+          onClick={() => setWouldRepeat(!wouldRepeat)}
+          className={`w-10 h-6 rounded-full transition-colors relative ${
+            wouldRepeat ? 'bg-teal-500' : 'bg-gray-200'
+          }`}
+        >
+          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+            wouldRepeat ? 'translate-x-4' : 'translate-x-0.5'
+          }`} />
+        </div>
+        <span className="text-sm text-gray-700">🔄 Repetiria essa atividade</span>
+      </label>
+
+      <SaveCancel onSave={handleSave} onClose={onClose} />
+    </SlideOver>
   )
 }
