@@ -47,25 +47,19 @@ export function useLeisureActivities() {
     load()
   }
 
-  const updateStatus = async (id: string, status: LeisureActivity['status']) => {
+  const cycleStatus = async (item: LeisureActivity) => {
+    const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
+    const next = cycle[(cycle.indexOf(item.status) + 1) % cycle.length]
     await supabase
       .from('leisure_activities')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
+      .update({ status: next, updated_at: new Date().toISOString() })
+      .eq('id', item.id)
     load()
   }
 
-  // STATUS_CYCLE: wishlist -> planejado -> realizado -> cancelado
-  const cycleStatus = async (item: LeisureActivity) => {
-    const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
-    const idx = cycle.indexOf(item.status)
-    const next = cycle[(idx + 1) % cycle.length]
-    await updateStatus(item.id, next)
-  }
-
-  // Converte atividade em tarefa na tabela tasks
   const convertToTask = async (activity: LeisureActivity) => {
     if (!familyId) return null
+    const priorityMap: Record<string, number> = { alta: 1, media: 2, baixa: 3 }
     const { data } = await supabase
       .from('tasks')
       .insert({
@@ -73,7 +67,7 @@ export function useLeisureActivities() {
         title: `${activity.emoji ?? '🎉'} ${activity.title}`,
         description: activity.description,
         status: 'pending',
-        priority: activity.priority === 'alta' ? 1 : activity.priority === 'baixa' ? 3 : 2,
+        priority: priorityMap[activity.priority] ?? 2,
         assigned_to: activity.added_by,
       })
       .select()
@@ -88,8 +82,7 @@ export function useLeisureActivities() {
     return data
   }
 
-  // Converte atividade em evento de calendário (family_events)
-  const convertToEvent = async (activity: LeisureActivity, date: string) => {
+  const convertToEvent = async (activity: LeisureActivity, eventDate: string) => {
     if (!familyId) return null
     const { data } = await supabase
       .from('family_events')
@@ -97,11 +90,11 @@ export function useLeisureActivities() {
         family_id: familyId,
         title: `${activity.emoji ?? '🎉'} ${activity.title}`,
         description: activity.description,
-        event_date: date,
+        event_date: eventDate,
         event_type: 'general',
-        location: activity.location_name,
         needs_action: false,
         is_done: false,
+        location: activity.location_name,
       })
       .select()
       .single()
@@ -115,15 +108,5 @@ export function useLeisureActivities() {
     return data
   }
 
-  return {
-    items,
-    isLoading,
-    upsert,
-    remove,
-    updateStatus,
-    cycleStatus,
-    convertToTask,
-    convertToEvent,
-    reload: load,
-  }
+  return { items, isLoading, upsert, remove, cycleStatus, convertToTask, convertToEvent, reload: load }
 }
