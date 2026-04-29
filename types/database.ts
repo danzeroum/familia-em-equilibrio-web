@@ -577,7 +577,6 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['health_tracking']['Insert']>
         Relationships: never[]
       }
-      // ─── Lazer ──────────────────────────────────────────────────────────────
       leisure_activities: {
         Row: {
           id: string
