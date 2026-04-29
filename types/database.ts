@@ -1,0 +1,964 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      families: {
+        Row: {
+          id: string
+          name: string
+          monthly_budget: number | null
+          city: string | null
+          state: string | null
+          country: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['families']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['families']['Insert']>
+        Relationships: never[]
+      }
+      gratitude_notes: {
+        Row: {
+          id: string
+          from_user_id: string | null
+          to_user_id: string | null
+          message: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          from_user_id?: string | null
+          to_user_id?: string | null
+          message: string
+          created_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['gratitude_notes']['Insert']>
+        Relationships: []
+      }
+
+      ai_settings: {
+        Row: {
+          id: string
+          family_id: string
+          model_id: string
+          system_prompt: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id: string
+          model_id?: string
+          system_prompt?: string | null
+          updated_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['ai_settings']['Insert']>
+        Relationships: []
+      }
+      activity_feed: {
+        Row: { id: string; user_id: string | null; action: string; entity_type: string; entity_id: string | null; entity_title: string | null; created_at: string | null }
+        Insert: { id?: string; user_id?: string | null; action: string; entity_type: string; entity_id?: string | null; entity_title?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['activity_feed']['Insert']>
+        Relationships: []
+      }
+      health_protocols: {
+        Row: { id: string; profile_id: string | null; trigger_condition: string; action_text: string; priority: number | null; is_active: boolean | null; created_at: string | null }
+        Insert: { id?: string; profile_id?: string | null; trigger_condition: string; action_text: string; priority?: number | null; is_active?: boolean | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['health_protocols']['Insert']>
+        Relationships: []
+      }
+      homework: {
+        Row: { id: string; profile_id: string | null; title: string; subject: string | null; due_date: string | null; progress_pct: number | null; missing_steps: string | null; status: string | null; family_id: string | null; created_at: string | null }
+        Insert: { id?: string; profile_id?: string | null; title: string; subject?: string | null; due_date?: string | null; progress_pct?: number | null; missing_steps?: string | null; status?: string | null; family_id?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['homework']['Insert']>
+        Relationships: []
+      }
+      meal_ingredients: {
+        Row: { id: string; meal_plan_id: string | null; shopping_item_id: string | null; item_name: string | null; quantity: string | null; created_at: string | null }
+        Insert: { id?: string; meal_plan_id?: string | null; shopping_item_id?: string | null; item_name?: string | null; quantity?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['meal_ingredients']['Insert']>
+        Relationships: []
+      }
+      meal_plans: {
+        Row: { id: string; week_start: string; title: string | null; meals: any | null; created_by: string | null; created_at: string | null }
+        Insert: { id?: string; week_start: string; title?: string | null; meals?: any | null; created_by?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['meal_plans']['Insert']>
+        Relationships: []
+      }
+      recurrence_rules: {
+        Row: { id: string; frequency: string | null; interval: number | null; day_of_week: number | null; day_of_month: number | null; ends_at: string | null; anticipation_days: number | null; next_occurrence: string | null; last_generated_at: string | null }
+        Insert: { id?: string; frequency?: string | null; interval?: number | null; day_of_week?: number | null; day_of_month?: number | null; ends_at?: string | null; anticipation_days?: number | null; next_occurrence?: string | null; last_generated_at?: string | null }
+        Update: Partial<Database['public']['Tables']['recurrence_rules']['Insert']>
+        Relationships: []
+      }
+      school_items: {
+        Row: { id: string; profile_id: string | null; name: string; status: string | null; due_date: string | null; quantity: string | null; notes: string | null; created_at: string | null }
+        Insert: { id?: string; profile_id?: string | null; name: string; status?: string | null; due_date?: string | null; quantity?: string | null; notes?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['school_items']['Insert']>
+        Relationships: []
+      }
+      weekly_summaries: {
+        Row: { id: string; user_id: string | null; week_start: string; tasks_done_count: number | null; tasks_pending_count: number | null; ai_tip: string | null; created_at: string | null }
+        Insert: { id?: string; user_id?: string | null; week_start: string; tasks_done_count?: number | null; tasks_pending_count?: number | null; ai_tip?: string | null; created_at?: string | null }
+        Update: Partial<Database['public']['Tables']['weekly_summaries']['Insert']>
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          id: string
+          name: string
+          nickname: string | null
+          avatar_url: string | null
+          family_id: string | null
+          role: 'adult' | 'child' | 'teen' | 'other'
+          birth_date: string | null
+          height_cm: number | null
+          weight_kg: number | null
+          blood_type: string | null
+          dietary_restrictions: string[]
+          allergies: string[]
+          medication_allergies: string[]
+          school_or_company: string | null
+          health_plan_name: string | null
+          health_plan_number: string | null
+          health_plan_active: boolean
+          doctor_name: string | null
+          doctor_phone: string | null
+          passport_number: string | null
+          passport_expiry: string | null
+          color_hex: string
+          cpf: string | null
+          rg: string | null
+          gender: string | null
+          chronic_condition: string | null
+          continuous_medication: string | null
+          health_plan_provider: string | null
+          dentist_name: string | null
+          last_doctor_visit: string | null
+          last_dental_visit: string | null
+          next_doctor_visit: string | null
+          next_vaccine: string | null
+          food_allergies: string[]
+          environmental_allergies: string[]
+          school_phone: string | null
+          school_shift: string | null
+          school_year: string | null
+          teacher_or_manager: string | null
+          extracurricular: string | null
+          extracurricular_schedule: string | null
+          transport_mode: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id: string
+          name: string
+          nickname?: string | null
+          avatar_url?: string | null
+          family_id?: string | null
+          role?: 'adult' | 'child' | 'teen' | 'other'
+          birth_date?: string | null
+          height_cm?: number | null
+          weight_kg?: number | null
+          blood_type?: string | null
+          dietary_restrictions?: string[]
+          allergies?: string[]
+          medication_allergies?: string[]
+          school_or_company?: string | null
+          health_plan_name?: string | null
+          health_plan_number?: string | null
+          health_plan_active?: boolean
+          doctor_name?: string | null
+          doctor_phone?: string | null
+          passport_number?: string | null
+          passport_expiry?: string | null
+          color_hex?: string
+          cpf?: string | null
+          rg?: string | null
+          gender?: string | null
+          chronic_condition?: string | null
+          continuous_medication?: string | null
+          health_plan_provider?: string | null
+          dentist_name?: string | null
+          last_doctor_visit?: string | null
+          last_dental_visit?: string | null
+          next_doctor_visit?: string | null
+          next_vaccine?: string | null
+          food_allergies?: string[]
+          environmental_allergies?: string[]
+          school_phone?: string | null
+          school_shift?: string | null
+          school_year?: string | null
+          teacher_or_manager?: string | null
+          extracurricular?: string | null
+          extracurricular_schedule?: string | null
+          transport_mode?: string | null
+        }
+        Update: {
+          name?: string
+          nickname?: string | null
+          avatar_url?: string | null
+          family_id?: string | null
+          role?: 'adult' | 'child' | 'teen' | 'other'
+          birth_date?: string | null
+          height_cm?: number | null
+          weight_kg?: number | null
+          blood_type?: string | null
+          dietary_restrictions?: string[]
+          allergies?: string[]
+          medication_allergies?: string[]
+          school_or_company?: string | null
+          health_plan_name?: string | null
+          health_plan_number?: string | null
+          health_plan_active?: boolean
+          doctor_name?: string | null
+          doctor_phone?: string | null
+          passport_number?: string | null
+          passport_expiry?: string | null
+          color_hex?: string
+          cpf?: string | null
+          rg?: string | null
+          gender?: string | null
+          chronic_condition?: string | null
+          continuous_medication?: string | null
+          health_plan_provider?: string | null
+          dentist_name?: string | null
+          last_doctor_visit?: string | null
+          last_dental_visit?: string | null
+          next_doctor_visit?: string | null
+          next_vaccine?: string | null
+          food_allergies?: string[]
+          environmental_allergies?: string[]
+          school_phone?: string | null
+          school_shift?: string | null
+          school_year?: string | null
+          teacher_or_manager?: string | null
+          extracurricular?: string | null
+          extracurricular_schedule?: string | null
+          transport_mode?: string | null
+        }
+        Relationships: never[]
+      }
+      bills: {
+        Row: {
+          id: string
+          title: string
+          amount: number | null
+          due_day: number | null
+          due_date: string | null
+          status: 'pending' | 'paid' | 'auto_debit' | 'overdue'
+          is_recurring: boolean
+          category: string | null
+          payment_method: string | null
+          domain_id: number | null
+          family_id: string | null
+          created_by: string | null
+          assigned_to: string | null
+          paid_at: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['bills']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['bills']['Insert']>
+        Relationships: never[]
+      }
+      savings_goals: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          description: string | null
+          target_amount: number
+          current_amount: number
+          currency: string
+          deadline: string | null
+          icon: string | null
+          color_hex: string | null
+          is_completed: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['savings_goals']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['savings_goals']['Insert']>
+        Relationships: never[]
+      }
+      budget_goals: {
+        Row: {
+          id: string
+          family_id: string
+          category: string
+          monthly_limit: number
+          icon: string | null
+          color_hex: string | null
+          alert_pct: number
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['budget_goals']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['budget_goals']['Insert']>
+        Relationships: never[]
+      }
+      tasks: {
+        Row: {
+          id: string
+          domain_id: number | null
+          title: string
+          description: string | null
+          due_date: string | null
+          status: 'pending' | 'in_progress' | 'done' | 'blocked'
+          assigned_to: string | null
+          created_by: string | null
+          recurrence_id: string | null
+          notes: string | null
+          requires_supervision: boolean
+          validated_by: string | null
+          validated_at: string | null
+          priority: 1 | 2 | 3
+          visible_from: string | null
+          completed_at: string | null
+          checklist: ChecklistItem[] | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['tasks']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['tasks']['Insert']>
+        Relationships: never[]
+      }
+      medications: {
+        Row: {
+          id: string
+          profile_id: string | null
+          name: string
+          dosage: string | null
+          dosage_interval_hours: number
+          weight_based: boolean
+          form: 'liquid' | 'tablet' | 'drops' | 'other'
+          concentration: string | null
+          max_doses_per_day: number
+          expiry_date: string | null
+          stock_quantity: number
+          minimum_stock: number
+          storage_location: string | null
+          notes: string | null
+          is_active: boolean
+          action_description: string | null
+          action_date: string | null
+          item_condition: 'ok' | 'broken' | 'missing' | 'needs_check'
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['medications']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['medications']['Insert']>
+        Relationships: never[]
+      }
+      medication_logs: {
+        Row: {
+          id: string
+          profile_id: string | null
+          medication_id: string | null
+          given_at: string
+          given_by: string | null
+          dose_given: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['medication_logs']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['medication_logs']['Insert']>
+        Relationships: never[]
+      }
+      vaccines: {
+        Row: {
+          id: string
+          profile_id: string | null
+          name: string
+          applied_at: string | null
+          next_due: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vaccines']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vaccines']['Insert']>
+        Relationships: never[]
+      }
+      family_events: {
+        Row: {
+          id: string
+          title: string
+          event_date: string
+          event_type: 'birthday' | 'school' | 'medical' | 'travel' | 'general'
+          needs_action: boolean
+          action_description: string | null
+          budget: number | null
+          budget_estimate: number | null
+          is_done: boolean
+          created_by: string | null
+          family_id: string | null
+          description: string | null
+          event_time: string | null
+          location: string | null
+          assigned_to: string | null
+          participants: string[] | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['family_events']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['family_events']['Insert']>
+        Relationships: never[]
+      }
+      emergency_contacts: {
+        Row: {
+          id: string
+          family_id: string | null
+          name: string
+          phone: string
+          relationship: string | null
+          is_primary: boolean
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['emergency_contacts']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['emergency_contacts']['Insert']>
+        Relationships: never[]
+      }
+      emotional_checkins: {
+        Row: {
+          id: string
+          profile_id: string | null
+          family_id: string | null
+          practice: string
+          done_at: string
+          week_start: string | null
+          mood_level: number | null
+          notes: string | null
+          registered_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['emotional_checkins']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['emotional_checkins']['Insert']>
+        Relationships: never[]
+      }
+      wardrobe_items: {
+        Row: {
+          id: string
+          profile_id: string | null
+          item_type: string
+          size: string | null
+          season: 'summer' | 'winter' | 'all'
+          status: 'fitting' | 'outgrown' | 'to_buy' | 'donate'
+          quantity: number
+          minimum_quantity: number
+          season_alert_days: number
+          last_checked_at: string | null
+          notes: string | null
+          action_description: string | null
+          action_date: string | null
+          responsible_id: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['wardrobe_items']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['wardrobe_items']['Insert']>
+        Relationships: never[]
+      }
+      shopping_items: {
+        Row: {
+          id: string
+          name: string
+          quantity: string | null
+          category: string | null
+          domain_id: number | null
+          family_id: string | null
+          requested_by: string | null
+          is_bought: boolean
+          bought_by: string | null
+          bought_at: string | null
+          is_recurring: boolean
+          restock_when_below: number | null
+          status: 'needed' | 'running_out' | 'bought'
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['shopping_items']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['shopping_items']['Insert']>
+        Relationships: never[]
+      }
+      home_maintenance: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          emoji: string | null
+          category: string | null
+          frequency_label: string
+          frequency_days: number
+          responsible_id: string | null
+          last_done_at: string | null
+          next_due_at: string | null
+          status: 'ok' | 'due_soon' | 'overdue' | 'done'
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          title: string
+          emoji?: string | null
+          category?: string | null
+          frequency_label: string
+          frequency_days: number
+          responsible_id?: string | null
+          last_done_at?: string | null
+          next_due_at?: string | null
+          notes?: string | null
+          status?: 'ok' | 'due_soon' | 'overdue' | 'done'
+          created_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['home_maintenance']['Insert']>
+        Relationships: never[]
+      }
+      maintenance_calls: {
+        Row: {
+          id: string
+          family_id: string | null
+          title: string
+          description: string | null
+          status: 'pending' | 'scheduled' | 'done' | null
+          priority: number | null
+          professional_name: string | null
+          professional_phone: string | null
+          estimated_cost: number | null
+          scheduled_date: string | null
+          domain_id: number | null
+          created_by: string | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id?: string | null
+          title: string
+          description?: string | null
+          status?: 'pending' | 'scheduled' | 'done' | null
+          priority?: number | null
+          professional_name?: string | null
+          professional_phone?: string | null
+          estimated_cost?: number | null
+          scheduled_date?: string | null
+          domain_id?: number | null
+          created_by?: string | null
+          completed_at?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['maintenance_calls']['Insert']>
+        Relationships: never[]
+      }
+      health_tracking: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          title: string
+          emoji: string
+          category: string
+          frequency_label: string
+          frequency_days: number
+          responsible_id: string | null
+          last_done_at: string | null
+          next_due_at: string | null
+          notes: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          family_id: string
+          title: string
+          emoji: string
+          category: string
+          frequency_label: string
+          frequency_days: number
+          profile_id?: string | null
+          responsible_id?: string | null
+          last_done_at?: string | null
+          next_due_at?: string | null
+          notes?: string | null
+          status?: string
+        }
+        Update: Partial<Database['public']['Tables']['health_tracking']['Insert']>
+        Relationships: never[]
+      }
+      leisure_activities: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          description: string | null
+          category: LeisureCategory | null
+          emoji: string | null
+          for_children: boolean
+          for_adults: boolean
+          estimated_cost: number | null
+          duration_hours: number | null
+          location_name: string | null
+          location_url: string | null
+          tags: string[]
+          status: LeisureStatus
+          priority: LeisurePriority
+          added_by: string | null
+          task_id: string | null
+          event_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          family_id: string
+          title: string
+          description?: string | null
+          category?: LeisureCategory | null
+          emoji?: string | null
+          for_children?: boolean
+          for_adults?: boolean
+          estimated_cost?: number | null
+          duration_hours?: number | null
+          location_name?: string | null
+          location_url?: string | null
+          tags?: string[]
+          status?: LeisureStatus
+          priority?: LeisurePriority
+          added_by?: string | null
+          task_id?: string | null
+          event_id?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['leisure_activities']['Insert']>
+        Relationships: never[]
+      }
+      leisure_records: {
+        Row: {
+          id: string
+          family_id: string
+          activity_id: string | null
+          title: string
+          description: string | null
+          date_realized: string
+          emoji: string | null
+          rating: number | null
+          participants: string[]
+          cost_actual: number | null
+          location_name: string | null
+          notes: string | null
+          would_repeat: boolean
+          created_at: string
+        }
+        Insert: {
+          family_id: string
+          title: string
+          description?: string | null
+          activity_id?: string | null
+          date_realized?: string
+          emoji?: string | null
+          rating?: number | null
+          participants?: string[]
+          cost_actual?: number | null
+          location_name?: string | null
+          notes?: string | null
+          would_repeat?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['leisure_records']['Insert']>
+        Relationships: never[]
+      }
+      leisure_places: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          category: LeisurePlaceCategory | null
+          emoji: string | null
+          address: string | null
+          maps_url: string | null
+          website_url: string | null
+          notes: string | null
+          is_favorite: boolean
+          visited_count: number
+          tags: string[]
+          created_at: string
+        }
+        Insert: {
+          family_id: string
+          name: string
+          category?: LeisurePlaceCategory | null
+          emoji?: string | null
+          address?: string | null
+          maps_url?: string | null
+          website_url?: string | null
+          notes?: string | null
+          is_favorite?: boolean
+          visited_count?: number
+          tags?: string[]
+        }
+        Update: Partial<Database['public']['Tables']['leisure_places']['Insert']>
+        Relationships: never[]
+      }
+    }
+  }
+}
+
+// ─── Shared Types ────────────────────────────────────────────────────────────
+export type ChecklistItem = { id: string; text: string; done: boolean }
+
+// ─── Leisure Types ───────────────────────────────────────────────────────────
+export type LeisureCategory =
+  | 'passeio' | 'viagem' | 'esporte' | 'cultura'
+  | 'entretenimento' | 'natureza' | 'social' | 'educativo' | 'outros'
+
+export type LeisurePlaceCategory =
+  | 'parque' | 'praia' | 'restaurante' | 'cinema' | 'teatro' | 'museu'
+  | 'esporte' | 'viagem' | 'clube' | 'outros'
+
+export type LeisureStatus = 'wishlist' | 'planejado' | 'realizado' | 'cancelado'
+export type LeisurePriority = 'baixa' | 'media' | 'alta'
+
+export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
+export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
+export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
+
+// ─── Core Entity Aliases ─────────────────────────────────────────────────────
+export type Family           = Database['public']['Tables']['families']['Row']
+export type Profile          = Database['public']['Tables']['profiles']['Row']
+export type FamilyEvent      = Database['public']['Tables']['family_events']['Row']
+export type Task             = Database['public']['Tables']['tasks']['Row']
+export type Bill             = Database['public']['Tables']['bills']['Row']
+export type SavingsGoal      = Database['public']['Tables']['savings_goals']['Row']
+export type BudgetGoal       = Database['public']['Tables']['budget_goals']['Row']
+export type Medication       = Database['public']['Tables']['medications']['Row']
+export type MedicationLog    = Database['public']['Tables']['medication_logs']['Row']
+export type Vaccine          = Database['public']['Tables']['vaccines']['Row']
+export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
+export type WardrobeItem     = Database['public']['Tables']['wardrobe_items']['Row']
+export type HomeMaintenance  = Database['public']['Tables']['home_maintenance']['Row']
+export type MaintenanceCall  = Database['public']['Tables']['maintenance_calls']['Row']
+export type ShoppingItem     = Database['public']['Tables']['shopping_items']['Row']
+export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row']
+export type HealthTracking   = Database['public']['Tables']['health_tracking']['Row']
+export type HealthProtocol   = Database['public']['Tables']['health_protocols']['Row']
+export type Homework         = Database['public']['Tables']['homework']['Row']
+export type SchoolItem       = Database['public']['Tables']['school_items']['Row']
+export type WeeklySummary    = Database['public']['Tables']['weekly_summaries']['Row']
+export type ActivityFeed     = Database['public']['Tables']['activity_feed']['Row']
+export type GratitudeNote    = Database['public']['Tables']['gratitude_notes']['Row']
+export type MealPlan         = Database['public']['Tables']['meal_plans']['Row']
+export type MealIngredient   = Database['public']['Tables']['meal_ingredients']['Row']
+export type RecurrenceRule   = Database['public']['Tables']['recurrence_rules']['Row']
+
+// ─── Generic Aliases (tabelas sem definição completa na interface) ─────────────
+export type Recipe = {
+  id: string
+  family_id: string | null
+  title: string
+  description: string | null
+  ingredients: string[] | null
+  instructions: string | null
+  prep_time_min: number | null
+  servings: number | null
+  category: string | null
+  emoji: string | null
+  image_url: string | null
+  is_favorite: boolean
+  tags: string[]
+  created_by: string | null
+  created_at: string | null
+}
+
+export type PantryItem = {
+  id: string
+  family_id: string | null
+  name: string
+  quantity: string | null
+  unit: string | null
+  category: string | null
+  expiry_date: string | null
+  minimum_quantity: number | null
+  current_quantity: number | null
+  location: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type Vehicle = {
+  id: string
+  family_id: string | null
+  name: string
+  brand: string | null
+  model: string | null
+  year: number | null
+  plate: string | null
+  color: string | null
+  fuel_type: string | null
+  mileage: number | null
+  notes: string | null
+  emoji: string | null
+  created_at: string | null
+}
+
+export type VehicleDocument = {
+  id: string
+  vehicle_id: string | null
+  family_id: string | null
+  type: string
+  expiry_date: string | null
+  notes: string | null
+  status: string | null
+  created_at: string | null
+}
+
+export type VehicleMaintenance = {
+  id: string
+  vehicle_id: string | null
+  family_id: string | null
+  title: string
+  description: string | null
+  scheduled_date: string | null
+  completed_at: string | null
+  mileage_at: number | null
+  cost: number | null
+  status: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type VehicleCall = {
+  id: string
+  vehicle_id: string | null
+  family_id: string | null
+  title: string
+  description: string | null
+  status: string | null
+  created_at: string | null
+}
+
+export type SocialEvent = {
+  id: string
+  family_id: string | null
+  title: string
+  description: string | null
+  event_date: string | null
+  event_time: string | null
+  location: string | null
+  event_type: string | null
+  status: string | null
+  budget: number | null
+  emoji: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string | null
+}
+
+export type SocialEventContact = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  name: string
+  confirmed: boolean | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type SocialEventExpense = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  title: string
+  amount: number | null
+  paid: boolean | null
+  created_at: string | null
+}
+
+export type SocialEventShopping = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  name: string
+  quantity: string | null
+  bought: boolean | null
+  created_at: string | null
+}
+
+export type SocialEventTask = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  title: string
+  assigned_to: string | null
+  done: boolean | null
+  created_at: string | null
+}
+
+export type SchoolCommunication = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  title: string
+  content: string | null
+  type: string | null
+  date: string | null
+  is_read: boolean
+  created_at: string | null
+}
+
+export type SchoolHomework = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  title: string
+  subject: string | null
+  due_date: string | null
+  status: string | null
+  description: string | null
+  created_at: string | null
+}
+
+export type SchoolSupply = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  name: string
+  quantity: string | null
+  status: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type DailyFocusItem = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  title: string
+  done: boolean
+  priority: number | null
+  date: string | null
+  created_at: string | null
+}
+
+export type Radar90Item = {
+  id: string
+  family_id: string | null
+  title: string
+  description: string | null
+  category: string | null
+  status: string | null
+  target_date: string | null
+  progress_pct: number | null
+  emoji: string | null
+  created_at: string | null
+}
+
+// ─── QuickRegister (Social/Emocional) ────────────────────────────────────────
+export type QuickRegisterType =
+  | 'gratidao'
+  | 'conquista'
+  | 'desafio'
+  | 'memoria'
+  | 'aprendizado'
+
+export const QUICK_REGISTER_ITEMS: Array<{
+  type: QuickRegisterType
+  label: string
+  emoji: string
+  wave: string
+  placeholder: string
+}> = [
+  { type: 'gratidao',    label: 'Gratidão',    emoji: '🙏', wave: 'text-amber-500',  placeholder: 'Pelo que você é grato hoje?' },
+  { type: 'conquista',   label: 'Conquista',   emoji: '🏆', wave: 'text-yellow-500', placeholder: 'O que você conquistou?' },
+  { type: 'desafio',     label: 'Desafio',     emoji: '💪', wave: 'text-blue-500',   placeholder: 'Qual desafio você enfrentou?' },
+  { type: 'memoria',     label: 'Memória',     emoji: '📸', wave: 'text-pink-500',   placeholder: 'Que memória especial quer guardar?' },
+  { type: 'aprendizado', label: 'Aprendizado', emoji: '📚', wave: 'text-green-500',  placeholder: 'O que você aprendeu?' },
+]
