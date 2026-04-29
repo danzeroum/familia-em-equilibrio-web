@@ -1070,6 +1070,10 @@ export type LeisurePlaceCategory =
 export type LeisureStatus = 'wishlist' | 'planejado' | 'realizado' | 'cancelado'
 export type LeisurePriority = 'baixa' | 'media' | 'alta'
 
+export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
+export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
+export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
+
 // ─── All Entity Aliases ───────────────────────────────────────────────────────
 export type Family           = Database['public']['Tables']['families']['Row']
 export type Profile          = Database['public']['Tables']['profiles']['Row']
@@ -1098,20 +1102,13 @@ export type MealPlan         = Database['public']['Tables']['meal_plans']['Row']
 export type MealIngredient   = Database['public']['Tables']['meal_ingredients']['Row']
 export type RecurrenceRule   = Database['public']['Tables']['recurrence_rules']['Row']
 
-// Vehicle aliases — mapped to DB table rows (nickname field, not name)
+// ─── Generic Aliases (tabelas sem definição completa na interface) ─────────────
+export type Recipe             = Database['public']['Tables']['recipes']['Row']
+export type PantryItem         = Database['public']['Tables']['pantry_items']['Row']
 export type Vehicle            = Database['public']['Tables']['vehicles']['Row']
 export type VehicleDocument    = Database['public']['Tables']['vehicle_documents']['Row']
 export type VehicleMaintenance = Database['public']['Tables']['vehicle_maintenance']['Row']
 export type VehicleCall        = Database['public']['Tables']['vehicle_calls']['Row']
-
-// Food aliases — mapped to DB table rows
-export type Recipe     = Database['public']['Tables']['recipes']['Row']
-export type PantryItem = Database['public']['Tables']['pantry_items']['Row']
-
-// Leisure aliases
-export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
-export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
-export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
 
 // Social aliases
 export type SocialEvent         = Database['public']['Tables']['social_events']['Row']
