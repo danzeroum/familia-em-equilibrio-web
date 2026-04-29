@@ -2,22 +2,10 @@
 import { useState, useEffect } from 'react'
 import type { LeisurePlace, LeisurePlaceCategory } from '@/types/database'
 
-const PLACE_CATEGORIES: { value: LeisurePlaceCategory; label: string; emoji: string }[] = [
-  { value: 'parque',      label: 'Parque',      emoji: '🌳' },
-  { value: 'praia',       label: 'Praia',       emoji: '🏖️' },
-  { value: 'restaurante', label: 'Restaurante', emoji: '🍴' },
-  { value: 'cinema',      label: 'Cinema',      emoji: '🎬' },
-  { value: 'teatro',      label: 'Teatro',      emoji: '🎭' },
-  { value: 'museu',       label: 'Museu',       emoji: '🏛️' },
-  { value: 'esporte',     label: 'Esporte',     emoji: '⚽' },
-  { value: 'viagem',      label: 'Viagem',      emoji: '✈️' },
-  { value: 'clube',       label: 'Clube',       emoji: '🎞️' },
-  { value: 'outros',      label: 'Outros',      emoji: '📍' },
-]
-
 interface Member {
   id: string
   name: string
+  nickname?: string | null
 }
 
 interface Props {
@@ -28,87 +16,112 @@ interface Props {
   members: Member[]
 }
 
-export function LeisurePlaceSheet({ open, onClose, item, onSave, members }: Props) {
-  const [form, setForm] = useState<Partial<LeisurePlace>>({})
+const PLACE_CATEGORIES: { value: LeisurePlaceCategory; label: string; emoji: string }[] = [
+  { value: 'parque', label: 'Parque', emoji: '🌳' },
+  { value: 'praia', label: 'Praia', emoji: '🏖️' },
+  { value: 'restaurante', label: 'Restaurante', emoji: '🍽️' },
+  { value: 'cinema', label: 'Cinema', emoji: '🎬' },
+  { value: 'teatro', label: 'Teatro', emoji: '🎭' },
+  { value: 'museu', label: 'Museu', emoji: '🏛️' },
+  { value: 'esporte', label: 'Esporte', emoji: '⚽' },
+  { value: 'viagem', label: 'Viagem', emoji: '✈️' },
+  { value: 'clube', label: 'Clube', emoji: '🏊' },
+  { value: 'outros', label: 'Outros', emoji: '📍' },
+]
+
+export default function LeisurePlaceSheet({ open, onClose, item, onSave, members }: Props) {
+  const [name, setName] = useState('')
+  const [emoji, setEmoji] = useState('📍')
+  const [category, setCategory] = useState<LeisurePlaceCategory>('outros')
+  const [address, setAddress] = useState('')
+  const [mapsUrl, setMapsUrl] = useState('')
+  const [websiteUrl, setWebsiteUrl] = useState('')
+  const [notes, setNotes] = useState('')
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [tags, setTags] = useState('')
   const [saving, setSaving] = useState(false)
-  const [tagInput, setTagInput] = useState('')
 
   useEffect(() => {
     if (item) {
-      setForm(item)
+      setName(item.name)
+      setEmoji(item.emoji || '📍')
+      setCategory((item.category as LeisurePlaceCategory) || 'outros')
+      setAddress(item.address || '')
+      setMapsUrl(item.maps_url || '')
+      setWebsiteUrl(item.website_url || '')
+      setNotes(item.notes || '')
+      setIsFavorite(item.is_favorite)
+      setTags((item.tags || []).join(', '))
     } else {
-      setForm({ category: 'outros', is_favorite: false, visited_count: 0, tags: [] })
+      setName(''); setEmoji('📍'); setCategory('outros')
+      setAddress(''); setMapsUrl(''); setWebsiteUrl('')
+      setNotes(''); setIsFavorite(false); setTags('')
     }
-    setTagInput('')
   }, [item, open])
 
-  const set = (key: keyof LeisurePlace, value: unknown) =>
-    setForm((f) => ({ ...f, [key]: value }))
-
-  const addTag = () => {
-    const t = tagInput.trim().toLowerCase()
-    if (!t) return
-    const current = form.tags ?? []
-    if (!current.includes(t)) set('tags', [...current, t])
-    setTagInput('')
-  }
-
-  const removeTag = (tag: string) =>
-    set('tags', (form.tags ?? []).filter((t) => t !== tag))
+  if (!open) return null
 
   const handleSave = async () => {
-    if (!form.name?.trim()) return
+    if (!name.trim()) return
     setSaving(true)
-    await onSave(form)
+    await onSave({
+      ...(item?.id ? { id: item.id } : {}),
+      name: name.trim(),
+      emoji,
+      category,
+      address: address || null,
+      maps_url: mapsUrl || null,
+      website_url: websiteUrl || null,
+      notes: notes || null,
+      is_favorite: isFavorite,
+      tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+    })
     setSaving(false)
     onClose()
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 shadow-xl flex flex-col h-full overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold">
-            {item ? 'Editar Lugar' : 'Novo Lugar'}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
+        <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-4 py-3 flex items-center justify-between">
+          <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+            {item ? 'Editar Lugar' : 'Novo Lugar Favorito'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 p-1">✕</button>
         </div>
 
-        <div className="flex-1 p-4 space-y-4">
+        <div className="p-4 space-y-4">
           {/* Emoji + Nome */}
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="📍"
-              maxLength={2}
-              value={form.emoji ?? ''}
-              onChange={(e) => set('emoji', e.target.value)}
-              className="w-14 text-center border rounded-lg p-2 text-xl"
+              value={emoji}
+              onChange={e => setEmoji(e.target.value)}
+              className="w-14 text-center text-2xl border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50 dark:bg-zinc-800"
+              maxLength={4}
             />
             <input
               type="text"
-              placeholder="Nome do lugar *"
-              value={form.name ?? ''}
-              onChange={(e) => set('name', e.target.value)}
-              className="flex-1 border rounded-lg p-2"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Nome do lugar"
+              className="flex-1 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:text-zinc-100"
             />
           </div>
 
           {/* Categoria */}
           <div>
-            <label className="block text-sm font-medium mb-1">Categoria</label>
+            <label className="block text-xs font-medium text-zinc-500 mb-1">Categoria</label>
             <div className="flex flex-wrap gap-2">
-              {PLACE_CATEGORIES.map((c) => (
+              {PLACE_CATEGORIES.map(c => (
                 <button
                   key={c.value}
-                  onClick={() => set('category', c.value)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    form.category === c.value
+                  onClick={() => setCategory(c.value)}
+                  className={`px-2 py-1 rounded-full text-xs border transition-colors ${
+                    category === c.value
                       ? 'bg-teal-600 text-white border-teal-600'
-                      : 'border-gray-300 hover:border-teal-400'
+                      : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'
                   }`}
                 >
                   {c.emoji} {c.label}
@@ -117,106 +130,87 @@ export function LeisurePlaceSheet({ open, onClose, item, onSave, members }: Prop
             </div>
           </div>
 
+          {/* Favorito */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div
+              onClick={() => setIsFavorite(!isFavorite)}
+              className={`w-10 h-6 rounded-full transition-colors ${
+                isFavorite ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-600'
+              } relative`}
+            >
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                isFavorite ? 'translate-x-5' : 'translate-x-1'
+              }`} />
+            </div>
+            <span className="text-sm text-zinc-700 dark:text-zinc-300">⭐ Lugar favorito</span>
+          </label>
+
           {/* Endereço */}
           <div>
-            <label className="block text-sm font-medium mb-1">Endereço</label>
+            <label className="block text-xs font-medium text-zinc-500 mb-1">Endereço</label>
             <input
               type="text"
-              placeholder="Endereço completo"
-              value={form.address ?? ''}
-              onChange={(e) => set('address', e.target.value)}
-              className="w-full border rounded-lg p-2"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="Rua, número, cidade"
+              className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:text-zinc-100"
             />
           </div>
 
           {/* Links */}
-          <div className="space-y-2">
-            <input
-              type="url"
-              placeholder="🗺️ Link Google Maps"
-              value={form.maps_url ?? ''}
-              onChange={(e) => set('maps_url', e.target.value)}
-              className="w-full border rounded-lg p-2"
-            />
-            <input
-              type="url"
-              placeholder="🌐 Site / Instagram"
-              value={form.website_url ?? ''}
-              onChange={(e) => set('website_url', e.target.value)}
-              className="w-full border rounded-lg p-2"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Google Maps</label>
+              <input
+                type="url"
+                value={mapsUrl}
+                onChange={e => setMapsUrl(e.target.value)}
+                placeholder="https://maps.google.com/..."
+                className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:text-zinc-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-500 mb-1">Site</label>
+              <input
+                type="url"
+                value={websiteUrl}
+                onChange={e => setWebsiteUrl(e.target.value)}
+                placeholder="https://"
+                className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:text-zinc-100"
+              />
+            </div>
           </div>
 
           {/* Notas */}
           <textarea
-            placeholder="Notas sobre o lugar"
-            value={form.notes ?? ''}
-            onChange={(e) => set('notes', e.target.value)}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Observações (horários, dicas, etc.)"
             rows={2}
-            className="w-full border rounded-lg p-2 resize-none"
+            className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:text-zinc-100 resize-none"
           />
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium mb-1">Tags</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="adicionar tag"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                className="flex-1 border rounded-lg p-2 text-sm"
-              />
-              <button
-                onClick={addTag}
-                className="px-3 border rounded-lg text-sm hover:bg-gray-50"
-              >
-                +
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {(form.tags ?? []).map((tag) => (
-                <span
-                  key={tag}
-                  className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-full text-xs"
-                >
-                  {tag}
-                  <button onClick={() => removeTag(tag)} className="text-gray-400 hover:text-red-500">×</button>
-                </span>
-              ))}
-            </div>
+            <label className="block text-xs font-medium text-zinc-500 mb-1">Tags (separadas por vírgula)</label>
+            <input
+              type="text"
+              value={tags}
+              onChange={e => setTags(e.target.value)}
+              placeholder="gratuito, crianças, ao ar livre"
+              className="w-full border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:text-zinc-100"
+            />
           </div>
-
-          {/* Favorito */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <div
-              onClick={() => set('is_favorite', !form.is_favorite)}
-              className={`w-11 h-6 rounded-full transition-colors ${
-                form.is_favorite ? 'bg-yellow-400' : 'bg-gray-300'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 bg-white rounded-full shadow m-0.5 transition-transform ${
-                  form.is_favorite ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </div>
-            <span className="text-sm">⭐ Lugar favorito</span>
-          </label>
         </div>
 
-        <div className="p-4 border-t flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
-          >
+        <div className="sticky bottom-0 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 px-4 py-3 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50">
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !form.name?.trim()}
-            className="flex-1 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-40 transition-colors"
+            disabled={!name.trim() || saving}
+            className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
           >
             {saving ? 'Salvando...' : 'Salvar'}
           </button>

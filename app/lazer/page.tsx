@@ -1,551 +1,524 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
+import PageHeader from '@/components/ui/PageHeader'
+import EmptyState from '@/components/ui/EmptyState'
 import { useLeisureActivities } from '@/hooks/useLeisureActivities'
-import { useLeisureRecords }    from '@/hooks/useLeisureRecords'
-import { useLeisurePlaces }     from '@/hooks/useLeisurePlaces'
-import { useFamilyStore }       from '@/store/familyStore'
-import { LeisureActivitySheet } from '@/components/sheets/LeisureActivitySheet'
-import { LeisureRecordSheet }   from '@/components/sheets/LeisureRecordSheet'
-import { LeisurePlaceSheet }    from '@/components/sheets/LeisurePlaceSheet'
-import { PageHeader }           from '@/components/ui/PageHeader'
-import { EmptyState }           from '@/components/ui/EmptyState'
-import type { LeisureActivity, LeisureRecord, LeisurePlace } from '@/types/database'
+import { useLeisureRecords } from '@/hooks/useLeisureRecords'
+import { useLeisurePlaces } from '@/hooks/useLeisurePlaces'
+import { useFamilyStore } from '@/store/familyStore'
+import LeisureActivitySheet from '@/components/sheets/LeisureActivitySheet'
+import LeisureRecordSheet from '@/components/sheets/LeisureRecordSheet'
+import LeisurePlaceSheet from '@/components/sheets/LeisurePlaceSheet'
+import type { LeisureActivity, LeisureRecord, LeisurePlace, LeisureStatus } from '@/types/database'
 
 type Tab = 'ideias' | 'agenda' | 'registros' | 'lugares'
 
-const STATUS_LABELS: Record<LeisureActivity['status'], { label: string; color: string }> = {
-  wishlist:  { label: '💡 Wishlist', color: 'bg-gray-100 text-gray-700' },
-  planejado: { label: '📅 Planejado', color: 'bg-blue-100 text-blue-700' },
-  realizado: { label: '✅ Realizado', color: 'bg-green-100 text-green-700' },
-  cancelado: { label: '❌ Cancelado', color: 'bg-red-100 text-red-700' },
+const STATUS_LABELS: Record<LeisureStatus, { label: string; color: string; dot: string }> = {
+  wishlist:  { label: 'Wishlist',  color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',  dot: '🌟' },
+  planejado: { label: 'Planejado', color: 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300',   dot: '📅' },
+  realizado: { label: 'Realizado', color: 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300', dot: '✅' },
+  cancelado: { label: 'Cancelado', color: 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400',       dot: '❌' },
 }
 
-const PRIORITY_BADGE: Record<string, string> = {
-  alta:  '🔴',
-  media: '🟡',
-  baixa: '🟢',
+const PRIORITY_DOT: Record<string, string> = { alta: '🔴', media: '🟡', baixa: '🟢' }
+
+const STATUS_CYCLE: LeisureStatus[] = ['wishlist', 'planejado', 'realizado', 'cancelado']
+
+function nextStatus(current: LeisureStatus): LeisureStatus {
+  const idx = STATUS_CYCLE.indexOf(current)
+  return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length]
+}
+
+function formatCurrency(val: number | null) {
+  if (val == null) return null
+  return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatDate(iso: string) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR')
+}
+
+const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+function getWeekDates(offset = 0) {
+  const now = new Date()
+  const day = now.getDay()
+  const sunday = new Date(now)
+  sunday.setDate(now.getDate() - day + offset * 7)
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sunday)
+    d.setDate(sunday.getDate() + i)
+    return d
+  })
 }
 
 export default function LazerPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('ideias')
-
-  // Hooks de dados
-  const activities = useLeisureActivities()
-  const records    = useLeisureRecords()
-  const places     = useLeisurePlaces()
+  const [tab, setTab] = useState<Tab>('ideias')
   const { members } = useFamilyStore()
 
+  const {
+    items: activities, isLoading: loadingAct,
+    upsert: upsertActivity, remove: removeActivity,
+    updateStatus, convertToTask, convertToEvent
+  } = useLeisureActivities()
+
+  const {
+    items: records, isLoading: loadingRec,
+    upsert: upsertRecord, remove: removeRecord
+  } = useLeisureRecords()
+
+  const {
+    items: places, isLoading: loadingPlaces,
+    upsert: upsertPlace, remove: removePlace,
+    toggleFavorite, incrementVisited
+  } = useLeisurePlaces()
+
   // Sheet states
-  const [activitySheet, setActivitySheet]  = useState<{ open: boolean; item: LeisureActivity | null }>({ open: false, item: null })
-  const [recordSheet, setRecordSheet]      = useState<{ open: boolean; item: LeisureRecord | null }>({ open: false, item: null })
-  const [placeSheet, setPlaceSheet]        = useState<{ open: boolean; item: LeisurePlace | null }>({ open: false, item: null })
+  const [actSheet, setActSheet] = useState<{ open: boolean; item: LeisureActivity | null }>({
+    open: false, item: null
+  })
+  const [recSheet, setRecSheet] = useState<{ open: boolean; item: LeisureRecord | null; defaultActivityId?: string }>({
+    open: false, item: null
+  })
+  const [placeSheet, setPlaceSheet] = useState<{ open: boolean; item: LeisurePlace | null }>({
+    open: false, item: null
+  })
 
-  // Filtros aba Ideias
-  const [audienceFilter, setAudienceFilter] = useState<'todos' | 'adultos' | 'criancas'>('todos')
-  const [statusFilter, setStatusFilter]     = useState<LeisureActivity['status'] | 'todos'>('todos')
+  // Filters
+  const [actFilter, setActFilter] = useState<'todos' | 'adultos' | 'criancas'>('todos')
+  const [placeFilter, setPlaceFilter] = useState<string>('todos')
+  const [weekOffset, setWeekOffset] = useState(0)
 
-  // Filtros aba Registros
-  const [memberFilter, setMemberFilter] = useState<string>('todos')
+  const filteredActivities = activities.filter(a => {
+    if (actFilter === 'adultos') return a.for_adults
+    if (actFilter === 'criancas') return a.for_children
+    return true
+  })
 
-  // Filtros aba Lugares
-  const [placeCategory, setPlaceCategory] = useState<string>('todos')
+  const weekDates = getWeekDates(weekOffset)
 
-  // Stats do mês para aba Registros
-  const stats = useMemo(() => records.statsThisMonth(), [records.items])
+  const activitiesThisMonth = records.filter(r => {
+    const d = new Date(r.date_realized)
+    const now = new Date()
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  })
 
-  const filteredActivities = useMemo(() => {
-    let list = activities.items
-    if (audienceFilter === 'adultos')  list = list.filter((a) => a.for_adults)
-    if (audienceFilter === 'criancas') list = list.filter((a) => a.for_children)
-    if (statusFilter !== 'todos')      list = list.filter((a) => a.status === statusFilter)
-    return list
-  }, [activities.items, audienceFilter, statusFilter])
+  const totalCostMonth = activitiesThisMonth.reduce((s, r) => s + (r.cost_actual || 0), 0)
+  const avgRating = activitiesThisMonth.length
+    ? (activitiesThisMonth.reduce((s, r) => s + (r.rating || 0), 0) / activitiesThisMonth.length).toFixed(1)
+    : null
 
-  const filteredRecords = useMemo(() => {
-    if (memberFilter === 'todos') return records.items
-    return records.items.filter((r) => r.participants.includes(memberFilter))
-  }, [records.items, memberFilter])
+  const uniquePlaceCategories = ['todos', ...Array.from(new Set(places.map(p => p.category).filter(Boolean)))]
 
-  const filteredPlaces = useMemo(() => {
-    if (placeCategory === 'todos') return places.items
-    return places.items.filter((p) => p.category === placeCategory)
-  }, [places.items, placeCategory])
-
-  // Conta atividades wishlist para badge
-  const wishlistCount = activities.items.filter((a) => a.status === 'wishlist').length
-
-  const TABS = [
-    { id: 'ideias' as Tab,    label: '💡 Ideias',    badge: wishlistCount },
-    { id: 'agenda' as Tab,    label: '📅 Agenda',    badge: 0 },
-    { id: 'registros' as Tab, label: '📸 Registros', badge: 0 },
-    { id: 'lugares' as Tab,   label: '📍 Lugares',   badge: 0 },
-  ]
+  const filteredPlaces = places.filter(p => placeFilter === 'todos' || p.category === placeFilter)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <PageHeader
-        title="🎉 Lazer"
-        description="Planejamento e registro de momentos de lazer em família"
-        action={{
-          label: '+ Novo',
-          onClick: () => {
-            if (activeTab === 'ideias')    setActivitySheet({ open: true, item: null })
-            if (activeTab === 'registros') setRecordSheet({ open: true, item: null })
-            if (activeTab === 'lugares')   setPlaceSheet({ open: true, item: null })
-          },
-        }}
-      />
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <PageHeader title="🎉 Lazer" subtitle="Planejamento e registro de momentos em família" />
 
-      {/* Abas */}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-teal-600 text-teal-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-                {tab.badge > 0 && (
-                  <span className="ml-1 bg-teal-100 text-teal-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+      {/* Tabs */}
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4">
+        <div className="flex gap-0 max-w-4xl mx-auto overflow-x-auto">
+          {([
+            { id: 'ideias',    label: '💡 Ideias' },
+            { id: 'agenda',   label: '📅 Agenda' },
+            { id: 'registros',label: '📸 Registros' },
+            { id: 'lugares',  label: '📍 Lugares' },
+          ] as { id: Tab; label: string }[]).map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                tab === t.id
+                  ? 'border-teal-600 text-teal-700 dark:text-teal-400'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* ═══════════════════════════════════════════════════════
-            ABA: IDEIAS
-        ═══════════════════════════════════════════════════════ */}
-        {activeTab === 'ideias' && (
-          <div>
-            {/* Filtros */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {(['todos', 'adultos', 'criancas'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setAudienceFilter(f)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    audienceFilter === f
-                      ? 'bg-teal-600 text-white border-teal-600'
-                      : 'border-gray-300 hover:border-teal-400'
-                  }`}
-                >
-                  {f === 'todos' ? 'Todos' : f === 'adultos' ? '👤 Adultos' : '👶 Crianças'}
-                </button>
-              ))}
-              <div className="w-px bg-gray-200 mx-1" />
-              {(['todos', 'wishlist', 'planejado', 'realizado', 'cancelado'] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    statusFilter === s
-                      ? 'bg-gray-700 text-white border-gray-700'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                >
-                  {s === 'todos' ? 'Todos status' : STATUS_LABELS[s]?.label}
-                </button>
-              ))}
+
+        {/* ─── ABA IDEIAS ─────────────────────────────────────────── */}
+        {tab === 'ideias' && (
+          <div className="space-y-4">
+            {/* Filtros + Botão novo */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex gap-2">
+                {(['todos', 'adultos', 'criancas'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setActFilter(f)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      actFilter === f
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'
+                    }`}
+                  >
+                    {f === 'todos' ? '👨‍👩‍👧 Todos' : f === 'adultos' ? '👨 Adultos' : '👧 Crianças'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setActSheet({ open: true, item: null })}
+                className="flex items-center gap-1 px-3 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
+              >
+                + Nova ideia
+              </button>
             </div>
 
-            {activities.isLoading ? (
+            {loadingAct ? (
               <div className="space-y-3">
-                {[1,2,3].map((i) => (
-                  <div key={i} className="h-24 bg-gray-200 animate-pulse rounded-xl" />
+                {[1,2,3].map(i => (
+                  <div key={i} className="h-24 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : filteredActivities.length === 0 ? (
               <EmptyState
-                icon="🎉"
-                title="Nenhuma atividade ainda"
-                description="Adicione ideias de lazer para a família"
-                action={{ label: '+ Adicionar ideia', onClick: () => setActivitySheet({ open: true, item: null }) }}
+                icon="🎯"
+                title="Nenhuma ideia de lazer ainda"
+                description="Adicione atividades que a família quer fazer!"
+                action={{ label: '+ Adicionar ideia', onClick: () => setActSheet({ open: true, item: null }) }}
               />
             ) : (
               <div className="space-y-3">
-                {filteredActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">{activity.emoji ?? '🎉'}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold truncate">{activity.title}</h3>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_LABELS[activity.status]?.color}`}>
-                            {STATUS_LABELS[activity.status]?.label}
-                          </span>
-                          <span className="text-xs" title={activity.priority}>
-                            {PRIORITY_BADGE[activity.priority]}
-                          </span>
-                          {activity.for_children && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">👶</span>}
-                          {activity.for_adults && <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">👤</span>}
+                {filteredActivities.map(act => {
+                  const s = STATUS_LABELS[act.status]
+                  return (
+                    <div
+                      key={act.id}
+                      className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <span className="text-2xl">{act.emoji || '🎉'}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{act.title}</span>
+                              {PRIORITY_DOT[act.priority] && (
+                                <span className="text-xs">{PRIORITY_DOT[act.priority]}</span>
+                              )}
+                            </div>
+                            {act.description && (
+                              <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{act.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <button
+                                onClick={() => updateStatus(act.id, nextStatus(act.status))}
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}
+                              >
+                                {s.dot} {s.label}
+                              </button>
+                              {act.for_children && <span className="text-xs">👧</span>}
+                              {act.for_adults && <span className="text-xs">👨</span>}
+                              {act.estimated_cost && (
+                                <span className="text-xs text-zinc-400">{formatCurrency(act.estimated_cost)}</span>
+                              )}
+                              {act.duration_hours && (
+                                <span className="text-xs text-zinc-400">{act.duration_hours}h</span>
+                              )}
+                              {act.task_id && (
+                                <span className="text-xs bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded-full">✅ Tarefa</span>
+                              )}
+                              {act.event_id && (
+                                <span className="text-xs bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded-full">📅 Evento</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {activity.description && (
-                          <p className="text-sm text-gray-500 mt-0.5 truncate">{activity.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-2 flex-wrap">
-                          {activity.estimated_cost != null && (
-                            <span className="text-xs text-gray-400">R$ {activity.estimated_cost.toFixed(2)}</span>
-                          )}
-                          {activity.location_name && (
-                            <span className="text-xs text-gray-400">📍 {activity.location_name}</span>
-                          )}
-                          {activity.task_id && (
-                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">✅ Tarefa</span>
-                          )}
-                          {activity.event_id && (
-                            <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">📅 Evento</span>
-                          )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setActSheet({ open: true, item: act })}
+                            className="p-1.5 text-zinc-400 hover:text-zinc-600 rounded"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => removeActivity(act.id)}
+                            className="p-1.5 text-zinc-400 hover:text-red-500 rounded"
+                          >
+                            🗑️
+                          </button>
                         </div>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        {/* Status cycle */}
-                        <button
-                          onClick={() => activities.cycleStatus(activity)}
-                          title="Avançar status"
-                          className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          ▶
-                        </button>
-                        <button
-                          onClick={() => setActivitySheet({ open: true, item: activity })}
-                          className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => activities.remove(activity.id)}
-                          className="text-xs px-2 py-1 border border-red-100 text-red-400 rounded-lg hover:bg-red-50 transition-colors"
-                        >
-                          🗑
-                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════
-            ABA: AGENDA
-        ═══════════════════════════════════════════════════════ */}
-        {activeTab === 'agenda' && (
-          <div>
-            <p className="text-gray-500 text-sm mb-4">
-              Atividades planejadas e eventos de lazer agendados.
-            </p>
-            {(() => {
-              const planejados = activities.items.filter((a) => a.status === 'planejado')
-              if (planejados.length === 0) {
+        {/* ─── ABA AGENDA ─────────────────────────────────────────── */}
+        {tab === 'agenda' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-zinc-50">‹</button>
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  {weekDates[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} –{' '}
+                  {weekDates[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
+                <button onClick={() => setWeekOffset(w => w + 1)} className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm hover:bg-zinc-50">›</button>
+              </div>
+              <button onClick={() => setWeekOffset(0)} className="text-xs text-teal-600 hover:underline">Hoje</button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+              {weekDates.map((date, i) => {
+                const iso = date.toISOString().split('T')[0]
+                const isToday = iso === new Date().toISOString().split('T')[0]
+                const dayActivities = activities.filter(a => a.status === 'planejado' && a.updated_at?.startsWith(iso))
+
                 return (
-                  <EmptyState
-                    icon="📅"
-                    title="Nenhuma atividade planejada"
-                    description="Acesse a aba Ideias e planeje uma atividade para ela aparecer aqui"
-                  />
-                )
-              }
-              return (
-                <div className="space-y-3">
-                  {planejados.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="bg-white dark:bg-gray-900 rounded-xl border border-blue-100 dark:border-blue-900/40 p-4 flex gap-3"
-                    >
-                      <span className="text-2xl">{activity.emoji ?? '🎉'}</span>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{activity.title}</h3>
-                        {activity.location_name && (
-                          <p className="text-sm text-gray-500">📍 {activity.location_name}</p>
-                        )}
-                        <div className="flex gap-2 mt-2">
-                          {activity.task_id && (
-                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">✅ Tarefa criada</span>
-                          )}
-                          {activity.event_id && (
-                            <span className="text-xs bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full">📅 Evento criado</span>
-                          )}
-                          {!activity.task_id && (
-                            <button
-                              onClick={() => activities.convertToTask(activity)}
-                              className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors"
-                            >
-                              ⚡ Virar tarefa
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => activities.updateStatus(activity.id, 'realizado')}
-                        className="self-center text-xs px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors"
-                      >
-                        Realizado ✅
-                      </button>
+                  <div
+                    key={i}
+                    className={`rounded-xl border p-2 min-h-[80px] flex flex-col gap-1 ${
+                      isToday
+                        ? 'border-teal-400 bg-teal-50 dark:bg-teal-950/30'
+                        : 'border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900'
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-xs text-zinc-400">{WEEK_DAYS[date.getDay()]}</div>
+                      <div className={`text-sm font-semibold ${
+                        isToday ? 'text-teal-700 dark:text-teal-400' : 'text-zinc-700 dark:text-zinc-300'
+                      }`}>{date.getDate()}</div>
                     </div>
-                  ))}
-                </div>
-              )
-            })()}
+                    {dayActivities.map(a => (
+                      <div key={a.id} className="text-xs bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200 rounded px-1 py-0.5 truncate">
+                        {a.emoji} {a.title}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setActSheet({ open: true, item: null })}
+                      className="mt-auto text-zinc-300 dark:text-zinc-600 hover:text-teal-500 text-lg leading-none"
+                    >+</button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Atividades planejadas sem data */}
+            <div>
+              <h3 className="text-sm font-medium text-zinc-500 mb-2">📋 Planejadas sem data definida</h3>
+              <div className="space-y-2">
+                {activities.filter(a => a.status === 'planejado').length === 0 ? (
+                  <p className="text-sm text-zinc-400">Nenhuma atividade planejada ainda.</p>
+                ) : (
+                  activities.filter(a => a.status === 'planejado').map(act => (
+                    <div key={act.id} className="flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-100 dark:border-zinc-800 px-3 py-2">
+                      <span>{act.emoji || '🎉'}</span>
+                      <span className="text-sm text-zinc-800 dark:text-zinc-200 flex-1">{act.title}</span>
+                      <button
+                        onClick={() => setActSheet({ open: true, item: act })}
+                        className="text-xs text-teal-600 hover:underline"
+                      >Editar</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════
-            ABA: REGISTROS
-        ═══════════════════════════════════════════════════════ */}
-        {activeTab === 'registros' && (
-          <div>
+        {/* ─── ABA REGISTROS ──────────────────────────────────────── */}
+        {tab === 'registros' && (
+          <div className="space-y-4">
             {/* Stats do mês */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
-                <p className="text-2xl font-bold text-teal-600">{stats.count}</p>
-                <p className="text-xs text-gray-500">lazeres este mês</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 p-3 text-center">
+                <div className="text-2xl font-bold text-teal-700 dark:text-teal-400">{activitiesThisMonth.length}</div>
+                <div className="text-xs text-zinc-500 mt-0.5">lazeres este mês</div>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
-                <p className="text-2xl font-bold text-teal-600">
-                  R$ {stats.totalCost.toFixed(0)}
-                </p>
-                <p className="text-xs text-gray-500">gasto este mês</p>
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 p-3 text-center">
+                <div className="text-2xl font-bold text-teal-700 dark:text-teal-400">
+                  {totalCostMonth > 0 ? formatCurrency(totalCostMonth) : '—'}
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">gasto este mês</div>
               </div>
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center">
-                <p className="text-2xl font-bold text-yellow-500">
-                  {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : '—'}
-                </p>
-                <p className="text-xs text-gray-500">avaliação média</p>
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 p-3 text-center">
+                <div className="text-2xl font-bold text-teal-700 dark:text-teal-400">
+                  {avgRating ? `⭐ ${avgRating}` : '—'}
+                </div>
+                <div className="text-xs text-zinc-500 mt-0.5">média de avaliação</div>
               </div>
             </div>
 
-            {/* Filtro por membro */}
-            {members.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                <button
-                  onClick={() => setMemberFilter('todos')}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    memberFilter === 'todos' ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-300'
-                  }`}
-                >
-                  Todos
-                </button>
-                {members.map((m) => (
+            <div className="flex justify-end">
+              <button
+                onClick={() => setRecSheet({ open: true, item: null })}
+                className="flex items-center gap-1 px-3 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
+              >
+                + Registrar lazer
+              </button>
+            </div>
+
+            {loadingRec ? (
+              <div className="space-y-3">
+                {[1,2,3].map(i => <div key={i} className="h-20 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse" />)}
+              </div>
+            ) : records.length === 0 ? (
+              <EmptyState
+                icon="📸"
+                title="Nenhum lazer registrado"
+                description="Registre os momentos de diversão da família!"
+                action={{ label: '+ Registrar lazer', onClick: () => setRecSheet({ open: true, item: null }) }}
+              />
+            ) : (
+              <div className="space-y-3">
+                {[...records].sort((a, b) => b.date_realized.localeCompare(a.date_realized)).map(rec => {
+                  const participantMembers = members.filter(m => rec.participants.includes(m.id))
+                  return (
+                    <div key={rec.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <span className="text-2xl">{rec.emoji || '📸'}</span>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-zinc-900 dark:text-zinc-100">{rec.title}</span>
+                              {rec.would_repeat && <span className="text-xs">🔄</span>}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="text-xs text-zinc-400">{formatDate(rec.date_realized)}</span>
+                              {rec.rating && (
+                                <span className="text-xs text-amber-500">
+                                  {'⭐'.repeat(rec.rating)}
+                                </span>
+                              )}
+                              {rec.cost_actual && (
+                                <span className="text-xs text-zinc-400">{formatCurrency(rec.cost_actual)}</span>
+                              )}
+                              {rec.location_name && (
+                                <span className="text-xs text-zinc-400">📍 {rec.location_name}</span>
+                              )}
+                            </div>
+                            {participantMembers.length > 0 && (
+                              <div className="flex gap-1 mt-1.5">
+                                {participantMembers.map(m => (
+                                  <span key={m.id} className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-1.5 py-0.5 rounded-full">
+                                    {(m as any).nickname || m.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setRecSheet({ open: true, item: rec })}
+                            className="p-1.5 text-zinc-400 hover:text-zinc-600 rounded"
+                          >✏️</button>
+                          <button
+                            onClick={() => removeRecord(rec.id)}
+                            className="p-1.5 text-zinc-400 hover:text-red-500 rounded"
+                          >🗑️</button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── ABA LUGARES ────────────────────────────────────────── */}
+        {tab === 'lugares' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {uniquePlaceCategories.map(cat => (
                   <button
-                    key={m.id}
-                    onClick={() => setMemberFilter(m.id)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                      memberFilter === m.id ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-300'
+                    key={cat || 'todos'}
+                    onClick={() => setPlaceFilter(cat || 'todos')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border whitespace-nowrap transition-colors ${
+                      placeFilter === (cat || 'todos')
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
-                    {m.emoji ?? '👤'} {m.nickname ?? m.name}
+                    {cat === 'todos' ? '📍 Todos' : cat}
                   </button>
                 ))}
               </div>
-            )}
-
-            {records.isLoading ? (
-              <div className="space-y-3">
-                {[1,2,3].map((i) => <div key={i} className="h-20 bg-gray-200 animate-pulse rounded-xl" />)}
-              </div>
-            ) : filteredRecords.length === 0 ? (
-              <EmptyState
-                icon="📸"
-                title="Nenhum registro ainda"
-                description="Registre os momentos de lazer da família"
-                action={{ label: '+ Registrar lazer', onClick: () => setRecordSheet({ open: true, item: null }) }}
-              />
-            ) : (
-              <div className="space-y-3">
-                {filteredRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">{record.emoji ?? '📸'}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold">{record.title}</h3>
-                          {record.would_repeat && (
-                            <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">🔄 Faria de novo</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {new Date(record.date_realized).toLocaleDateString('pt-BR')}
-                          {record.location_name && ` • 📍 ${record.location_name}`}
-                          {record.cost_actual != null && ` • R$ ${record.cost_actual.toFixed(2)}`}
-                        </p>
-                        {record.rating && (
-                          <p className="text-sm mt-1">
-                            {''.repeat(record.rating)}{''.repeat(5 - record.rating)}
-                          </p>
-                        )}
-                        {record.participants.length > 0 && (
-                          <div className="flex gap-1 mt-2 flex-wrap">
-                            {record.participants.map((pid) => {
-                              const m = members.find((mem) => mem.id === pid)
-                              return m ? (
-                                <span key={pid} className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
-                                  {m.emoji ?? '👤'} {m.nickname ?? m.name}
-                                </span>
-                              ) : null
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <button
-                          onClick={() => setRecordSheet({ open: true, item: record })}
-                          className="text-xs px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => records.remove(record.id)}
-                          className="text-xs px-2 py-1 border border-red-100 text-red-400 rounded-lg hover:bg-red-50"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════
-            ABA: LUGARES
-        ═══════════════════════════════════════════════════════ */}
-        {activeTab === 'lugares' && (
-          <div>
-            {/* Filtro por categoria */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {['todos', 'parque', 'praia', 'restaurante', 'cinema', 'teatro', 'museu', 'esporte', 'viagem', 'clube', 'outros'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setPlaceCategory(cat)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    placeCategory === cat
-                      ? 'bg-teal-600 text-white border-teal-600'
-                      : 'border-gray-300 hover:border-teal-400'
-                  }`}
-                >
-                  {cat === 'todos' ? 'Todos' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </button>
-              ))}
+              <button
+                onClick={() => setPlaceSheet({ open: true, item: null })}
+                className="flex items-center gap-1 px-3 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 whitespace-nowrap"
+              >
+                + Novo lugar
+              </button>
             </div>
 
-            {places.isLoading ? (
-              <div className="grid grid-cols-2 gap-3">
-                {[1,2,3,4].map((i) => <div key={i} className="h-32 bg-gray-200 animate-pulse rounded-xl" />)}
+            {loadingPlaces ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[1,2,3,4,5,6].map(i => <div key={i} className="h-32 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse" />)}
               </div>
             ) : filteredPlaces.length === 0 ? (
               <EmptyState
                 icon="📍"
                 title="Nenhum lugar salvo"
-                description="Salve lugares favoritos para consultar depois"
+                description="Salve parques, praias, restaurantes e outros lugares favoritos!"
                 action={{ label: '+ Adicionar lugar', onClick: () => setPlaceSheet({ open: true, item: null }) }}
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {filteredPlaces.map((place) => (
-                  <div
-                    key={place.id}
-                    className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <span className="text-xl">{place.emoji ?? '📍'}</span>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{place.name}</h3>
-                          {place.address && (
-                            <p className="text-xs text-gray-500 truncate">{place.address}</p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {place.category && (
-                              <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full capitalize">{place.category}</span>
-                            )}
-                            {place.visited_count > 0 && (
-                              <span className="text-xs text-gray-400">👣 {place.visited_count}x</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {filteredPlaces.map(place => (
+                  <div key={place.id} className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 p-3 shadow-sm flex flex-col gap-2">
+                    <div className="flex items-start justify-between">
+                      <span className="text-2xl">{place.emoji || '📍'}</span>
                       <button
-                        onClick={() => places.toggleFavorite(place)}
-                        className="text-lg transition-transform hover:scale-110"
-                        title={place.is_favorite ? 'Remover favorito' : 'Adicionar favorito'}
+                        onClick={() => toggleFavorite(place.id, place.is_favorite)}
+                        className={`text-lg transition-transform hover:scale-110 ${
+                          place.is_favorite ? 'opacity-100' : 'opacity-30'
+                        }`}
                       >
-                        {place.is_favorite ? '⭐' : '☆'}
+                        ⭐
                       </button>
                     </div>
-
-                    <div className="flex gap-2 mt-3 flex-wrap">
+                    <div>
+                      <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1">{place.name}</p>
+                      {place.category && (
+                        <p className="text-xs text-zinc-400 capitalize">{place.category}</p>
+                      )}
+                    </div>
+                    {place.visited_count > 0 && (
+                      <p className="text-xs text-zinc-400">{place.visited_count}x visitado</p>
+                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
                       {place.maps_url && (
-                        <a
-                          href={place.maps_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 transition-colors"
-                        >
-                          🗺️ Maps
-                        </a>
+                        <a href={place.maps_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-teal-600 hover:underline">Maps</a>
                       )}
                       {place.website_url && (
-                        <a
-                          href={place.website_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs bg-gray-50 text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          🌐 Site
-                        </a>
+                        <a href={place.website_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-teal-600 hover:underline">Site</a>
                       )}
+                    </div>
+                    <div className="flex gap-1 mt-auto pt-1 border-t border-zinc-50 dark:border-zinc-800">
                       <button
                         onClick={() => {
-                          places.incrementVisited(place)
-                          setRecordSheet({
-                            open: true,
-                            item: {
-                              id: '',
-                              family_id: '',
-                              activity_id: null,
-                              title: `Visita: ${place.name}`,
-                              description: null,
-                              date_realized: new Date().toISOString().split('T')[0],
-                              emoji: place.emoji,
-                              rating: null,
-                              participants: [],
-                              cost_actual: null,
-                              location_name: place.name,
-                              notes: null,
-                              would_repeat: true,
-                              created_at: '',
-                            },
-                          })
+                          incrementVisited(place.id, place.visited_count)
+                          setRecSheet({ open: true, item: null })
                         }}
-                        className="text-xs bg-teal-50 text-teal-700 px-2 py-1 rounded-lg hover:bg-teal-100 transition-colors"
+                        className="flex-1 text-xs py-1 rounded-lg bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 hover:bg-teal-100"
                       >
-                        👣 Fui!
+                        ✅ Visita
                       </button>
                       <button
                         onClick={() => setPlaceSheet({ open: true, item: place })}
-                        className="text-xs border border-gray-200 px-2 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="px-2 text-xs py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50"
                       >
                         ✏️
+                      </button>
+                      <button
+                        onClick={() => removePlace(place.id)}
+                        className="px-2 text-xs py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-red-50 hover:text-red-500"
+                      >
+                        🗑️
                       </button>
                     </div>
                   </div>
@@ -556,31 +529,31 @@ export default function LazerPage() {
         )}
       </div>
 
-      {/* ═══════════════ SHEETS ═══════════════ */}
+      {/* Sheets */}
       <LeisureActivitySheet
-        open={activitySheet.open}
-        onClose={() => setActivitySheet({ open: false, item: null })}
-        item={activitySheet.item}
-        onSave={activities.upsert}
-        members={members}
-        onConvertToTask={activities.convertToTask}
-        onConvertToEvent={activities.convertToEvent}
+        open={actSheet.open}
+        onClose={() => setActSheet({ open: false, item: null })}
+        item={actSheet.item}
+        onSave={upsertActivity}
+        onConvertToTask={convertToTask}
+        onConvertToEvent={convertToEvent}
+        members={members as any}
       />
-
       <LeisureRecordSheet
-        open={recordSheet.open}
-        onClose={() => setRecordSheet({ open: false, item: null })}
-        item={recordSheet.item}
-        onSave={records.upsert}
-        members={members}
+        open={recSheet.open}
+        onClose={() => setRecSheet({ open: false, item: null })}
+        item={recSheet.item}
+        onSave={upsertRecord}
+        members={members as any}
+        activities={activities}
+        defaultActivityId={recSheet.defaultActivityId}
       />
-
       <LeisurePlaceSheet
         open={placeSheet.open}
         onClose={() => setPlaceSheet({ open: false, item: null })}
         item={placeSheet.item}
-        onSave={places.upsert}
-        members={members}
+        onSave={upsertPlace}
+        members={members as any}
       />
     </div>
   )
