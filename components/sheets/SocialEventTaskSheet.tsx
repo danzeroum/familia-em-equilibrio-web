@@ -9,7 +9,6 @@ interface Props {
   item: SocialEventTask | null
   eventId: string | null
   onSave: (i: Partial<SocialEventTask>) => Promise<void>
-  onDelete?: (id: string) => Promise<void>
   members: Profile[]
 }
 
