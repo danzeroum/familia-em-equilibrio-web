@@ -41,19 +41,21 @@ export function useLeisureRecords() {
     load()
   }
 
-  // Stats do mês atual
-  const monthStats = () => {
+  // Estatísticas do mês corrente
+  const statsThisMonth = () => {
     const now = new Date()
-    const thisMonth = items.filter(r => {
+    const month = now.getMonth()
+    const year = now.getFullYear()
+    const monthItems = items.filter(r => {
       const d = new Date(r.date_realized)
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      return d.getMonth() === month && d.getFullYear() === year
     })
-    const totalCost = thisMonth.reduce((s, r) => s + (r.cost_actual ?? 0), 0)
-    const avgRating = thisMonth.length
-      ? thisMonth.reduce((s, r) => s + (r.rating ?? 0), 0) / thisMonth.length
+    const totalCost = monthItems.reduce((s, r) => s + (r.cost_actual ?? 0), 0)
+    const avgRating = monthItems.length
+      ? monthItems.reduce((s, r) => s + (r.rating ?? 0), 0) / monthItems.filter(r => r.rating).length
       : 0
-    return { count: thisMonth.length, totalCost, avgRating }
+    return { count: monthItems.length, totalCost, avgRating: Math.round(avgRating * 10) / 10 }
   }
 
-  return { items, isLoading, upsert, remove, reload: load, monthStats }
+  return { items, isLoading, upsert, remove, statsThisMonth, reload: load }
 }

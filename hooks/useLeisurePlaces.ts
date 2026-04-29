@@ -53,7 +53,7 @@ export function useLeisurePlaces() {
   const incrementVisited = async (place: LeisurePlace) => {
     await supabase
       .from('leisure_places')
-      .update({ visited_count: place.visited_count + 1 })
+      .update({ visited_count: (place.visited_count ?? 0) + 1 })
       .eq('id', place.id)
     load()
   }
