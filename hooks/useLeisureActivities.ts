@@ -46,7 +46,6 @@ export function useLeisureActivities() {
     load()
   }
 
-  // STATUS_CYCLE: wishlist → planejado → realizado → cancelado
   const cycleStatus = async (item: LeisureActivity) => {
     const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
     const next = cycle[(cycle.indexOf(item.status) + 1) % cycle.length]
@@ -57,7 +56,6 @@ export function useLeisureActivities() {
     load()
   }
 
-  // Alias usado pela page.tsx
   const updateStatus = async (id: string, status: LeisureActivity['status']) => {
     await supabase
       .from('leisure_activities')
@@ -66,9 +64,8 @@ export function useLeisureActivities() {
     load()
   }
 
-  // Converte atividade em tarefa na tabela tasks
-  const convertToTask = async (activity: LeisureActivity) => {
-    if (!familyId) return null
+  const convertToTask = async (activity: LeisureActivity): Promise<void> => {
+    if (!familyId) return
     const { data } = await supabase
       .from('tasks')
       .insert({
@@ -89,12 +86,10 @@ export function useLeisureActivities() {
         .eq('id', activity.id)
       load()
     }
-    return data
   }
 
-  // Converte atividade em evento de calendário
-  const convertToEvent = async (activity: LeisureActivity, eventDate: string) => {
-    if (!familyId) return null
+  const convertToEvent = async (activity: LeisureActivity, eventDate: string): Promise<void> => {
+    if (!familyId) return
     const { data } = await supabase
       .from('family_events')
       .insert({
@@ -117,7 +112,6 @@ export function useLeisureActivities() {
         .eq('id', activity.id)
       load()
     }
-    return data
   }
 
   return { items, isLoading, upsert, remove, cycleStatus, updateStatus, convertToTask, convertToEvent, reload: load }
