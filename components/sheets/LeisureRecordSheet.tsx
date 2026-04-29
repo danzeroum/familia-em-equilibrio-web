@@ -49,7 +49,7 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
     setParticipants(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])
 
   const handleSave = async () => {
-    if (!title.trim()) return
+    if (!title.trim() || saving) return
     setSaving(true)
     await onSave({
       ...(item ? { id: item.id } : {}),
@@ -182,7 +182,7 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
         <span className="text-sm text-gray-700">🔄 Repetiria essa atividade</span>
       </label>
 
-      <SaveCancel onSave={handleSave} onClose={onClose} saving={saving} />
+      <SaveCancel onSave={handleSave} onClose={onClose} />
     </SlideOver>
   )
 }

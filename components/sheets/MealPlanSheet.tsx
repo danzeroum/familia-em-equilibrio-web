@@ -32,12 +32,14 @@ const MEALS = [
 
 export function MealPlanSheet({ open, onClose, item, onSave, members, recipes, defaults }: Props) {
   const [form, setForm] = useState<Partial<MealPlan>>({})
+  const [notes, setNotes] = useState('')
 
   useEffect(() => {
     setForm(item ?? {
       day_of_week: defaults?.day_of_week ?? 1,
       meal_type: defaults?.meal_type ?? 'lunch',
     })
+    setNotes((item as any)?.notes ?? '')
   }, [item, open, defaults])
 
   const set = (k: keyof MealPlan, v: any) => setForm(f => ({ ...f, [k]: v }))
@@ -46,7 +48,7 @@ export function MealPlanSheet({ open, onClose, item, onSave, members, recipes, d
     if (!form.title?.trim()) { alert('Título é obrigatório'); return }
     if (form.day_of_week == null) { alert('Selecione um dia'); return }
     if (!form.meal_type) { alert('Selecione a refeição'); return }
-    await onSave(form)
+    await onSave({ ...form, ...(notes ? { notes } as any : {}) })
     onClose()
   }
 
@@ -100,8 +102,8 @@ export function MealPlanSheet({ open, onClose, item, onSave, members, recipes, d
         <textarea
           className="input-base resize-none"
           rows={2}
-          value={form.description ?? ''}
-          onChange={e => set('description', e.target.value)}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
           placeholder="Notas, ingredientes especiais..."
         />
       </div>
