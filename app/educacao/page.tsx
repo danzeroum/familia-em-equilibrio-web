@@ -241,7 +241,7 @@ export default function EducacaoPage() {
                           <div>
                             <p className="font-medium">{i.name}</p>
                             <p className="text-xs text-gray-500">
-                              {SUPPLY_CATEGORY_LABEL[i.category] ?? i.category} · {getMemberName(i.profile_id)}
+                              {SUPPLY_CATEGORY_LABEL[i.category ?? ''] ?? i.category} · {getMemberName(i.profile_id)}
                               {i.season ? ` · 🌤️ ${i.season}` : ''}
                             </p>
                           </div>
@@ -267,7 +267,7 @@ export default function EducacaoPage() {
                           <div>
                             <p className="font-medium text-gray-800">{i.name}</p>
                             <p className="text-xs text-gray-500">
-                              {SUPPLY_CATEGORY_LABEL[i.category] ?? i.category} · {getMemberName(i.profile_id)}
+                              {SUPPLY_CATEGORY_LABEL[i.category ?? ''] ?? i.category} · {getMemberName(i.profile_id)}
                               {i.season ? ` · 🌤️ ${i.season}` : ''}
                             </p>
                           </div>
@@ -324,11 +324,11 @@ export default function EducacaoPage() {
                 <tbody className="divide-y">
                   {allSupplies.map(i => {
                     const sit = supplySituation(i.quantity_have ?? 0, i.quantity_need ?? 1)
-                    const st  = SUPPLY_STATUS_BADGE[i.status] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
+                    const st  = SUPPLY_STATUS_BADGE[i.status ?? ''] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
                     return (
                       <tr key={i.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-800">{i.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{SUPPLY_CATEGORY_LABEL[i.category] ?? i.category}</td>
+                        <td className="px-4 py-3 text-gray-500">{SUPPLY_CATEGORY_LABEL[i.category ?? ''] ?? i.category}</td>
                         <td className="px-4 py-3 text-gray-600">{getMemberName(i.profile_id)}</td>
                         <td className="px-4 py-3">
                           <span className="font-semibold">{i.quantity_have ?? 0}</span>
@@ -382,7 +382,7 @@ export default function EducacaoPage() {
                 </thead>
                 <tbody className="divide-y">
                   {filteredHw.map(i => {
-                    const st = STATUS_BADGE[i.status] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
+                    const st = STATUS_BADGE[i.status ?? ''] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
                     const due = dueBadge(i.due_date)
                     return (
                       <tr key={i.id} className="hover:bg-gray-50 transition-colors">
@@ -447,7 +447,7 @@ export default function EducacaoPage() {
                 </thead>
                 <tbody className="divide-y">
                   {filteredComms.map(i => {
-                    const st = STATUS_BADGE[i.status] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
+                    const st = STATUS_BADGE[i.status ?? ''] ?? { label: i.status, cls: 'bg-gray-100 text-gray-600' }
                     const due = dueBadge(i.due_date)
                     return (
                       <tr key={i.id} className="hover:bg-gray-50 transition-colors">
@@ -456,7 +456,7 @@ export default function EducacaoPage() {
                           {i.description && <div className="text-xs text-gray-500 truncate max-w-[280px]">{i.description}</div>}
                         </td>
                         <td className="px-4 py-3 text-gray-600">{getMemberName(i.profile_id)}</td>
-                        <td className="px-4 py-3 text-gray-600">{COMM_TYPE_LABEL[i.type] ?? i.type}</td>
+                        <td className="px-4 py-3 text-gray-600">{COMM_TYPE_LABEL[i.type ?? ''] ?? i.type}</td>
                         <td className="px-4 py-3">
                           {due ? <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${due.cls}`}>{due.label}</span> : <span className="text-gray-400">—</span>}
                         </td>
