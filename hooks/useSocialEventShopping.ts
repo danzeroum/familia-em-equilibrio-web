@@ -62,5 +62,11 @@ export function useSocialEventShopping() {
     await load()
   }
 
-  return { items, isLoading, upsert, remove, reload: load }
+  async function toggleBought(id: string, isBought: boolean) {
+    const { error } = await db.from('social_event_shopping').update({ is_bought: isBought }).eq('id', id)
+    if (error) console.error('[useSocialEventShopping] toggleBought error:', error.message)
+    await load()
+  }
+
+  return { items, isLoading, upsert, remove, toggleBought, reload: load }
 }
