@@ -4,6 +4,9 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { LeisureActivity } from '@/types/database'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
 export function useLeisureActivities() {
   const { currentUser } = useFamilyStore()
   const [items, setItems] = useState<LeisureActivity[]>([])
@@ -14,8 +17,7 @@ export function useLeisureActivities() {
   const load = useCallback(async () => {
     if (!familyId) return
     setIsLoading(true)
-    const { data } = await supabase
-      .from('leisure_activities')
+    const { data } = await db.from('leisure_activities')
       .select('*')
       .eq('family_id', familyId)
       .order('created_at', { ascending: false })
@@ -29,36 +31,32 @@ export function useLeisureActivities() {
     if (!familyId) return
     const now = new Date().toISOString()
     if (payload.id) {
-      await supabase
-        .from('leisure_activities')
+      await db.from('leisure_activities')
         .update({ ...payload, updated_at: now })
         .eq('id', payload.id)
     } else {
-      await supabase
-        .from('leisure_activities')
+      await db.from('leisure_activities')
         .insert({ ...payload, family_id: familyId, added_by: currentUser?.id, updated_at: now })
     }
     load()
   }
 
   const remove = async (id: string) => {
-    await supabase.from('leisure_activities').delete().eq('id', id)
+    await db.from('leisure_activities').delete().eq('id', id)
     load()
   }
 
   const cycleStatus = async (item: LeisureActivity) => {
     const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
     const next = cycle[(cycle.indexOf(item.status) + 1) % cycle.length]
-    await supabase
-      .from('leisure_activities')
+    await db.from('leisure_activities')
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq('id', item.id)
     load()
   }
 
   const updateStatus = async (id: string, status: LeisureActivity['status']) => {
-    await supabase
-      .from('leisure_activities')
+    await db.from('leisure_activities')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
     load()
@@ -66,8 +64,7 @@ export function useLeisureActivities() {
 
   const convertToTask = async (activity: LeisureActivity): Promise<void> => {
     if (!familyId) return
-    const { data } = await supabase
-      .from('tasks')
+    const { data } = await db.from('tasks')
       .insert({
         family_id: familyId,
         title: `${activity.emoji ?? '\uD83C\uDF89'} ${activity.title}`,
@@ -80,8 +77,7 @@ export function useLeisureActivities() {
       .select()
       .single()
     if (data) {
-      await supabase
-        .from('leisure_activities')
+      await db.from('leisure_activities')
         .update({ task_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
         .eq('id', activity.id)
       load()
@@ -90,8 +86,7 @@ export function useLeisureActivities() {
 
   const convertToEvent = async (activity: LeisureActivity, eventDate: string): Promise<void> => {
     if (!familyId) return
-    const { data } = await supabase
-      .from('family_events')
+    const { data } = await db.from('family_events')
       .insert({
         family_id: familyId,
         title: `${activity.emoji ?? '\uD83C\uDF89'} ${activity.title}`,
@@ -106,8 +101,7 @@ export function useLeisureActivities() {
       .select()
       .single()
     if (data) {
-      await supabase
-        .from('leisure_activities')
+      await db.from('leisure_activities')
         .update({ event_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
         .eq('id', activity.id)
       load()

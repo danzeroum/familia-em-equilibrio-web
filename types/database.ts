@@ -1052,6 +1052,57 @@ export interface Database {
         Relationships: never[]
       }
     }
+    Views: {
+      monthly_history_view: {
+        Row: {
+          /** YYYY-MM — ex: "2026-04" */
+          month: string
+          family_id: string
+          total_paid: number
+          total_pending: number
+          total_auto_debit: number
+          total_amount: number
+          paid_count: number
+          pending_count: number
+          auto_debit_count: number
+          total_count: number
+          top_category: string | null
+          top_category_amount: number | null
+        }
+        Relationships: never[]
+      }
+    }
+    Functions: {
+      get_daily_focus: {
+        Args: { p_family_id: string }
+        Returns: {
+          source: string
+          item_id: string
+          title: string
+          urgency: string
+          amount: number
+          due_date: string | null
+          emoji: string
+          subtitle?: string | null
+        }[]
+      }
+      get_radar_90: {
+        Args: { p_family_id: string }
+        Returns: {
+          source: string
+          item_id: string
+          title: string
+          due_date: string
+          days_until: number
+          urgency_score: number
+          amount: number
+          category: string
+          emoji: string
+        }[]
+      }
+    }
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
 
@@ -1098,7 +1149,7 @@ export type SchoolItem       = Database['public']['Tables']['school_items']['Row
 export type WeeklySummary    = Database['public']['Tables']['weekly_summaries']['Row']
 export type ActivityFeed     = Database['public']['Tables']['activity_feed']['Row']
 export type GratitudeNote    = Database['public']['Tables']['gratitude_notes']['Row']
-export type MealPlan         = Database['public']['Tables']['meal_plans']['Row']
+export type MealPlan         = Database['public']['Tables']['meal_plan']['Row']
 export type MealIngredient   = Database['public']['Tables']['meal_ingredients']['Row']
 export type RecurrenceRule   = Database['public']['Tables']['recurrence_rules']['Row']
 
