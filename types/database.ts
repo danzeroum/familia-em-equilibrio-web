@@ -1070,6 +1070,10 @@ export type LeisurePlaceCategory =
 export type LeisureStatus = 'wishlist' | 'planejado' | 'realizado' | 'cancelado'
 export type LeisurePriority = 'baixa' | 'media' | 'alta'
 
+export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
+export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
+export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
+
 // ─── All Entity Aliases ───────────────────────────────────────────────────────
 export type Family           = Database['public']['Tables']['families']['Row']
 export type Profile          = Database['public']['Tables']['profiles']['Row']
