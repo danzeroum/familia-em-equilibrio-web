@@ -62,5 +62,14 @@ export function useSocialEventTasks() {
     await load()
   }
 
-  return { items, isLoading, upsert, remove, reload: load }
+  async function updateStatus(id: string, status: 'pending' | 'done' | 'skipped') {
+    const { error } = await db
+      .from('social_event_tasks')
+      .update({ status, done: status === 'done' })
+      .eq('id', id)
+    if (error) console.error('[useSocialEventTasks] updateStatus error:', error.message)
+    await load()
+  }
+
+  return { items, isLoading, upsert, remove, updateStatus, reload: load }
 }

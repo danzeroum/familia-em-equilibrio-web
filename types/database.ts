@@ -873,8 +873,12 @@ export type SocialEventContact = {
   event_id: string | null
   family_id: string | null
   name: string
-  confirmed: boolean | null
+  phone: string | null
+  role: string | null
+  rsvp_status: string | null
+  party_size: number | null
   notes: string | null
+  confirmed: boolean | null
   created_at: string | null
 }
 
@@ -883,6 +887,10 @@ export type SocialEventExpense = {
   event_id: string | null
   family_id: string | null
   title: string
+  vendor_name: string | null
+  estimated_amount: number | null
+  actual_amount: number | null
+  payment_status: string | null
   amount: number | null
   paid: boolean | null
   created_at: string | null
@@ -894,6 +902,8 @@ export type SocialEventShopping = {
   family_id: string | null
   name: string
   quantity: string | null
+  estimated_price: number | null
+  is_bought: boolean
   bought: boolean | null
   created_at: string | null
 }
@@ -904,7 +914,11 @@ export type SocialEventTask = {
   family_id: string | null
   title: string
   assigned_to: string | null
+  priority: number | null
+  due_date: string | null
+  status: 'pending' | 'done' | 'skipped' | null
   done: boolean | null
+  created_by: string | null
   created_at: string | null
 }
 
