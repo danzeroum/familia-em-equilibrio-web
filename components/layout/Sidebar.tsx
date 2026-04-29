@@ -18,6 +18,7 @@ import {
   PartyPopper,
   Settings,
   ChevronRight,
+  Smile,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: '/tarefas',      label: 'Agendamentos',       icon: CheckSquare,     emoji: '✅' },
   { href: '/casa',         label: 'Casa',          icon: Home,            emoji: '🏠' },
   { href: '/alimentacao',  label: 'Alimentação',   icon: UtensilsCrossed, emoji: '🍽️' },
+  { href: '/lazer',        label: 'Lazer',         icon: Smile,           emoji: '🎉' },
   { href: '/saude',        label: 'Saúde',         icon: Heart,           emoji: '🩺' },
   { href: '/educacao',     label: 'Educação',      icon: BookOpen,        emoji: '📚' },
   { href: '/veiculos',     label: 'Veículos',      icon: Car,             emoji: '🚗' },
