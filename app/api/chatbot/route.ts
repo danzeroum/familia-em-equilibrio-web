@@ -5,12 +5,14 @@ import { answerQuestion, isQuestion } from '@/lib/chatbot-query'
 import { LLMModelId, DEFAULT_MODEL } from '@/lib/llm-client'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
+type AiSettingsRow = { model_id: string; system_prompt: string | null }
+
 async function getAISettings(familyId: string): Promise<{ model_id: LLMModelId; system_prompt: string | null }> {
   const { data } = await supabaseAdmin
     .from('ai_settings')
     .select('model_id, system_prompt')
     .eq('family_id', familyId)
-    .maybeSingle()
+    .maybeSingle() as { data: AiSettingsRow | null }
   return {
     model_id: (data?.model_id as LLMModelId) ?? DEFAULT_MODEL,
     system_prompt: data?.system_prompt ?? null,
