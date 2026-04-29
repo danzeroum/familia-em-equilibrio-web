@@ -916,6 +916,8 @@ export type SchoolCommunication = {
   content: string | null
   type: string | null
   date: string | null
+  due_date: string | null
+  status: string | null
   is_read: boolean
   created_at: string | null
 }
@@ -937,10 +939,14 @@ export type SchoolSupply = {
   family_id: string | null
   profile_id: string | null
   name: string
+  category: 'material' | 'uniforme' | 'livro' | 'sazonal' | 'outro' | null
+  quantity_have: number | null
+  quantity_need: number | null
   quantity: string | null
-  status: string | null
+  status: 'needed' | 'running_out' | 'bought' | null
   notes: string | null
   created_at: string | null
+  updated_at: string | null
 }
 
 export type DailyFocusItem = {
