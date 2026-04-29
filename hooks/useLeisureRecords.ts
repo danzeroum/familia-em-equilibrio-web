@@ -4,6 +4,9 @@ import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { LeisureRecord } from '@/types/database'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
 export function useLeisureRecords() {
   const { currentUser } = useFamilyStore()
   const [items, setItems] = useState<LeisureRecord[]>([])
@@ -28,15 +31,15 @@ export function useLeisureRecords() {
   const upsert = async (payload: Partial<LeisureRecord>) => {
     if (!familyId) return
     if (payload.id) {
-      await supabase.from('leisure_records').update(payload).eq('id', payload.id)
+      await db.from('leisure_records').update(payload).eq('id', payload.id)
     } else {
-      await supabase.from('leisure_records').insert({ ...payload, family_id: familyId })
+      await db.from('leisure_records').insert({ ...payload, family_id: familyId })
     }
     load()
   }
 
   const remove = async (id: string) => {
-    await supabase.from('leisure_records').delete().eq('id', id)
+    await db.from('leisure_records').delete().eq('id', id)
     load()
   }
 
