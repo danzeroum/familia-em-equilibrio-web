@@ -104,10 +104,10 @@ export default function LazerPage() {
     members.find(m => m.id === id)?.nickname ?? members.find(m => m.id === id)?.name ?? id
 
   const TABS = [
-    { id: 'ideias'    as Tab, label: '💡 Ideias',    alerts: wishlistItems.length },
-    { id: 'agenda'    as Tab, label: '📅 Agenda',    alerts: plannedItems.length },
-    { id: 'registros' as Tab, label: '📸 Registros', alerts: 0 },
-    { id: 'lugares'   as Tab, label: '📍 Lugares',   alerts: 0 },
+    { id: 'ideias'     as Tab, label: '💡 Ideias',    alerts: wishlistItems.length },
+    { id: 'agenda'     as Tab, label: '📅 Agenda',    alerts: plannedItems.length },
+    { id: 'registros'  as Tab, label: '📸 Registros', alerts: 0 },
+    { id: 'lugares'    as Tab, label: '📍 Lugares',   alerts: 0 },
   ]
 
   return (
@@ -194,7 +194,6 @@ export default function LazerPage() {
             />
           ) : (
             <>
-              {/* Wishlist */}
               {wishlistItems.length > 0 && (
                 <div>
                   <h3 className="text-gray-600 font-medium mb-3 text-sm">💡 Wishlist ({wishlistItems.length})</h3>
@@ -214,7 +213,6 @@ export default function LazerPage() {
                 </div>
               )}
 
-              {/* Planejados */}
               {plannedItems.length > 0 && (
                 <div>
                   <h3 className="text-gray-600 font-medium mb-3 text-sm">📅 Planejados ({plannedItems.length})</h3>
@@ -234,7 +232,6 @@ export default function LazerPage() {
                 </div>
               )}
 
-              {/* Realizados */}
               {doneItems.length > 0 && (
                 <div className="opacity-80">
                   <h3 className="text-gray-500 font-medium mb-3 text-sm">✅ Realizados ({doneItems.length})</h3>
@@ -318,7 +315,6 @@ export default function LazerPage() {
       {/* ══ REGISTROS ══ */}
       {tab === 'registros' && (
         <div className="space-y-4">
-          {/* Stats do mês */}
           {thisMonth.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-teal-50 border border-teal-100 rounded-xl p-3 text-center">
@@ -415,7 +411,7 @@ export default function LazerPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => places.toggleFavorite(p.id, !p.is_favorite)}
+                      onClick={() => places.toggleFavorite(p)}
                       className={`text-xl transition-colors ${p.is_favorite ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-300'}`}
                       title="Favorito"
                     >★</button>
@@ -434,7 +430,7 @@ export default function LazerPage() {
                     <button
                       className="text-xs text-teal-600 hover:underline"
                       onClick={() => {
-                        places.incrementVisited(p.id)
+                        places.incrementVisited(p)
                         setSelectedRecord(null)
                         setRecordDefaults({ location_name: p.name, emoji: p.emoji ?? undefined })
                         setRecordSheetOpen(true)
@@ -534,7 +530,6 @@ function ActivityCard({
         {a.estimated_cost && <span className="bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded">R$ {a.estimated_cost.toFixed(0)}</span>}
       </div>
 
-      {/* Badges de conversão */}
       {(a.task_id || a.event_id) && (
         <div className="flex gap-1 flex-wrap">
           {a.task_id  && <span className="text-[10px] bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full">✅ Tarefa criada</span>}
@@ -542,7 +537,6 @@ function ActivityCard({
         </div>
       )}
 
-      {/* Status badge clicável */}
       <button
         onClick={onCycleStatus}
         className="text-[10px] text-gray-400 hover:text-teal-600 text-left transition-colors"
