@@ -710,3 +710,255 @@ export type LeisurePriority = 'baixa' | 'media' | 'alta'
 export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
 export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
 export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
+
+// ─── Core Entity Aliases ─────────────────────────────────────────────────────
+export type Family           = Database['public']['Tables']['families']['Row']
+export type Profile          = Database['public']['Tables']['profiles']['Row']
+export type FamilyEvent      = Database['public']['Tables']['family_events']['Row']
+export type Task             = Database['public']['Tables']['tasks']['Row']
+export type Bill             = Database['public']['Tables']['bills']['Row']
+export type SavingsGoal      = Database['public']['Tables']['savings_goals']['Row']
+export type BudgetGoal       = Database['public']['Tables']['budget_goals']['Row']
+export type Medication       = Database['public']['Tables']['medications']['Row']
+export type MedicationLog    = Database['public']['Tables']['medication_logs']['Row']
+export type Vaccine          = Database['public']['Tables']['vaccines']['Row']
+export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
+export type WardrobeItem     = Database['public']['Tables']['wardrobe_items']['Row']
+export type HomeMaintenance  = Database['public']['Tables']['home_maintenance']['Row']
+export type MaintenanceCall  = Database['public']['Tables']['maintenance_calls']['Row']
+export type ShoppingItem     = Database['public']['Tables']['shopping_items']['Row']
+export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row']
+export type HealthTracking   = Database['public']['Tables']['health_tracking']['Row']
+export type HealthProtocol   = Database['public']['Tables']['health_protocols']['Row']
+export type Homework         = Database['public']['Tables']['homework']['Row']
+export type SchoolItem       = Database['public']['Tables']['school_items']['Row']
+export type WeeklySummary    = Database['public']['Tables']['weekly_summaries']['Row']
+export type ActivityFeed     = Database['public']['Tables']['activity_feed']['Row']
+export type GratitudeNote    = Database['public']['Tables']['gratitude_notes']['Row']
+export type MealPlan         = Database['public']['Tables']['meal_plans']['Row']
+export type MealIngredient   = Database['public']['Tables']['meal_ingredients']['Row']
+export type RecurrenceRule   = Database['public']['Tables']['recurrence_rules']['Row']
+
+// ─── Generic Aliases (tabelas sem definição completa na interface) ─────────────
+export type Recipe = {
+  id: string
+  family_id: string | null
+  title: string
+  description: string | null
+  ingredients: string[] | null
+  instructions: string | null
+  prep_time_min: number | null
+  servings: number | null
+  category: string | null
+  emoji: string | null
+  image_url: string | null
+  is_favorite: boolean
+  tags: string[]
+  created_by: string | null
+  created_at: string | null
+}
+
+export type PantryItem = {
+  id: string
+  family_id: string | null
+  name: string
+  quantity: string | null
+  unit: string | null
+  category: string | null
+  expiry_date: string | null
+  minimum_quantity: number | null
+  current_quantity: number | null
+  location: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type Vehicle = {
+  id: string
+  family_id: string | null
+  name: string
+  brand: string | null
+  model: string | null
+  year: number | null
+  plate: string | null
+  color: string | null
+  fuel_type: string | null
+  mileage: number | null
+  notes: string | null
+  emoji: string | null
+  created_at: string | null
+}
+
+export type VehicleDocument = {
+  id: string
+  vehicle_id: string | null
+  family_id: string | null
+  type: string
+  expiry_date: string | null
+  notes: string | null
+  status: string | null
+  created_at: string | null
+}
+
+export type VehicleMaintenance = {
+  id: string
+  vehicle_id: string | null
+  family_id: string | null
+  title: string
+  description: string | null
+  scheduled_date: string | null
+  completed_at: string | null
+  mileage_at: number | null
+  cost: number | null
+  status: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type VehicleCall = {
+  id: string
+  vehicle_id: string | null
+  family_id: string | null
+  title: string
+  description: string | null
+  status: string | null
+  created_at: string | null
+}
+
+export type SocialEvent = {
+  id: string
+  family_id: string | null
+  title: string
+  description: string | null
+  event_date: string | null
+  event_time: string | null
+  location: string | null
+  event_type: string | null
+  status: string | null
+  budget: number | null
+  emoji: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string | null
+}
+
+export type SocialEventContact = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  name: string
+  confirmed: boolean | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type SocialEventExpense = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  title: string
+  amount: number | null
+  paid: boolean | null
+  created_at: string | null
+}
+
+export type SocialEventShopping = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  name: string
+  quantity: string | null
+  bought: boolean | null
+  created_at: string | null
+}
+
+export type SocialEventTask = {
+  id: string
+  event_id: string | null
+  family_id: string | null
+  title: string
+  assigned_to: string | null
+  done: boolean | null
+  created_at: string | null
+}
+
+export type SchoolCommunication = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  title: string
+  content: string | null
+  type: string | null
+  date: string | null
+  is_read: boolean
+  created_at: string | null
+}
+
+export type SchoolHomework = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  title: string
+  subject: string | null
+  due_date: string | null
+  status: string | null
+  description: string | null
+  created_at: string | null
+}
+
+export type SchoolSupply = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  name: string
+  quantity: string | null
+  status: string | null
+  notes: string | null
+  created_at: string | null
+}
+
+export type DailyFocusItem = {
+  id: string
+  family_id: string | null
+  profile_id: string | null
+  title: string
+  done: boolean
+  priority: number | null
+  date: string | null
+  created_at: string | null
+}
+
+export type Radar90Item = {
+  id: string
+  family_id: string | null
+  title: string
+  description: string | null
+  category: string | null
+  status: string | null
+  target_date: string | null
+  progress_pct: number | null
+  emoji: string | null
+  created_at: string | null
+}
+
+// ─── QuickRegister (Social/Emocional) ────────────────────────────────────────
+export type QuickRegisterType =
+  | 'gratidao'
+  | 'conquista'
+  | 'desafio'
+  | 'memoria'
+  | 'aprendizado'
+
+export const QUICK_REGISTER_ITEMS: Array<{
+  type: QuickRegisterType
+  label: string
+  emoji: string
+  wave: string
+  placeholder: string
+}> = [
+  { type: 'gratidao',    label: 'Gratidão',    emoji: '🙏', wave: 'text-amber-500',  placeholder: 'Pelo que você é grato hoje?' },
+  { type: 'conquista',   label: 'Conquista',   emoji: '🏆', wave: 'text-yellow-500', placeholder: 'O que você conquistou?' },
+  { type: 'desafio',     label: 'Desafio',     emoji: '💪', wave: 'text-blue-500',   placeholder: 'Qual desafio você enfrentou?' },
+  { type: 'memoria',     label: 'Memória',     emoji: '📸', wave: 'text-pink-500',   placeholder: 'Que memória especial quer guardar?' },
+  { type: 'aprendizado', label: 'Aprendizado', emoji: '📚', wave: 'text-green-500',  placeholder: 'O que você aprendeu?' },
+]
