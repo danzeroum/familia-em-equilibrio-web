@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { SlideOver, Field, SaveCancel } from './_shared'
-import type { LeisurePlace } from '@/types/database'
+import type { LeisurePlace, LeisurePlaceCategory } from '@/types/database'
 
-const CATEGORIES = [
+const CATEGORIES: { value: LeisurePlaceCategory; label: string }[] = [
   { value: 'parque', label: '🌳 Parque' },
   { value: 'praia', label: '🏖️ Praia' },
   { value: 'restaurante', label: '🍽️ Restaurante' },
@@ -28,7 +28,7 @@ interface Props {
 export function LeisurePlaceSheet({ open, onClose, item, onSave }: Props) {
   const [name, setName] = useState('')
   const [emoji, setEmoji] = useState('📍')
-  const [category, setCategory] = useState('outros')
+  const [category, setCategory] = useState<LeisurePlaceCategory>('outros')
   const [address, setAddress] = useState('')
   const [mapsUrl, setMapsUrl] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
@@ -41,7 +41,7 @@ export function LeisurePlaceSheet({ open, onClose, item, onSave }: Props) {
     if (item) {
       setName(item.name)
       setEmoji(item.emoji ?? '📍')
-      setCategory(item.category ?? 'outros')
+      setCategory((item.category as LeisurePlaceCategory) ?? 'outros')
       setAddress(item.address ?? '')
       setMapsUrl(item.maps_url ?? '')
       setWebsiteUrl(item.website_url ?? '')
@@ -103,7 +103,7 @@ export function LeisurePlaceSheet({ open, onClose, item, onSave }: Props) {
         <label className="text-sm text-gray-600 block mb-1">Categoria</label>
         <select
           value={category}
-          onChange={e => setCategory(e.target.value)}
+          onChange={e => setCategory(e.target.value as LeisurePlaceCategory)}
           className="input-base"
         >
           {CATEGORIES.map(c => (
@@ -143,7 +143,7 @@ export function LeisurePlaceSheet({ open, onClose, item, onSave }: Props) {
         <span className="text-sm text-gray-700">⭐ Marcar como favorito</span>
       </label>
 
-      <SaveCancel onSave={handleSave} onClose={onClose} />
+      <SaveCancel onSave={handleSave} onClose={onClose} saving={saving} />
     </SlideOver>
   )
 }
