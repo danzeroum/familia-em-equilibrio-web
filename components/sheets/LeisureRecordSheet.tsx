@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { SlideOver, Field, SaveCancel } from './_shared'
-import type { LeisureRecord } from '@/types/database'
+import type { LeisureRecord, LeisureActivity } from '@/types/database'
 
 interface Props {
   open: boolean
@@ -11,9 +11,10 @@ interface Props {
   defaults?: Partial<LeisureRecord>
   onSave: (payload: Partial<LeisureRecord>) => Promise<void>
   members: { id: string; name: string; nickname?: string | null; is_child?: boolean }[]
+  activities?: LeisureActivity[]
 }
 
-export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, members }: Props) {
+export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, members, activities = [] }: Props) {
   const [title, setTitle] = useState('')
   const [emoji, setEmoji] = useState('📸')
   const [description, setDescription] = useState('')
@@ -24,6 +25,7 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
   const [locationName, setLocationName] = useState('')
   const [notes, setNotes] = useState('')
   const [wouldRepeat, setWouldRepeat] = useState(true)
+  const [activityId, setActivityId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
     setLocationName((src as any).location_name ?? '')
     setNotes((src as any).notes ?? '')
     setWouldRepeat((src as any).would_repeat ?? true)
+    setActivityId((src as any).activity_id ?? null)
   }, [item, defaults, open])
 
   if (!open) return null
@@ -60,6 +63,7 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
       location_name: locationName || null,
       notes: notes || null,
       would_repeat: wouldRepeat,
+      activity_id: activityId,
     })
     setSaving(false)
     onClose()
@@ -83,6 +87,24 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
       </div>
 
       <Field label="Data" value={dateRealized} onChange={setDateRealized} type="date" />
+
+      {activities.length > 0 && (
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">Atividade vinculada (opcional)</label>
+          <select
+            value={activityId ?? ''}
+            onChange={e => setActivityId(e.target.value || null)}
+            className="input-base"
+          >
+            <option value="">— Nenhuma —</option>
+            {activities.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.emoji ?? '🎉'} {a.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="text-sm text-gray-600 block mb-1">Avaliação</label>
@@ -160,7 +182,7 @@ export function LeisureRecordSheet({ open, onClose, item, defaults, onSave, memb
         <span className="text-sm text-gray-700">🔄 Repetiria essa atividade</span>
       </label>
 
-      <SaveCancel onSave={handleSave} onClose={onClose} />
+      <SaveCancel onSave={handleSave} onClose={onClose} saving={saving} />
     </SlideOver>
   )
 }
