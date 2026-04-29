@@ -119,7 +119,6 @@ export default function EducacaoPage() {
   ).length
   const comprasAlerts = supplies.items.filter(i => i.status === 'running_out').length
 
-  // TABS reordenadas: Compras em 1ª posição
   const TABS: { id: Tab; label: string; alerts: number }[] = [
     { id: 'compras',     label: '🛒 Compras Escolares', alerts: comprasAlerts },
     { id: 'material',    label: '📦 Material',           alerts: materialAlerts },
@@ -141,7 +140,6 @@ export default function EducacaoPage() {
     setSupplyOpen(true)
   }
 
-  // Handler para QuickAddList: cria múltiplos itens com status 'needed'
   const handleBulkAddSupplies = async (names: string[]) => {
     for (const name of names) {
       await supplies.upsert({
@@ -242,7 +240,6 @@ export default function EducacaoPage() {
                             <p className="font-medium">{i.name}</p>
                             <p className="text-xs text-gray-500">
                               {SUPPLY_CATEGORY_LABEL[i.category ?? ''] ?? i.category} · {getMemberName(i.profile_id)}
-                              {i.season ? ` · 🌤️ ${i.season}` : ''}
                             </p>
                           </div>
                         </div>
@@ -268,7 +265,6 @@ export default function EducacaoPage() {
                             <p className="font-medium text-gray-800">{i.name}</p>
                             <p className="text-xs text-gray-500">
                               {SUPPLY_CATEGORY_LABEL[i.category ?? ''] ?? i.category} · {getMemberName(i.profile_id)}
-                              {i.season ? ` · 🌤️ ${i.season}` : ''}
                             </p>
                           </div>
                         </div>

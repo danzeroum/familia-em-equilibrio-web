@@ -1,11 +1,10 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { useFamilyStore } from '@/store/familyStore'
 import type { LeisureRecord } from '@/types/database'
 
 export function useLeisureRecords() {
-  const supabase = createClient()
   const { currentUser } = useFamilyStore()
   const [items, setItems] = useState<LeisureRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
