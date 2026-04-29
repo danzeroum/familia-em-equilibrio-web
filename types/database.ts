@@ -80,8 +80,34 @@ export interface Database {
         Relationships: []
       }
       meal_plans: {
-        Row: { id: string; week_start: string; title: string | null; meals: any | null; created_by: string | null; created_at: string | null }
-        Insert: { id?: string; week_start: string; title?: string | null; meals?: any | null; created_by?: string | null; created_at?: string | null }
+        Row: {
+          id: string
+          family_id: string | null
+          week_start: string
+          day_of_week: number
+          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+          title: string | null
+          profile_id: string | null
+          notes: string | null
+          recipe_id: string | null
+          meals: any | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          family_id?: string | null
+          week_start: string
+          day_of_week: number
+          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+          title?: string | null
+          profile_id?: string | null
+          notes?: string | null
+          recipe_id?: string | null
+          meals?: any | null
+          created_by?: string | null
+          created_at?: string | null
+        }
         Update: Partial<Database['public']['Tables']['meal_plans']['Insert']>
         Relationships: []
       }
@@ -745,9 +771,9 @@ export type Recipe = {
   family_id: string | null
   title: string
   description: string | null
-  ingredients: string[] | null
+  ingredients: string | null
   instructions: string | null
-  prep_time_min: number | null
+  prep_minutes: number | null
   servings: number | null
   category: string | null
   emoji: string | null
@@ -762,12 +788,12 @@ export type PantryItem = {
   id: string
   family_id: string | null
   name: string
-  quantity: string | null
+  quantity: number | null
   unit: string | null
   category: string | null
   expiry_date: string | null
   minimum_quantity: number | null
-  current_quantity: number | null
+  emoji: string | null
   location: string | null
   notes: string | null
   created_at: string | null
@@ -956,9 +982,9 @@ export const QUICK_REGISTER_ITEMS: Array<{
   wave: string
   placeholder: string
 }> = [
-  { type: 'gratidao',    label: 'Gratidão',    emoji: '🙏', wave: 'text-amber-500',  placeholder: 'Pelo que você é grato hoje?' },
-  { type: 'conquista',   label: 'Conquista',   emoji: '🏆', wave: 'text-yellow-500', placeholder: 'O que você conquistou?' },
-  { type: 'desafio',     label: 'Desafio',     emoji: '💪', wave: 'text-blue-500',   placeholder: 'Qual desafio você enfrentou?' },
-  { type: 'memoria',     label: 'Memória',     emoji: '📸', wave: 'text-pink-500',   placeholder: 'Que memória especial quer guardar?' },
-  { type: 'aprendizado', label: 'Aprendizado', emoji: '📚', wave: 'text-green-500',  placeholder: 'O que você aprendeu?' },
+  { type: 'gratidao',    label: 'Gratid\u00e3o',    emoji: '\ud83d\ude4f', wave: 'text-amber-500',  placeholder: 'Pelo que voc\u00ea \u00e9 grato hoje?' },
+  { type: 'conquista',   label: 'Conquista',   emoji: '\ud83c\udfc6', wave: 'text-yellow-500', placeholder: 'O que voc\u00ea conquistou?' },
+  { type: 'desafio',     label: 'Desafio',     emoji: '\ud83d\udcaa', wave: 'text-blue-500',   placeholder: 'Qual desafio voc\u00ea enfrentou?' },
+  { type: 'memoria',     label: 'Mem\u00f3ria',     emoji: '\ud83d\udcf8', wave: 'text-pink-500',   placeholder: 'Que mem\u00f3ria especial quer guardar?' },
+  { type: 'aprendizado', label: 'Aprendizado', emoji: '\ud83d\udcda', wave: 'text-green-500',  placeholder: 'O que voc\u00ea aprendeu?' },
 ]
