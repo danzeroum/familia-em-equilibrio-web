@@ -952,28 +952,30 @@ export type SchoolSupply = {
   updated_at: string | null
 }
 
+// ─── Dashboard Types ──────────────────────────────────────────────────────────
+// Shape real retornado por useDashboard (get_daily_focus RPC ou fallback JS)
 export type DailyFocusItem = {
-  id: string
-  family_id: string | null
-  profile_id: string | null
+  source: 'bill' | 'shopping' | 'task' | 'maintenance' | 'event' | 'vaccine' | 'medication'
+  item_id: string
   title: string
-  done: boolean
-  priority: number | null
-  date: string | null
-  created_at: string | null
+  urgency: 'overdue' | 'running_out' | 'today' | 'tomorrow' | 'due_soon'
+  amount: number
+  due_date: string | null
+  emoji: string
+  subtitle: string | null
 }
 
+// Shape real retornado por useDashboard (get_radar_90 RPC ou fallback JS)
 export type Radar90Item = {
-  id: string
-  family_id: string | null
+  source: string
+  item_id: string
   title: string
-  description: string | null
-  category: string | null
-  status: string | null
-  target_date: string | null
-  progress_pct: number | null
-  emoji: string | null
-  created_at: string | null
+  due_date: string
+  days_until: number
+  urgency_score: number
+  amount: number
+  category: string
+  emoji: string
 }
 
 // ─── QuickRegister (Social/Emocional) ────────────────────────────────────────
