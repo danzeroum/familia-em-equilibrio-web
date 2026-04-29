@@ -1,63 +1,38 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import type { LeisureRecord, LeisureActivity, Profile } from '@/types/database'
+import { useState, useEffect } from 'react'
+import type { LeisureRecord, LeisureActivity } from '@/types/database'
+
+type Member = { id: string; name: string; emoji?: string | null; nickname?: string | null; is_child?: boolean }
 
 interface Props {
   open: boolean
   onClose: () => void
   item: LeisureRecord | null
   onSave: (payload: Partial<LeisureRecord>) => Promise<void>
-  members: Profile[]
+  members: Member[]
   activities?: LeisureActivity[]
-  prefillActivity?: LeisureActivity | null
 }
 
-export function LeisureRecordSheet({
-  open, onClose, item, onSave, members, activities = [], prefillActivity,
-}: Props) {
+export function LeisureRecordSheet({ open, onClose, item, onSave, members, activities = [] }: Props) {
   const [form, setForm] = useState<Partial<LeisureRecord>>({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (open) {
-      if (item) {
-        setForm(item)
-      } else if (prefillActivity) {
-        setForm({
-          title: prefillActivity.title,
-          emoji: prefillActivity.emoji ?? undefined,
-          activity_id: prefillActivity.id,
-          location_name: prefillActivity.location_name ?? undefined,
-          date_realized: new Date().toISOString().split('T')[0],
-          would_repeat: true,
-          participants: [],
-        })
-      } else {
-        setForm({
-          date_realized: new Date().toISOString().split('T')[0],
-          would_repeat: true,
-          participants: [],
-        })
-      }
-    }
-  }, [open, item, prefillActivity])
+    setForm(item ?? {
+      date_realized: new Date().toISOString().slice(0, 10),
+      participants: [],
+      would_repeat: true,
+      rating: null,
+    })
+  }, [item, open])
 
-  const set = (key: keyof LeisureRecord, value: unknown) =>
-    setForm((prev) => ({ ...prev, [key]: value }))
+  if (!open) return null
 
-  const toggleParticipant = (profileId: string) => {
-    const current = form.participants ?? []
-    set('participants',
-      current.includes(profileId)
-        ? current.filter((id) => id !== profileId)
-        : [...current, profileId]
-    )
+  const set = (k: keyof LeisureRecord, v: unknown) => setForm(f => ({ ...f, [k]: v }))
+
+  const toggleParticipant = (id: string) => {
+    const current = (form.participants ?? []) as string[]
+    set('participants', current.includes(id) ? current.filter(p => p !== id) : [...current, id])
   }
 
   const handleSave = async () => {
@@ -69,163 +44,160 @@ export function LeisureRecordSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{item ? 'Editar Registro' : 'Registrar Lazer Realizado'}</SheetTitle>
-        </SheetHeader>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-lg">{item ? 'Editar Registro' : 'Registrar Lazer'}</h2>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 text-xl">✕</button>
+        </div>
 
-        <div className="flex flex-col gap-4 mt-4">
-          {/* Emoji + Título */}
-          <div className="flex gap-2">
-            <Input
-              className="w-16 text-center text-xl"
-              value={form.emoji ?? ''}
-              onChange={(e) => set('emoji', e.target.value)}
-              placeholder="📸"
-            />
-            <Input
-              className="flex-1"
-              placeholder="O que fizeram?"
-              value={form.title ?? ''}
-              onChange={(e) => set('title', e.target.value)}
-            />
-          </div>
+        {/* Emoji + Título */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="📸"
+            value={form.emoji ?? ''}
+            onChange={e => set('emoji', e.target.value)}
+            className="w-14 border rounded-lg px-2 py-2 text-center text-xl"
+            maxLength={4}
+          />
+          <input
+            type="text"
+            placeholder="O que fizeram? *"
+            value={form.title ?? ''}
+            onChange={e => set('title', e.target.value)}
+            className="flex-1 border rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
 
-          {/* Data */}
+        {/* Data */}
+        <div>
+          <label className="text-xs text-zinc-500 mb-1 block">Data</label>
+          <input
+            type="date"
+            value={form.date_realized ?? ''}
+            onChange={e => set('date_realized', e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 text-sm"
+          />
+        </div>
+
+        {/* Vincular atividade */}
+        {activities.length > 0 && (
           <div>
-            <Label>Data que realizou</Label>
-            <Input
-              type="date"
-              value={form.date_realized ?? ''}
-              onChange={(e) => set('date_realized', e.target.value)}
-            />
-          </div>
-
-          {/* Rating */}
-          <div>
-            <Label>Avaliação</Label>
-            <div className="flex gap-1 mt-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  className={`text-2xl transition-transform hover:scale-110 ${
-                    (form.rating ?? 0) >= star ? 'opacity-100' : 'opacity-30'
-                  }`}
-                  onClick={() => set('rating', star)}
-                >
-                  ⭐
-                </button>
+            <label className="text-xs text-zinc-500 mb-1 block">Atividade da wishlist (opcional)</label>
+            <select
+              value={form.activity_id ?? ''}
+              onChange={e => set('activity_id', e.target.value || null)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">— Nenhuma —</option>
+              {activities.map(a => (
+                <option key={a.id} value={a.id}>{a.emoji} {a.title}</option>
               ))}
-            </div>
+            </select>
           </div>
+        )}
 
-          {/* Participantes */}
-          <div>
-            <Label>Quem participou?</Label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {members.map((m) => {
-                const selected = (form.participants ?? []).includes(m.id)
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => toggleParticipant(m.id)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                      selected
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-muted border-border'
-                    }`}
-                  >
-                    {m.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Local */}
-          <div>
-            <Label>Local</Label>
-            <Input
-              placeholder="Onde foi?"
-              value={form.location_name ?? ''}
-              onChange={(e) => set('location_name', e.target.value)}
-            />
-          </div>
-
-          {/* Custo real */}
-          <div>
-            <Label>Custo real (R$)</Label>
-            <Input
-              type="number"
-              placeholder="0,00"
-              value={form.cost_actual ?? ''}
-              onChange={(e) => set('cost_actual', parseFloat(e.target.value) || null)}
-            />
-          </div>
-
-          {/* Descrição */}
-          <div>
-            <Label>Descrição / Memória</Label>
-            <Textarea
-              placeholder="Como foi? O que marcou?"
-              value={form.description ?? ''}
-              onChange={(e) => set('description', e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          {/* Notas */}
-          <div>
-            <Label>Notas adicionais</Label>
-            <Textarea
-              placeholder="Dicas, próximas vezes..."
-              value={form.notes ?? ''}
-              onChange={(e) => set('notes', e.target.value)}
-              rows={2}
-            />
-          </div>
-
-          {/* Repetiria? */}
-          <div className="flex items-center gap-3">
-            <Switch
-              id="would_repeat"
-              checked={form.would_repeat ?? true}
-              onCheckedChange={(v) => set('would_repeat', v)}
-            />
-            <Label htmlFor="would_repeat">🔄 Faria de novo</Label>
-          </div>
-
-          {/* Vincular atividade */}
-          {activities.length > 0 && (
-            <div>
-              <Label>Atividade relacionada (opcional)</Label>
-              <select
-                className="w-full border rounded px-3 py-2 text-sm bg-background"
-                value={form.activity_id ?? ''}
-                onChange={(e) => set('activity_id', e.target.value || null)}
+        {/* Rating */}
+        <div>
+          <label className="text-xs text-zinc-500 mb-2 block">Avaliação</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4, 5].map(n => (
+              <button
+                key={n}
+                onClick={() => set('rating', form.rating === n ? null : n)}
+                className={`text-2xl transition-transform hover:scale-110 ${
+                  (form.rating ?? 0) >= n ? 'opacity-100' : 'opacity-25'
+                }`}
               >
-                <option value="">Nenhuma</option>
-                {activities.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.emoji ?? '🎉'} {a.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Ações */}
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleSave} disabled={saving || !form.title?.trim()}>
-              {saving ? 'Salvando...' : 'Salvar'}
-            </Button>
+                ⭐
+              </button>
+            ))}
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        {/* Participantes */}
+        <div>
+          <label className="text-xs text-zinc-500 mb-2 block">Quem participou?</label>
+          <div className="flex flex-wrap gap-2">
+            {members.map(m => {
+              const active = ((form.participants ?? []) as string[]).includes(m.id)
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => toggleParticipant(m.id)}
+                  className={`text-sm px-3 py-1 rounded-full border transition-all ${
+                    active ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                  }`}
+                >
+                  {m.emoji ?? '👤'} {m.nickname ?? m.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Custo + Local */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-zinc-500 mb-1 block">Custo real (R$)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0,00"
+              value={form.cost_actual ?? ''}
+              onChange={e => set('cost_actual', e.target.value ? Number(e.target.value) : null)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-zinc-500 mb-1 block">Local</label>
+            <input
+              type="text"
+              placeholder="Onde foi?"
+              value={form.location_name ?? ''}
+              onChange={e => set('location_name', e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Notas */}
+        <textarea
+          placeholder="Anotações, memórias, o que rolou..."
+          value={form.notes ?? ''}
+          onChange={e => set('notes', e.target.value)}
+          rows={2}
+          className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+        />
+
+        {/* Repetiria? */}
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!form.would_repeat}
+            onChange={e => set('would_repeat', e.target.checked)}
+            className="w-4 h-4 accent-emerald-600"
+          />
+          <span className="text-sm">🔄 Repetiria essa atividade</span>
+        </label>
+
+        {/* Ações */}
+        <div className="flex gap-3 pt-2">
+          <button onClick={onClose} className="flex-1 py-2 rounded-xl border text-sm font-medium text-zinc-600">Cancelar</button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !form.title?.trim()}
+            className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium disabled:opacity-50"
+          >
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

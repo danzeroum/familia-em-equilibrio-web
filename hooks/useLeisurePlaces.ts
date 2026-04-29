@@ -20,7 +20,6 @@ export function useLeisurePlaces() {
       .select('*')
       .eq('family_id', familyId)
       .order('is_favorite', { ascending: false })
-      .order('visited_count', { ascending: false })
     setItems(data ?? [])
     setIsLoading(false)
   }, [familyId])
@@ -33,14 +32,14 @@ export function useLeisurePlaces() {
     if (payload.id) {
       await supabase.from('leisure_places').update(row).eq('id', payload.id)
     } else {
-      await supabase.from('leisure_places').insert({ ...row, created_at: new Date().toISOString() })
+      await supabase.from('leisure_places').insert(row)
     }
-    load()
+    await load()
   }
 
   const remove = async (id: string) => {
     await supabase.from('leisure_places').delete().eq('id', id)
-    load()
+    await load()
   }
 
   const toggleFavorite = async (place: LeisurePlace) => {
@@ -48,15 +47,15 @@ export function useLeisurePlaces() {
       .from('leisure_places')
       .update({ is_favorite: !place.is_favorite })
       .eq('id', place.id)
-    load()
+    await load()
   }
 
-  const incrementVisited = async (id: string, current: number) => {
+  const incrementVisited = async (place: LeisurePlace) => {
     await supabase
       .from('leisure_places')
-      .update({ visited_count: current + 1 })
-      .eq('id', id)
-    load()
+      .update({ visited_count: (place.visited_count ?? 0) + 1 })
+      .eq('id', place.id)
+    await load()
   }
 
   return { items, isLoading, upsert, remove, toggleFavorite, incrementVisited, reload: load }
