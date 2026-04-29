@@ -30,7 +30,7 @@ export function MemberSheet({ open, onClose, member }: Props) {
     if (form.id) {
       // Edição: atualiza pelo id existente
       const { id: _id, created_at: _cat, ...updateData } = form
-      const { error } = await supabase.from('profiles').update(updateData).eq('id', form.id)
+      const { error } = await supabase.from('profiles').update(updateData as any).eq('id', form.id)
       if (error) { console.error('[MemberSheet] UPDATE ERRO:', error); alert('Erro ao salvar: ' + error.message) }
     } else {
       // Criação: omite o id — banco gera UUID automaticamente via gen_random_uuid()
@@ -51,7 +51,7 @@ export function MemberSheet({ open, onClose, member }: Props) {
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'identidade', label: 'Identidade', icon: '🧑' },
     { key: 'saude',      label: 'Saúde',      icon: '🏥' },
-    { key: 'escola',     label: 'Escola',     icon: '🏫' },
+    { key: 'escola',     label: 'Escola',     icon: '🏢' },
   ]
 
   return (
@@ -198,7 +198,7 @@ export function MemberSheet({ open, onClose, member }: Props) {
                 </Row>
               </div>
               <div className="border-t pt-4">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Médico & Consultas</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Médico &amp; Consultas</p>
                 <Row label="Médico de referência">
                   <input className="input-base" value={form.doctor_name ?? ''} onChange={e => f('doctor_name', e.target.value)} />
                 </Row>
