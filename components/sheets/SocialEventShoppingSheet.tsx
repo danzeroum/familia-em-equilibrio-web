@@ -9,6 +9,7 @@ interface Props {
   item: SocialEventShopping | null
   eventId: string | null
   onSave: (i: Partial<SocialEventShopping>) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
   members: Profile[]
 }
 
