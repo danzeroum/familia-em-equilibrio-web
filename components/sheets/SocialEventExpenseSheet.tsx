@@ -10,6 +10,7 @@ interface Props {
   eventId: string | null
   vendors: SocialEventContact[]
   onSave: (i: Partial<SocialEventExpense>) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
 }
 
 const CATEGORY_OPTIONS = [
