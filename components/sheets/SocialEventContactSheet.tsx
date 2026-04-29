@@ -9,6 +9,7 @@ interface Props {
   item: SocialEventContact | null
   eventId: string | null
   onSave: (i: Partial<SocialEventContact>) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
 }
 
 const VENDOR_TYPE_OPTIONS = [
