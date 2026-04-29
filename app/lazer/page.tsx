@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
-import PageHeader from '@/components/ui/PageHeader'
-import EmptyState from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { useLeisureActivities } from '@/hooks/useLeisureActivities'
 import { useLeisureRecords } from '@/hooks/useLeisureRecords'
 import { useLeisurePlaces } from '@/hooks/useLeisurePlaces'
@@ -114,7 +114,7 @@ export default function LazerPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <PageHeader title="🎉 Lazer" subtitle="Planejamento e registro de momentos em família" />
+      <PageHeader emoji="🎉" title="Lazer" description="Planejamento e registro de momentos em família" />
 
       {/* Tabs */}
       <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-4">
@@ -178,7 +178,7 @@ export default function LazerPage() {
               </div>
             ) : filteredActivities.length === 0 ? (
               <EmptyState
-                icon="🎯"
+                emoji="🎯"
                 title="Nenhuma ideia de lazer ainda"
                 description="Adicione atividades que a família quer fazer!"
                 action={{ label: '+ Adicionar ideia', onClick: () => setActSheet({ open: true, item: null }) }}
@@ -237,7 +237,7 @@ export default function LazerPage() {
                             ✏️
                           </button>
                           <button
-                            onClick={() => removeActivity(act.id)}
+                            onClick={() => { if (confirm('Remover esta atividade?')) removeActivity(act.id) }}
                             className="p-1.5 text-zinc-400 hover:text-red-500 rounded"
                           >
                             🗑️
@@ -271,7 +271,11 @@ export default function LazerPage() {
               {weekDates.map((date, i) => {
                 const iso = date.toISOString().split('T')[0]
                 const isToday = iso === new Date().toISOString().split('T')[0]
-                const dayActivities = activities.filter(a => a.status === 'planejado' && a.updated_at?.startsWith(iso))
+                // Filtra eventos vinculados (event_id) que batem com a data do family_event
+                // Por ora, mostra atividades planejadas na semana (sem data específica)
+                const dayActivities = activities.filter(a =>
+                  a.status === 'planejado' && !a.event_id
+                ).slice(0, 2)
 
                 return (
                   <div
@@ -288,7 +292,7 @@ export default function LazerPage() {
                         isToday ? 'text-teal-700 dark:text-teal-400' : 'text-zinc-700 dark:text-zinc-300'
                       }`}>{date.getDate()}</div>
                     </div>
-                    {dayActivities.map(a => (
+                    {isToday && dayActivities.map(a => (
                       <div key={a.id} className="text-xs bg-teal-100 dark:bg-teal-900/50 text-teal-800 dark:text-teal-200 rounded px-1 py-0.5 truncate">
                         {a.emoji} {a.title}
                       </div>
@@ -302,14 +306,14 @@ export default function LazerPage() {
               })}
             </div>
 
-            {/* Atividades planejadas sem data */}
+            {/* Atividades planejadas sem evento vinculado */}
             <div>
-              <h3 className="text-sm font-medium text-zinc-500 mb-2">📋 Planejadas sem data definida</h3>
+              <h3 className="text-sm font-medium text-zinc-500 mb-2">📋 Planejadas sem evento agendado</h3>
               <div className="space-y-2">
-                {activities.filter(a => a.status === 'planejado').length === 0 ? (
-                  <p className="text-sm text-zinc-400">Nenhuma atividade planejada ainda.</p>
+                {activities.filter(a => a.status === 'planejado' && !a.event_id).length === 0 ? (
+                  <p className="text-sm text-zinc-400">Nenhuma atividade planejada sem evento.</p>
                 ) : (
-                  activities.filter(a => a.status === 'planejado').map(act => (
+                  activities.filter(a => a.status === 'planejado' && !a.event_id).map(act => (
                     <div key={act.id} className="flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-100 dark:border-zinc-800 px-3 py-2">
                       <span>{act.emoji || '🎉'}</span>
                       <span className="text-sm text-zinc-800 dark:text-zinc-200 flex-1">{act.title}</span>
@@ -363,7 +367,7 @@ export default function LazerPage() {
               </div>
             ) : records.length === 0 ? (
               <EmptyState
-                icon="📸"
+                emoji="📸"
                 title="Nenhum lazer registrado"
                 description="Registre os momentos de diversão da família!"
                 action={{ label: '+ Registrar lazer', onClick: () => setRecSheet({ open: true, item: null }) }}
@@ -413,7 +417,7 @@ export default function LazerPage() {
                             className="p-1.5 text-zinc-400 hover:text-zinc-600 rounded"
                           >✏️</button>
                           <button
-                            onClick={() => removeRecord(rec.id)}
+                            onClick={() => { if (confirm('Remover este registro?')) removeRecord(rec.id) }}
                             className="p-1.5 text-zinc-400 hover:text-red-500 rounded"
                           >🗑️</button>
                         </div>
@@ -459,7 +463,7 @@ export default function LazerPage() {
               </div>
             ) : filteredPlaces.length === 0 ? (
               <EmptyState
-                icon="📍"
+                emoji="📍"
                 title="Nenhum lugar salvo"
                 description="Salve parques, praias, restaurantes e outros lugares favoritos!"
                 action={{ label: '+ Adicionar lugar', onClick: () => setPlaceSheet({ open: true, item: null }) }}
@@ -515,7 +519,7 @@ export default function LazerPage() {
                         ✏️
                       </button>
                       <button
-                        onClick={() => removePlace(place.id)}
+                        onClick={() => { if (confirm('Remover este lugar?')) removePlace(place.id) }}
                         className="px-2 text-xs py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-red-50 hover:text-red-500"
                       >
                         🗑️
