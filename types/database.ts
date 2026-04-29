@@ -1103,90 +1103,12 @@ export type MealIngredient   = Database['public']['Tables']['meal_ingredients'][
 export type RecurrenceRule   = Database['public']['Tables']['recurrence_rules']['Row']
 
 // ─── Generic Aliases (tabelas sem definição completa na interface) ─────────────
-export type Recipe = {
-  id: string
-  family_id: string | null
-  title: string
-  description: string | null
-  ingredients: string | null
-  instructions: string | null
-  prep_minutes: number | null
-  servings: number | null
-  category: string | null
-  emoji: string | null
-  image_url: string | null
-  is_favorite: boolean
-  tags: string[]
-  created_by: string | null
-  created_at: string | null
-}
-
-export type PantryItem = {
-  id: string
-  family_id: string | null
-  name: string
-  quantity: number | null
-  unit: string | null
-  category: string | null
-  expiry_date: string | null
-  minimum_quantity: number | null
-  emoji: string | null
-  location: string | null
-  notes: string | null
-  created_at: string | null
-}
-
-export type Vehicle = {
-  id: string
-  family_id: string | null
-  name: string
-  brand: string | null
-  model: string | null
-  year: number | null
-  plate: string | null
-  color: string | null
-  fuel_type: string | null
-  mileage: number | null
-  notes: string | null
-  emoji: string | null
-  created_at: string | null
-}
-
-export type VehicleDocument = {
-  id: string
-  vehicle_id: string | null
-  family_id: string | null
-  type: string
-  expiry_date: string | null
-  notes: string | null
-  status: string | null
-  created_at: string | null
-}
-
-export type VehicleMaintenance = {
-  id: string
-  vehicle_id: string | null
-  family_id: string | null
-  title: string
-  description: string | null
-  scheduled_date: string | null
-  completed_at: string | null
-  mileage_at: number | null
-  cost: number | null
-  status: string | null
-  notes: string | null
-  created_at: string | null
-}
-
-export type VehicleCall = {
-  id: string
-  vehicle_id: string | null
-  family_id: string | null
-  title: string
-  description: string | null
-  status: string | null
-  created_at: string | null
-}
+export type Recipe             = Database['public']['Tables']['recipes']['Row']
+export type PantryItem         = Database['public']['Tables']['pantry_items']['Row']
+export type Vehicle            = Database['public']['Tables']['vehicles']['Row']
+export type VehicleDocument    = Database['public']['Tables']['vehicle_documents']['Row']
+export type VehicleMaintenance = Database['public']['Tables']['vehicle_maintenance']['Row']
+export type VehicleCall        = Database['public']['Tables']['vehicle_calls']['Row']
 
 export type SocialEvent         = Database['public']['Tables']['social_events']['Row']
 export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
