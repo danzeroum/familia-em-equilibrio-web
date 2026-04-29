@@ -9,7 +9,7 @@ export function useQuickRegister() {
   async function save(type: QuickRegisterType, data: Record<string, unknown>) {
     const payload = { ...data, family_id: familyId }
 
-    const tableMap: Record<QuickRegisterType, string> = {
+    const tableMap: Record<string, string> = {
       task: 'tasks',
       subtask: 'subtasks',
       medication: 'medications',
