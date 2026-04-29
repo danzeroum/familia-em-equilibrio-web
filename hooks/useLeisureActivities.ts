@@ -75,13 +75,14 @@ export function useLeisureActivities() {
   }
 
   // Converte atividade de lazer em tarefa
+  // domain_id é number | null na tabela tasks — não passar o family_id (string) nesse campo
   async function convertToTask(activity: LeisureActivity) {
     const fid = familyIdRef.current
     if (!fid) return
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        domain_id: fid,
+        domain_id: null,
         title: `${activity.emoji ?? '🎉'} ${activity.title}`,
         description: activity.description ?? null,
         priority: PRIORITY_MAP[activity.priority] ?? 2,
