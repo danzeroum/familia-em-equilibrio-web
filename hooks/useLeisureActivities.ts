@@ -57,6 +57,15 @@ export function useLeisureActivities() {
     load()
   }
 
+  // Alias usado pela page.tsx
+  const updateStatus = async (id: string, status: LeisureActivity['status']) => {
+    await supabase
+      .from('leisure_activities')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    load()
+  }
+
   // Converte atividade em tarefa na tabela tasks
   const convertToTask = async (activity: LeisureActivity) => {
     if (!familyId) return null
@@ -64,7 +73,7 @@ export function useLeisureActivities() {
       .from('tasks')
       .insert({
         family_id: familyId,
-        title: `${activity.emoji ?? '🎉'} ${activity.title}`,
+        title: `${activity.emoji ?? '\uD83C\uDF89'} ${activity.title}`,
         description: activity.description,
         status: 'pending',
         priority: activity.priority === 'alta' ? 1 : activity.priority === 'baixa' ? 3 : 2,
@@ -90,7 +99,7 @@ export function useLeisureActivities() {
       .from('family_events')
       .insert({
         family_id: familyId,
-        title: `${activity.emoji ?? '🎉'} ${activity.title}`,
+        title: `${activity.emoji ?? '\uD83C\uDF89'} ${activity.title}`,
         description: activity.description ?? '',
         event_date: eventDate,
         event_type: 'general',
@@ -111,5 +120,5 @@ export function useLeisureActivities() {
     return data
   }
 
-  return { items, isLoading, upsert, remove, cycleStatus, convertToTask, convertToEvent, reload: load }
+  return { items, isLoading, upsert, remove, cycleStatus, updateStatus, convertToTask, convertToEvent, reload: load }
 }
