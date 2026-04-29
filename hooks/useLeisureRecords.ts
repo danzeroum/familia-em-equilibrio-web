@@ -32,30 +32,23 @@ export function useLeisureRecords() {
     if (payload.id) {
       await supabase.from('leisure_records').update(row).eq('id', payload.id)
     } else {
-      await supabase.from('leisure_records').insert({ ...row, created_at: new Date().toISOString() })
+      await supabase.from('leisure_records').insert(row)
     }
-    load()
+    await load()
   }
 
   const remove = async (id: string) => {
     await supabase.from('leisure_records').delete().eq('id', id)
-    load()
+    await load()
   }
 
-  // Totalizadores do mês atual
-  const monthStats = () => {
-    const now = new Date()
-    const thisMonth = items.filter((r) => {
-      const d = new Date(r.date_realized)
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    })
-    const totalCost = thisMonth.reduce((sum, r) => sum + (r.cost_actual ?? 0), 0)
-    const avgRating =
-      thisMonth.length > 0
-        ? thisMonth.reduce((sum, r) => sum + (r.rating ?? 0), 0) / thisMonth.length
-        : 0
-    return { count: thisMonth.length, totalCost, avgRating: +avgRating.toFixed(1) }
+  const stats = {
+    totalThisMonth: items.filter(r => r.date_realized?.startsWith(new Date().toISOString().slice(0, 7))).length,
+    totalCost: items.reduce((s, r) => s + (r.cost_actual ?? 0), 0),
+    avgRating: items.length
+      ? Math.round((items.reduce((s, r) => s + (r.rating ?? 0), 0) / items.filter(r => r.rating).length) * 10) / 10
+      : 0,
   }
 
-  return { items, isLoading, upsert, remove, monthStats, reload: load }
+  return { items, isLoading, upsert, remove, stats, reload: load }
 }
