@@ -28,34 +28,32 @@ export function useLeisureRecords() {
 
   const upsert = async (payload: Partial<LeisureRecord>) => {
     if (!familyId) return
+    const row = { ...payload, family_id: familyId }
     if (payload.id) {
-      await supabase.from('leisure_records').update(payload).eq('id', payload.id)
+      await supabase.from('leisure_records').update(row).eq('id', payload.id)
     } else {
-      await supabase.from('leisure_records').insert({ ...payload, family_id: familyId })
+      await supabase.from('leisure_records').insert(row)
     }
-    load()
+    await load()
   }
 
   const remove = async (id: string) => {
     await supabase.from('leisure_records').delete().eq('id', id)
-    load()
+    await load()
   }
 
   // Estatísticas do mês corrente
-  const statsThisMonth = () => {
+  const statsThisMonth = (() => {
     const now = new Date()
-    const month = now.getMonth()
-    const year = now.getFullYear()
-    const monthItems = items.filter(r => {
-      const d = new Date(r.date_realized)
-      return d.getMonth() === month && d.getFullYear() === year
-    })
-    const totalCost = monthItems.reduce((s, r) => s + (r.cost_actual ?? 0), 0)
-    const avgRating = monthItems.length
-      ? monthItems.reduce((s, r) => s + (r.rating ?? 0), 0) / monthItems.filter(r => r.rating).length
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const thisMonth = items.filter(r => r.date_realized?.startsWith(monthStr))
+    const totalCost = thisMonth.reduce((s, r) => s + (r.cost_actual ?? 0), 0)
+    const ratings = thisMonth.filter(r => r.rating != null).map(r => r.rating as number)
+    const avgRating = ratings.length > 0
+      ? ratings.reduce((a, b) => a + b, 0) / ratings.length
       : 0
-    return { count: monthItems.length, totalCost, avgRating: Math.round(avgRating * 10) / 10 }
-  }
+    return { count: thisMonth.length, totalCost, avgRating: Math.round(avgRating * 10) / 10 }
+  })()
 
   return { items, isLoading, upsert, remove, statsThisMonth, reload: load }
 }

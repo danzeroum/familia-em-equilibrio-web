@@ -29,38 +29,41 @@ export function useLeisureActivities() {
   const upsert = async (payload: Partial<LeisureActivity>) => {
     if (!familyId) return
     const now = new Date().toISOString()
+    const row = { ...payload, family_id: familyId, updated_at: now }
     if (payload.id) {
-      await supabase
-        .from('leisure_activities')
-        .update({ ...payload, updated_at: now })
-        .eq('id', payload.id)
+      await supabase.from('leisure_activities').update(row).eq('id', payload.id)
     } else {
-      await supabase
-        .from('leisure_activities')
-        .insert({ ...payload, family_id: familyId, added_by: currentUser?.id, updated_at: now })
+      await supabase.from('leisure_activities').insert({ ...row, added_by: currentUser?.id })
     }
-    load()
+    await load()
   }
 
   const remove = async (id: string) => {
     await supabase.from('leisure_activities').delete().eq('id', id)
-    load()
+    await load()
   }
 
-  const cycleStatus = async (item: LeisureActivity) => {
-    const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
-    const next = cycle[(cycle.indexOf(item.status) + 1) % cycle.length]
+  const updateStatus = async (id: string, status: LeisureActivity['status']) => {
     await supabase
       .from('leisure_activities')
-      .update({ status: next, updated_at: new Date().toISOString() })
-      .eq('id', item.id)
-    load()
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    await load()
   }
 
+  // STATUS_CYCLE: wishlist → planejado → realizado → cancelado
+  const cycleStatus = async (activity: LeisureActivity) => {
+    const cycle: LeisureActivity['status'][] = ['wishlist', 'planejado', 'realizado', 'cancelado']
+    const current = cycle.indexOf(activity.status)
+    const next = cycle[(current + 1) % cycle.length]
+    await updateStatus(activity.id, next)
+  }
+
+  // Converte atividade em tarefa na tabela tasks
   const convertToTask = async (activity: LeisureActivity) => {
     if (!familyId) return null
     const priorityMap: Record<string, number> = { alta: 1, media: 2, baixa: 3 }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .insert({
         family_id: familyId,
@@ -72,19 +75,20 @@ export function useLeisureActivities() {
       })
       .select()
       .single()
-    if (data) {
+    if (data && !error) {
       await supabase
         .from('leisure_activities')
         .update({ task_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
         .eq('id', activity.id)
-      load()
+      await load()
     }
-    return data
+    return data ?? null
   }
 
+  // Converte atividade em evento de calendário
   const convertToEvent = async (activity: LeisureActivity, eventDate: string) => {
     if (!familyId) return null
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('family_events')
       .insert({
         family_id: familyId,
@@ -92,21 +96,31 @@ export function useLeisureActivities() {
         description: activity.description,
         event_date: eventDate,
         event_type: 'general',
+        location: activity.location_name,
         needs_action: false,
         is_done: false,
-        location: activity.location_name,
       })
       .select()
       .single()
-    if (data) {
+    if (data && !error) {
       await supabase
         .from('leisure_activities')
         .update({ event_id: data.id, status: 'planejado', updated_at: new Date().toISOString() })
         .eq('id', activity.id)
-      load()
+      await load()
     }
-    return data
+    return data ?? null
   }
 
-  return { items, isLoading, upsert, remove, cycleStatus, convertToTask, convertToEvent, reload: load }
+  return {
+    items,
+    isLoading,
+    upsert,
+    remove,
+    updateStatus,
+    cycleStatus,
+    convertToTask,
+    convertToEvent,
+    reload: load,
+  }
 }
