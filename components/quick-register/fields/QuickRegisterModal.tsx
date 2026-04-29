@@ -23,9 +23,6 @@ export function QuickRegisterModal() {
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
 
-  const wave1Types = QUICK_REGISTER_ITEMS.filter((i) => i.wave === 1)
-  const wave2Types = QUICK_REGISTER_ITEMS.filter((i) => i.wave === 2)
-
   const filteredTypes = search
     ? QUICK_REGISTER_ITEMS.filter((i) =>
         i.label.toLowerCase().includes(search.toLowerCase())
@@ -136,62 +133,20 @@ export function QuickRegisterModal() {
                 />
               </div>
 
-              {filteredTypes ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {filteredTypes.map((item) => (
-                    <button
-                      key={item.type}
-                      onClick={() => handleSelectType(item.type)}
-                      className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
-                    >
-                      <span className="text-xl">{item.emoji}</span>
-                      <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
-                        {item.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <>
-                  {/* Wave 1 — principais */}
-                  <div>
-                    <p className="text-xs text-zinc-400 mb-2">Registo rápido</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {wave1Types.map((item) => (
-                        <button
-                          key={item.type}
-                          onClick={() => handleSelectType(item.type)}
-                          className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
-                        >
-                          <span className="text-xl">{item.emoji}</span>
-                          <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
-                            {item.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Wave 2 — menos frequentes */}
-                  <div>
-                    <p className="text-xs text-zinc-400 mb-2">Outros</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {wave2Types.map((item) => (
-                        <button
-                          key={item.type}
-                          onClick={() => handleSelectType(item.type)}
-                          className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
-                        >
-                          <span className="text-xl">{item.emoji}</span>
-                          <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
-                            {item.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+              <div className="grid grid-cols-4 gap-2">
+                {(filteredTypes ?? QUICK_REGISTER_ITEMS).map((item) => (
+                  <button
+                    key={item.type}
+                    onClick={() => handleSelectType(item.type)}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-center"
+                  >
+                    <span className="text-xl">{item.emoji}</span>
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-tight">
+                      {item.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </>
           ) : (
             /* Formulário dinâmico */
