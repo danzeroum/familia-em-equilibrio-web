@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { LeisurePlace, LeisurePlaceCategory } from '@/types/database'
 
 const PLACE_CATEGORIES: { value: LeisurePlaceCategory; label: string; emoji: string }[] = [
@@ -15,7 +16,7 @@ const PLACE_CATEGORIES: { value: LeisurePlaceCategory; label: string; emoji: str
   { value: 'outros',      label: 'Outros',      emoji: '📍' },
 ]
 
-type Member = { id: string; name: string; emoji?: string | null; nickname?: string | null }
+interface Member { id: string; name: string }
 
 interface Props {
   open: boolean
@@ -25,144 +26,194 @@ interface Props {
   members: Member[]
 }
 
-export function LeisurePlaceSheet({ open, onClose, item, onSave, members: _members }: Props) {
-  const [form, setForm] = useState<Partial<LeisurePlace>>({})
+export function LeisurePlaceSheet({ open, onClose, item, onSave, members }: Props) {
+  const [name, setName] = useState('')
+  const [category, setCategory] = useState<LeisurePlaceCategory>('outros')
+  const [emoji, setEmoji] = useState('📍')
+  const [address, setAddress] = useState('')
+  const [mapsUrl, setMapsUrl] = useState('')
+  const [websiteUrl, setWebsiteUrl] = useState('')
+  const [notes, setNotes] = useState('')
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [tags, setTags] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setForm(item ?? { category: 'outros', is_favorite: false, visited_count: 0, tags: [] })
+    if (item) {
+      setName(item.name)
+      setCategory(item.category ?? 'outros')
+      setEmoji(item.emoji ?? '📍')
+      setAddress(item.address ?? '')
+      setMapsUrl(item.maps_url ?? '')
+      setWebsiteUrl(item.website_url ?? '')
+      setNotes(item.notes ?? '')
+      setIsFavorite(item.is_favorite)
+      setTags(item.tags.join(', '))
+    } else {
+      setName(''); setCategory('outros'); setEmoji('📍'); setAddress('')
+      setMapsUrl(''); setWebsiteUrl(''); setNotes(''); setIsFavorite(false); setTags('')
+    }
   }, [item, open])
 
-  if (!open) return null
-
-  const set = (k: keyof LeisurePlace, v: unknown) => setForm(f => ({ ...f, [k]: v }))
-
   const handleSave = async () => {
-    if (!form.name?.trim()) return
+    if (!name.trim()) return
     setSaving(true)
-    await onSave(form)
+    await onSave({
+      id: item?.id,
+      name: name.trim(),
+      category,
+      emoji,
+      address: address.trim() || null,
+      maps_url: mapsUrl.trim() || null,
+      website_url: websiteUrl.trim() || null,
+      notes: notes.trim() || null,
+      is_favorite: isFavorite,
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+    })
     setSaving(false)
     onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-zinc-900 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-5 space-y-4"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-lg">{item ? 'Editar Lugar' : 'Novo Lugar Favorito'}</h2>
-          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 text-xl">✕</button>
-        </div>
+    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{item ? 'Editar Lugar' : 'Novo Lugar'}</SheetTitle>
+        </SheetHeader>
 
-        {/* Emoji + Nome */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="📍"
-            value={form.emoji ?? ''}
-            onChange={e => set('emoji', e.target.value)}
-            className="w-14 border rounded-lg px-2 py-2 text-center text-xl"
-            maxLength={4}
-          />
-          <input
-            type="text"
-            placeholder="Nome do lugar *"
-            value={form.name ?? ''}
-            onChange={e => set('name', e.target.value)}
-            className="flex-1 border rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
-
-        {/* Categoria */}
-        <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Categoria</label>
-          <div className="flex flex-wrap gap-2">
-            {PLACE_CATEGORIES.map(c => (
-              <button
-                key={c.value}
-                onClick={() => set('category', c.value)}
-                className={`text-xs px-3 py-1 rounded-full border transition-all ${
-                  form.category === c.value
-                    ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
-                }`}
-              >
-                {c.emoji} {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Endereço */}
-        <div>
-          <label className="text-xs text-zinc-500 mb-1 block">Endereço</label>
-          <input
-            type="text"
-            placeholder="Rua, número, bairro..."
-            value={form.address ?? ''}
-            onChange={e => set('address', e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm"
-          />
-        </div>
-
-        {/* Links */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Link Google Maps</label>
+        <div className="flex flex-col gap-4 mt-4">
+          {/* Emoji + Nome */}
+          <div className="flex gap-2">
             <input
-              type="url"
-              placeholder="https://maps.google.com/..."
-              value={form.maps_url ?? ''}
-              onChange={e => set('maps_url', e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              type="text"
+              value={emoji}
+              onChange={e => setEmoji(e.target.value)}
+              className="w-14 text-center text-2xl border rounded-lg p-2 bg-background"
+              maxLength={4}
+            />
+            <input
+              type="text"
+              placeholder="Nome do lugar"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="flex-1 border rounded-lg px-3 py-2 bg-background text-sm"
             />
           </div>
+
+          {/* Categoria */}
           <div>
-            <label className="text-xs text-zinc-500 mb-1 block">Website</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {PLACE_CATEGORIES.map(c => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCategory(c.value)}
+                  className={`flex flex-col items-center gap-0.5 px-1 py-2 rounded-lg border text-xs transition-colors ${
+                    category === c.value
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted'
+                  }`}
+                >
+                  <span className="text-base">{c.emoji}</span>
+                  <span className="text-[10px] leading-tight text-center">{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Endereço */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Endereço</label>
             <input
-              type="url"
-              placeholder="https://"
-              value={form.website_url ?? ''}
-              onChange={e => set('website_url', e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+              type="text"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="Rua, bairro, cidade…"
+              className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
             />
           </div>
-        </div>
 
-        {/* Notas */}
-        <textarea
-          placeholder="Notas, dicas, horários..."
-          value={form.notes ?? ''}
-          onChange={e => set('notes', e.target.value)}
-          rows={2}
-          className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
-        />
+          {/* Links */}
+          <div className="grid grid-cols-1 gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">🗺️ Link Google Maps</label>
+              <input
+                type="url"
+                value={mapsUrl}
+                onChange={e => setMapsUrl(e.target.value)}
+                placeholder="https://maps.google.com/…"
+                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">🌐 Website</label>
+              <input
+                type="url"
+                value={websiteUrl}
+                onChange={e => setWebsiteUrl(e.target.value)}
+                placeholder="https://…"
+                className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
+              />
+            </div>
+          </div>
 
-        {/* Favorito */}
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={!!form.is_favorite}
-            onChange={e => set('is_favorite', e.target.checked)}
-            className="w-4 h-4 accent-amber-400"
+          {/* Notas */}
+          <textarea
+            placeholder="Observações, dicas, horários…"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            className="border rounded-lg px-3 py-2 bg-background text-sm resize-none"
           />
-          <span className="text-sm">⭐ Marcar como favorito</span>
-        </label>
 
-        {/* Ações */}
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 py-2 rounded-xl border text-sm font-medium text-zinc-600">Cancelar</button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !form.name?.trim()}
-            className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium disabled:opacity-50"
-          >
-            {saving ? 'Salvando…' : 'Salvar'}
-          </button>
+          {/* Tags */}
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Tags</label>
+            <input
+              type="text"
+              value={tags}
+              onChange={e => setTags(e.target.value)}
+              placeholder="crianças, gratuito, fim de semana"
+              className="w-full border rounded-lg px-3 py-2 bg-background text-sm"
+            />
+          </div>
+
+          {/* Favorito */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div
+              onClick={() => setIsFavorite(!isFavorite)}
+              className={`relative w-10 h-6 rounded-full transition-colors ${
+                isFavorite ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                isFavorite ? 'translate-x-5' : 'translate-x-1'
+              }`} />
+            </div>
+            <span className="text-sm">⭐ Lugar favorito</span>
+          </label>
+
+          {/* Botões */}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!name.trim() || saving}
+              onClick={handleSave}
+              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
+            >
+              {saving ? 'Salvando…' : item ? 'Salvar' : 'Adicionar'}
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   )
 }
