@@ -714,6 +714,343 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['leisure_places']['Insert']>
         Relationships: never[]
       }
+      task_categories: {
+        Row: {
+          id: string
+          family_id: string | null
+          name: string
+          emoji: string
+          group_name: string
+          is_default: boolean
+          created_at: string
+        }
+        Insert: {
+          family_id?: string | null
+          name: string
+          emoji: string
+          group_name: string
+          is_default?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['task_categories']['Insert']>
+        Relationships: never[]
+      }
+      school_communications: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          type: 'whatsapp' | 'email' | 'reuniao' | 'telefone' | 'outro'
+          title: string
+          description: string | null
+          status: 'pending' | 'in_progress' | 'done'
+          due_date: string | null
+          created_by: string | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['school_communications']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['school_communications']['Insert']>
+        Relationships: never[]
+      }
+      school_homework: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          subject: string
+          title: string
+          description: string | null
+          due_date: string | null
+          status: 'pending' | 'in_progress' | 'done'
+          needs_help: boolean
+          is_project: boolean
+          created_by: string | null
+          completed_at: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['school_homework']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['school_homework']['Insert']>
+        Relationships: never[]
+      }
+      school_supplies: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          name: string
+          category: 'material' | 'uniforme' | 'livro' | 'sazonal' | 'outro'
+          quantity_need: number
+          quantity_have: number
+          unit_price: number | null
+          status: 'needed' | 'running_out' | 'bought'
+          season: 'verao' | 'inverno' | 'todas' | null
+          notes: string | null
+          bought_by: string | null
+          bought_at: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['school_supplies']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['school_supplies']['Insert']>
+        Relationships: never[]
+      }
+      vehicles: {
+        Row: {
+          id: string
+          family_id: string
+          owner_id: string | null
+          type: 'car' | 'motorcycle' | 'ebike' | 'bike' | 'scooter'
+          nickname: string
+          brand: string | null
+          model: string | null
+          year: number | null
+          color: string | null
+          plate: string | null
+          fuel_type: 'gasoline' | 'ethanol' | 'flex' | 'diesel' | 'electric' | 'hybrid' | 'none' | null
+          current_km: number | null
+          battery_kwh: number | null
+          battery_range_km: number | null
+          garage_location: string | null
+          photo_url: string | null
+          is_active: boolean
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicles']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicles']['Insert']>
+        Relationships: never[]
+      }
+      vehicle_documents: {
+        Row: {
+          id: string
+          family_id: string
+          vehicle_id: string
+          type: 'ipva' | 'licenciamento' | 'seguro' | 'dpvat' | 'vistoria' | 'crlv' | 'outro'
+          title: string
+          due_date: string | null
+          amount: number | null
+          status: 'pending' | 'paid' | 'overdue' | 'renewed'
+          paid_at: string | null
+          reference_year: number | null
+          policy_number: string | null
+          provider: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicle_documents']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicle_documents']['Insert']>
+        Relationships: never[]
+      }
+      vehicle_maintenance: {
+        Row: {
+          id: string
+          family_id: string
+          vehicle_id: string
+          title: string
+          emoji: string | null
+          category: string | null
+          frequency_label: string
+          frequency_days: number | null
+          frequency_km: number | null
+          last_done_at: string | null
+          last_done_km: number | null
+          next_due_at: string | null
+          next_due_km: number | null
+          responsible_id: string | null
+          estimated_cost: number | null
+          status: 'ok' | 'due_soon' | 'overdue' | 'done'
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicle_maintenance']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicle_maintenance']['Insert']>
+        Relationships: never[]
+      }
+      vehicle_calls: {
+        Row: {
+          id: string
+          family_id: string
+          vehicle_id: string
+          title: string
+          description: string | null
+          status: 'pending' | 'scheduled' | 'done'
+          priority: number
+          professional_name: string | null
+          professional_phone: string | null
+          estimated_cost: number | null
+          actual_cost: number | null
+          scheduled_date: string | null
+          completed_at: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['vehicle_calls']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['vehicle_calls']['Insert']>
+        Relationships: never[]
+      }
+      recipes: {
+        Row: {
+          id: string
+          family_id: string
+          title: string
+          emoji: string | null
+          ingredients: string | null
+          instructions: string | null
+          servings: number | null
+          prep_minutes: number | null
+          tags: string[]
+          is_favorite: boolean
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['recipes']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['recipes']['Insert']>
+        Relationships: never[]
+      }
+      meal_plan: {
+        Row: {
+          id: string
+          family_id: string
+          profile_id: string | null
+          day_of_week: number
+          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+          title: string
+          description: string | null
+          recipe_id: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['meal_plan']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['meal_plan']['Insert']>
+        Relationships: never[]
+      }
+      pantry_items: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          emoji: string | null
+          category: string | null
+          quantity: number | null
+          unit: string | null
+          minimum_quantity: number | null
+          expiry_date: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['pantry_items']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['pantry_items']['Insert']>
+        Relationships: never[]
+      }
+      social_events: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          event_type: string
+          description: string | null
+          event_date: string | null
+          event_time: string | null
+          status: string
+          honoree_id: string | null
+          location_name: string | null
+          address: string | null
+          location_url: string | null
+          budget_planned: number | null
+          cover_emoji: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['social_events']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['social_events']['Insert']>
+        Relationships: never[]
+      }
+      social_event_tasks: {
+        Row: {
+          id: string
+          event_id: string
+          family_id: string
+          title: string
+          due_date: string | null
+          due_time: string | null
+          assigned_to: string | null
+          priority: number
+          status: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['social_event_tasks']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['social_event_tasks']['Insert']>
+        Relationships: never[]
+      }
+      social_event_shopping: {
+        Row: {
+          id: string
+          event_id: string
+          family_id: string
+          name: string
+          category: string | null
+          quantity: number | null
+          unit: string | null
+          estimated_price: number | null
+          actual_price: number | null
+          store: string | null
+          is_bought: boolean
+          assigned_to: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['social_event_shopping']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['social_event_shopping']['Insert']>
+        Relationships: never[]
+      }
+      social_event_contacts: {
+        Row: {
+          id: string
+          event_id: string
+          family_id: string
+          name: string
+          role: string
+          phone: string | null
+          email: string | null
+          rsvp_status: string
+          party_size: number
+          vendor_type: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['social_event_contacts']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['social_event_contacts']['Insert']>
+        Relationships: never[]
+      }
+      social_event_expenses: {
+        Row: {
+          id: string
+          event_id: string
+          family_id: string
+          description: string
+          category: string | null
+          planned_amount: number | null
+          actual_amount: number | null
+          vendor_id: string | null
+          payment_status: string
+          due_date: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['social_event_expenses']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['social_event_expenses']['Insert']>
+        Relationships: never[]
+      }
     }
   }
 }
@@ -851,120 +1188,14 @@ export type VehicleCall = {
   created_at: string | null
 }
 
-export type SocialEvent = {
-  id: string
-  family_id: string | null
-  title: string
-  description: string | null
-  event_date: string | null
-  event_time: string | null
-  location: string | null
-  event_type: string | null
-  status: string | null
-  budget: number | null
-  emoji: string | null
-  notes: string | null
-  created_by: string | null
-  created_at: string | null
-}
-
-export type SocialEventContact = {
-  id: string
-  event_id: string | null
-  family_id: string | null
-  name: string
-  phone: string | null
-  role: string | null
-  rsvp_status: string | null
-  party_size: number | null
-  notes: string | null
-  confirmed: boolean | null
-  created_at: string | null
-}
-
-export type SocialEventExpense = {
-  id: string
-  event_id: string | null
-  family_id: string | null
-  title: string
-  vendor_name: string | null
-  estimated_amount: number | null
-  actual_amount: number | null
-  payment_status: string | null
-  amount: number | null
-  paid: boolean | null
-  created_at: string | null
-}
-
-export type SocialEventShopping = {
-  id: string
-  event_id: string | null
-  family_id: string | null
-  name: string
-  quantity: string | null
-  estimated_price: number | null
-  is_bought: boolean
-  bought: boolean | null
-  created_at: string | null
-}
-
-export type SocialEventTask = {
-  id: string
-  event_id: string | null
-  family_id: string | null
-  title: string
-  assigned_to: string | null
-  priority: number | null
-  due_date: string | null
-  status: 'pending' | 'done' | 'skipped' | null
-  done: boolean | null
-  created_by: string | null
-  created_at: string | null
-}
-
-export type SchoolCommunication = {
-  id: string
-  family_id: string | null
-  profile_id: string | null
-  title: string
-  description: string | null
-  content: string | null
-  type: string | null
-  date: string | null
-  due_date: string | null
-  status: string | null
-  is_read: boolean
-  created_at: string | null
-}
-
-export type SchoolHomework = {
-  id: string
-  family_id: string | null
-  profile_id: string | null
-  title: string
-  subject: string | null
-  due_date: string | null
-  status: string | null
-  description: string | null
-  is_project: boolean | null
-  needs_help: boolean | null
-  created_at: string | null
-}
-
-export type SchoolSupply = {
-  id: string
-  family_id: string | null
-  profile_id: string | null
-  name: string
-  category: 'material' | 'uniforme' | 'livro' | 'sazonal' | 'outro' | null
-  quantity_have: number | null
-  quantity_need: number | null
-  quantity: string | null
-  status: 'needed' | 'running_out' | 'bought' | null
-  notes: string | null
-  created_at: string | null
-  updated_at: string | null
-}
+export type SocialEvent         = Database['public']['Tables']['social_events']['Row']
+export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
+export type SocialEventExpense  = Database['public']['Tables']['social_event_expenses']['Row']
+export type SocialEventShopping = Database['public']['Tables']['social_event_shopping']['Row']
+export type SocialEventTask     = Database['public']['Tables']['social_event_tasks']['Row']
+export type SchoolCommunication = Database['public']['Tables']['school_communications']['Row']
+export type SchoolHomework      = Database['public']['Tables']['school_homework']['Row']
+export type SchoolSupply        = Database['public']['Tables']['school_supplies']['Row']
 
 // ─── Dashboard Types ──────────────────────────────────────────────────────────
 // Shape real retornado por useDashboard (get_daily_focus RPC ou fallback JS)
