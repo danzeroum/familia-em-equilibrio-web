@@ -1196,7 +1196,35 @@ export interface Database {
       }
     }
     Views: {}
-    Functions: {}
+    Functions: {
+      get_daily_focus: {
+        Args: { p_family_id: string }
+        Returns: {
+          source: string
+          item_id: string
+          title: string
+          urgency: string
+          subtitle: string | null
+          amount: number | null
+          due_date: string | null
+          emoji: string
+        }[]
+      }
+      get_radar_90: {
+        Args: { p_family_id: string }
+        Returns: {
+          source: string
+          item_id: string
+          title: string
+          due_date: string
+          days_until: number
+          urgency_score: number
+          amount: number | null
+          category: string
+          emoji: string
+        }[]
+      }
+    }
     Enums: {}
     CompositeTypes: {}
   }
