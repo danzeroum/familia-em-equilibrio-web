@@ -30,7 +30,6 @@ const QUESTION_PATTERNS = [
   /\b(próxim[ao]s?|previsão|venc[ei]|atrasad[ao]s?|pendente[s]?)\b/i,
   /\b(resumo|balanço|situação|status|overview)\b/i,
   /\b(hoje|essa semana|este mês|semana que vem)\b/i,
-  // ── comandos imperativos que NÃO são inserção de dados ──────────────────────
   /\b(busque?|busca[r]?|procure?|procura[r]?|pesquise?|pesquisa[r]?)\b/i,
   /\b(d[êe]|dá|d[ãa]o)\s+(ideias?|sugest[õo]es?|dicas?|opç[õo]es?|exemplos?)\b/i,
   /\b(sugira|sugere|recomende?|recomenda[r]?|indique?|indica[r]?)\b/i,
@@ -112,7 +111,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
   {
-    pattern: /\b(tarefa[s]?|afazere[s]?|pendência[s]?|to.?do|fazer|incumbência[s]?|dever[s]?|obrigaç[aã]o|atividade[s]?)\b/i,
+    pattern: /\b(tarefa[s]?|afazere[s]?|pendência[s]?|to.?do|fazer|incumbência[s]?|dever[s]?|obrigaç[ãa]o|atividade[s]?)\b/i,
     fetch: async (_fid, memberIds) => {
       const { data } = await supabaseAdmin
         .from('tasks')
@@ -157,7 +156,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
   {
-    pattern: /\b(manutenç[aã]o da casa|rotina da casa|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|manutenções)\b/i,
+    pattern: /\b(manutenç[ãa]o da casa|rotina da casa|conservaç[ãa]o|limpeza peri[oó]dic|vistoria|inspeç[ãa]o|manutenções)\b/i,
     fetch: async (fid) => {
       const { data } = await supabaseAdmin.from('home_maintenance').select('title, status, next_due_at, frequency_label, category, notes').eq('family_id', fid).order('next_due_at', { ascending: true, nullsFirst: false }).limit(30)
       return { label: 'Manutenções da casa', data: data ?? [] }
@@ -188,14 +187,14 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     },
   },
   {
-    pattern: /\b(remédio[s]?|medicament[oa]s?|medicaç[aã]o|estoque|comprimido[s]?|cápsula[s]?|xarope[s]?|pomada[s]?|dose[s]?|posologia|receita médica)\b/i,
+    pattern: /\b(remédio[s]?|medicament[oa]s?|medicaç[ãa]o|estoque|comprimido[s]?|cápsula[s]?|xarope[s]?|pomada[s]?|dose[s]?|posologia|receita médica)\b/i,
     fetch: async (_fid, memberIds) => {
       const { data } = await supabaseAdmin.from('medications').select('name, dosage, form, is_active, stock_quantity, minimum_stock, expiry_date, notes').in('profile_id', safeIds(memberIds)).eq('is_active', true).order('name').limit(30)
       return { label: 'Medicamentos ativos', data: data ?? [] }
     },
   },
   {
-    pattern: /\b(vacina[s]?|imunizaç[aã]o|dose[s]? da vacina|carteira de vacina|reforço|vacinação)\b/i,
+    pattern: /\b(vacina[s]?|imunizaç[ãa]o|dose[s]? da vacina|carteira de vacina|reforço|vacinação)\b/i,
     fetch: async (_fid, memberIds) => {
       const { data } = await supabaseAdmin.from('vaccines').select('name, applied_at, next_due, notes').in('profile_id', safeIds(memberIds)).order('next_due', { ascending: true, nullsFirst: false }).limit(30)
       return { label: 'Vacinas', data: data ?? [] }
@@ -295,12 +294,16 @@ async function fetchContext(question: string, familyId: string, memberIds: strin
   }]
 }
 
+export type HistoryMessage = { role: 'user' | 'assistant'; content: string }
+
 export async function answerQuestion(
   question: string,
   familyId: string,
   modelId?: LLMModelId,
   customSystemPrompt?: string,
-  apiKey?: string | null
+  apiKey?: string | null,
+  history?: HistoryMessage[],
+  maxHistory = 10,
 ): Promise<ReadableStream<Uint8Array>> {
   const memberIds = await getMemberIds(familyId)
   const context = await fetchContext(question, familyId, memberIds)
@@ -321,11 +324,12 @@ Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
 
   const systemPrompt = `${basePrompt}\n\nHoje é ${today}.`
 
-  // Se há contexto do banco, inclui no prompt. Se não há (pergunta livre / conhecimento geral),
-  // deixa o LLM responder apenas com o system prompt — sem forçar JSON vazio como contexto.
   const userPrompt = contextText.trim()
     ? `Com base nos dados abaixo, responda a pergunta do usuário.\n\n${contextText}\n\nPergunta: ${question}`
     : question
+
+  // Trim history to last N messages (pairs of user+assistant)
+  const trimmedHistory = (history ?? []).slice(-maxHistory)
 
   const provider = modelId ? getModelProvider(modelId) : 'ollama'
   const client = createLLMClient(modelId, { provider, apiKey })
@@ -339,6 +343,7 @@ Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
       model,
       messages: [
         { role: 'system', content: systemPrompt },
+        ...trimmedHistory,
         { role: 'user',   content: userPrompt },
       ],
       temperature: 0.3,
