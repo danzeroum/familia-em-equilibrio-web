@@ -1243,3 +1243,71 @@ export type SocialEventTask     = Database['public']['Tables']['social_event_tas
 export type SocialEventShopping = Database['public']['Tables']['social_event_shopping']['Row']
 export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
 export type SocialEventExpense  = Database['public']['Tables']['social_event_expenses']['Row']
+
+// ─── more table aliases ───────────────────────────────────────────────────────
+export type Family      = Database['public']['Tables']['families']['Row']
+export type VehicleCall = Database['public']['Tables']['vehicle_calls']['Row']
+
+// ─── dashboard RPC return types ───────────────────────────────────────────────
+export interface DailyFocusItem {
+  source: 'bill' | 'shopping' | 'event'
+  item_id: string
+  title: string
+  urgency: 'overdue' | 'running_out' | 'today' | 'tomorrow' | 'due_soon'
+  amount: number
+  due_date: string | null
+  emoji: string
+  subtitle: string | null
+}
+
+export interface Radar90Item {
+  source: 'bill' | 'event' | 'maintenance'
+  item_id: string
+  title: string
+  due_date: string
+  days_until: number
+  urgency_score: number
+  amount: number
+  category: string
+  emoji: string
+}
+
+// ─── quick register ───────────────────────────────────────────────────────────
+export type QuickRegisterType =
+  | 'task'
+  | 'subtask'
+  | 'medication'
+  | 'bill'
+  | 'shopping'
+  | 'maintenance'
+  | 'event'
+  | 'vaccine'
+  | 'mood'
+  | 'health_tracking'
+  | 'homework'
+  | 'school_item'
+  | 'emergency_contact'
+  | 'gratitude'
+  | 'maintenance_call'
+
+export const QUICK_REGISTER_ITEMS: ReadonlyArray<{
+  type: QuickRegisterType
+  label: string
+  emoji: string
+}> = [
+  { type: 'task',              label: 'Tarefa',              emoji: '✅' },
+  { type: 'subtask',           label: 'Subtarefa',           emoji: '➕' },
+  { type: 'event',             label: 'Evento',              emoji: '📅' },
+  { type: 'bill',              label: 'Conta',               emoji: '💳' },
+  { type: 'shopping',          label: 'Compras',             emoji: '🛒' },
+  { type: 'medication',        label: 'Medicamento',         emoji: '💊' },
+  { type: 'vaccine',           label: 'Vacina',              emoji: '💉' },
+  { type: 'health_tracking',   label: 'Saúde',               emoji: '❤️' },
+  { type: 'mood',              label: 'Check-in',            emoji: '🧠' },
+  { type: 'maintenance',       label: 'Manutenção',          emoji: '🔧' },
+  { type: 'maintenance_call',  label: 'Orçamento',           emoji: '📞' },
+  { type: 'homework',          label: 'Tarefa escolar',      emoji: '📚' },
+  { type: 'school_item',       label: 'Material escolar',    emoji: '🎒' },
+  { type: 'emergency_contact', label: 'Contato emergência',  emoji: '🚨' },
+  { type: 'gratitude',         label: 'Gratidão',            emoji: '🙏' },
+]
