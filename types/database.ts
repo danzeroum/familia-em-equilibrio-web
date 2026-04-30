@@ -83,36 +83,32 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['meal_ingredients']['Insert']>
         Relationships: []
       }
-      meal_plans: {
+      meal_plan: {
         Row: {
           id: string
-          family_id: string | null
-          week_start: string
-          day_of_week: number
-          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
-          title: string | null
+          family_id: string
           profile_id: string | null
-          notes: string | null
+          day_of_week: number
+          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner' | string
+          title: string
+          description: string | null
           recipe_id: string | null
-          meals: any | null
           created_by: string | null
           created_at: string | null
         }
         Insert: {
           id?: string
-          family_id?: string | null
-          week_start: string
-          day_of_week: number
-          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
-          title?: string | null
+          family_id: string
           profile_id?: string | null
-          notes?: string | null
+          day_of_week: number
+          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner' | string
+          title: string
+          description?: string | null
           recipe_id?: string | null
-          meals?: any | null
           created_by?: string | null
           created_at?: string | null
         }
-        Update: Partial<Database['public']['Tables']['meal_plans']['Insert']>
+        Update: Partial<Database['public']['Tables']['meal_plan']['Insert']>
         Relationships: []
       }
       recurrence_rules: {
@@ -1195,7 +1191,19 @@ export interface Database {
         Relationships: never[]
       }
     }
-    Views: {}
+    Views: {
+      monthly_history_view: {
+        Row: {
+          family_id: string | null
+          month_ref: string | null
+          income: number | null
+          total_paid: number | null
+          balance: number | null
+          bills_count: number | null
+        }
+        Relationships: []
+      }
+    }
     Functions: {
       get_daily_focus: {
         Args: { p_family_id: string }
@@ -1256,7 +1264,7 @@ export type LeisurePlaceCategory = 'parque' | 'praia' | 'restaurante' | 'cinema'
 
 // ─── convenience aliases ──────────────────────────────────────────────────────
 export type ShoppingItem        = Database['public']['Tables']['shopping_items']['Row']
-export type MealPlan            = Database['public']['Tables']['meal_plans']['Row']
+export type MealPlan            = Database['public']['Tables']['meal_plan']['Row']
 export type Recipe              = Database['public']['Tables']['recipes']['Row']
 export type PantryItem          = Database['public']['Tables']['pantry_items']['Row']
 export type Task                = Database['public']['Tables']['tasks']['Row']
