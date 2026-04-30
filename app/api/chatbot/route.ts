@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseUserInput } from '@/lib/chatbot-parser'
 import { insertParsedItems } from '@/lib/chatbot-inserter'
-import { answerQuestion, isQuestion } from '@/lib/chatbot-query'
+import { answerQuestion, isQuestion, type HistoryMessage } from '@/lib/chatbot-query'
 import { LLMModelId, DEFAULT_MODEL } from '@/lib/llm-client'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-type AiSettingsRow = { model_id: string; system_prompt: string | null; provider: string | null; api_key: string | null }
+type AiSettingsRow = {
+  model_id: string
+  system_prompt: string | null
+  provider: string | null
+  api_key: string | null
+  max_history_messages: number | null
+}
 
 async function getAISettings(familyId: string) {
   const { data } = await supabaseAdmin
     .from('ai_settings')
-    .select('model_id, system_prompt, provider, api_key')
+    .select('model_id, system_prompt, provider, api_key, max_history_messages')
     .eq('family_id', familyId)
     .maybeSingle() as { data: AiSettingsRow | null }
   return {
@@ -18,11 +24,12 @@ async function getAISettings(familyId: string) {
     system_prompt: data?.system_prompt ?? null,
     provider: data?.provider ?? 'ollama',
     api_key: data?.api_key ?? null,
+    max_history_messages: data?.max_history_messages ?? 10,
   }
 }
 
 export async function POST(req: NextRequest) {
-  const { text, familyId, createdBy, autoInsert, modelId, items } = await req.json()
+  const { text, familyId, createdBy, autoInsert, modelId, items, history } = await req.json()
 
   if (!text || !familyId || !createdBy) {
     return NextResponse.json(
@@ -42,7 +49,9 @@ export async function POST(req: NextRequest) {
         familyId,
         resolvedModelId,
         aiSettings.system_prompt ?? undefined,
-        aiSettings.api_key
+        aiSettings.api_key,
+        (history as HistoryMessage[] | undefined) ?? [],
+        aiSettings.max_history_messages,
       )
       return new Response(stream, {
         headers: {
