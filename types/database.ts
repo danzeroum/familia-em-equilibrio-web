@@ -43,6 +43,8 @@ export interface Database {
           family_id: string
           model_id: string
           system_prompt: string | null
+          provider: string | null
+          api_key: string | null
           updated_at: string | null
         }
         Insert: {
@@ -50,6 +52,8 @@ export interface Database {
           family_id: string
           model_id?: string
           system_prompt?: string | null
+          provider?: string | null
+          api_key?: string | null
           updated_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['ai_settings']['Insert']>
@@ -902,321 +906,106 @@ export interface Database {
           ingredients: string | null
           instructions: string | null
           servings: number | null
-          prep_minutes: number | null
+          prep_time_min: number | null
           tags: string[]
+          source_url: string | null
           is_favorite: boolean
           created_by: string | null
-          created_at: string | null
+          created_at: string
         }
-        Insert: Omit<Database['public']['Tables']['recipes']['Row'], 'id' | 'created_at'>
+        Insert: {
+          family_id: string
+          title: string
+          emoji?: string | null
+          ingredients?: string | null
+          instructions?: string | null
+          servings?: number | null
+          prep_time_min?: number | null
+          tags?: string[]
+          source_url?: string | null
+          is_favorite?: boolean
+          created_by?: string | null
+        }
         Update: Partial<Database['public']['Tables']['recipes']['Insert']>
         Relationships: never[]
       }
-      meal_plan: {
+      subtasks: {
+        Row: {
+          id: string
+          task_id: string
+          title: string
+          is_done: boolean
+          created_at: string | null
+        }
+        Insert: {
+          task_id: string
+          title: string
+          is_done?: boolean
+        }
+        Update: Partial<Database['public']['Tables']['subtasks']['Insert']>
+        Relationships: never[]
+      }
+      domains: {
+        Row: {
+          id: number
+          slug: string
+          label: string
+          emoji: string
+        }
+        Insert: never
+        Update: never
+        Relationships: never[]
+      }
+      radar_cache: {
         Row: {
           id: string
           family_id: string
-          profile_id: string | null
-          day_of_week: number
-          meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+          radar_data: Json
+          generated_at: string
+          expires_at: string
+        }
+        Insert: {
+          family_id: string
+          radar_data: Json
+          generated_at?: string
+          expires_at: string
+        }
+        Update: Partial<Database['public']['Tables']['radar_cache']['Insert']>
+        Relationships: never[]
+      }
+      calendar_events: {
+        Row: {
+          id: string
+          family_id: string | null
           title: string
           description: string | null
-          recipe_id: string | null
+          start_at: string
+          end_at: string | null
+          all_day: boolean
+          event_type: string | null
+          assigned_to: string | null
           created_by: string | null
           created_at: string | null
         }
-        Insert: Omit<Database['public']['Tables']['meal_plan']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['meal_plan']['Insert']>
-        Relationships: never[]
-      }
-      pantry_items: {
-        Row: {
-          id: string
-          family_id: string
-          name: string
-          emoji: string | null
-          category: string | null
-          quantity: number | null
-          unit: string | null
-          minimum_quantity: number | null
-          expiry_date: string | null
-          notes: string | null
-          created_by: string | null
-          created_at: string | null
-        }
-        Insert: Omit<Database['public']['Tables']['pantry_items']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['pantry_items']['Insert']>
-        Relationships: never[]
-      }
-      social_events: {
-        Row: {
-          id: string
-          family_id: string
-          name: string
-          event_type: string
-          description: string | null
-          event_date: string | null
-          event_time: string | null
-          status: string
-          honoree_id: string | null
-          location_name: string | null
-          address: string | null
-          location_url: string | null
-          budget_planned: number | null
-          cover_emoji: string
-          notes: string | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: Omit<Database['public']['Tables']['social_events']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['social_events']['Insert']>
-        Relationships: never[]
-      }
-      social_event_tasks: {
-        Row: {
-          id: string
-          event_id: string
-          family_id: string
-          title: string
-          due_date: string | null
-          due_time: string | null
-          assigned_to: string | null
-          priority: number
-          status: string
-          notes: string | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: Omit<Database['public']['Tables']['social_event_tasks']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['social_event_tasks']['Insert']>
-        Relationships: never[]
-      }
-      social_event_shopping: {
-        Row: {
-          id: string
-          event_id: string
-          family_id: string
-          name: string
-          category: string | null
-          quantity: number | null
-          unit: string | null
-          estimated_price: number | null
-          actual_price: number | null
-          store: string | null
-          is_bought: boolean
-          assigned_to: string | null
-          notes: string | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: Omit<Database['public']['Tables']['social_event_shopping']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['social_event_shopping']['Insert']>
-        Relationships: never[]
-      }
-      social_event_contacts: {
-        Row: {
-          id: string
-          event_id: string
-          family_id: string
-          name: string
-          role: string
-          phone: string | null
-          email: string | null
-          rsvp_status: string
-          party_size: number
-          vendor_type: string | null
-          notes: string | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: Omit<Database['public']['Tables']['social_event_contacts']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['social_event_contacts']['Insert']>
-        Relationships: never[]
-      }
-      social_event_expenses: {
-        Row: {
-          id: string
-          event_id: string
-          family_id: string
-          description: string
-          category: string | null
-          planned_amount: number | null
-          actual_amount: number | null
-          vendor_id: string | null
-          payment_status: string
-          due_date: string | null
-          notes: string | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: Omit<Database['public']['Tables']['social_event_expenses']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['social_event_expenses']['Insert']>
+        Insert: Omit<Database['public']['Tables']['calendar_events']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['calendar_events']['Insert']>
         Relationships: never[]
       }
     }
-    Views: {
-      monthly_history_view: {
-        Row: {
-          /** YYYY-MM — ex: "2026-04" */
-          month: string
-          family_id: string
-          total_paid: number
-          total_pending: number
-          total_auto_debit: number
-          total_amount: number
-          paid_count: number
-          pending_count: number
-          auto_debit_count: number
-          total_count: number
-          top_category: string | null
-          top_category_amount: number | null
-        }
-        Relationships: never[]
-      }
-    }
-    Functions: {
-      get_daily_focus: {
-        Args: { p_family_id: string }
-        Returns: {
-          source: string
-          item_id: string
-          title: string
-          urgency: string
-          amount: number
-          due_date: string | null
-          emoji: string
-          subtitle?: string | null
-        }[]
-      }
-      get_radar_90: {
-        Args: { p_family_id: string }
-        Returns: {
-          source: string
-          item_id: string
-          title: string
-          due_date: string
-          days_until: number
-          urgency_score: number
-          amount: number
-          category: string
-          emoji: string
-        }[]
-      }
-    }
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
+    Views: {}
+    Functions: {}
+    Enums: {}
+    CompositeTypes: {}
   }
 }
 
-// ─── Shared Types ────────────────────────────────────────────────────────────
-export type ChecklistItem = { id: string; text: string; done: boolean }
-
-// ─── Leisure Types ───────────────────────────────────────────────────────────
-export type LeisureCategory =
-  | 'passeio' | 'viagem' | 'esporte' | 'cultura'
-  | 'entretenimento' | 'natureza' | 'social' | 'educativo' | 'outros'
-
-export type LeisurePlaceCategory =
-  | 'parque' | 'praia' | 'restaurante' | 'cinema' | 'teatro' | 'museu'
-  | 'esporte' | 'viagem' | 'clube' | 'outros'
-
-export type LeisureStatus = 'wishlist' | 'planejado' | 'realizado' | 'cancelado'
-export type LeisurePriority = 'baixa' | 'media' | 'alta'
-
-export type LeisureActivity = Database['public']['Tables']['leisure_activities']['Row']
-export type LeisureRecord   = Database['public']['Tables']['leisure_records']['Row']
-export type LeisurePlace    = Database['public']['Tables']['leisure_places']['Row']
-
-// ─── All Entity Aliases ───────────────────────────────────────────────────────
-export type Family           = Database['public']['Tables']['families']['Row']
-export type Profile          = Database['public']['Tables']['profiles']['Row']
-export type FamilyEvent      = Database['public']['Tables']['family_events']['Row']
-export type Task             = Database['public']['Tables']['tasks']['Row']
-export type Bill             = Database['public']['Tables']['bills']['Row']
-export type SavingsGoal      = Database['public']['Tables']['savings_goals']['Row']
-export type BudgetGoal       = Database['public']['Tables']['budget_goals']['Row']
-export type Medication       = Database['public']['Tables']['medications']['Row']
-export type MedicationLog    = Database['public']['Tables']['medication_logs']['Row']
-export type Vaccine          = Database['public']['Tables']['vaccines']['Row']
-export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
-export type WardrobeItem     = Database['public']['Tables']['wardrobe_items']['Row']
-export type HomeMaintenance  = Database['public']['Tables']['home_maintenance']['Row']
-export type MaintenanceCall  = Database['public']['Tables']['maintenance_calls']['Row']
-export type ShoppingItem     = Database['public']['Tables']['shopping_items']['Row']
-export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row']
-export type HealthTracking   = Database['public']['Tables']['health_tracking']['Row']
-export type HealthProtocol   = Database['public']['Tables']['health_protocols']['Row']
-export type Homework         = Database['public']['Tables']['homework']['Row']
-export type SchoolItem       = Database['public']['Tables']['school_items']['Row']
-export type WeeklySummary    = Database['public']['Tables']['weekly_summaries']['Row']
-export type ActivityFeed     = Database['public']['Tables']['activity_feed']['Row']
-export type GratitudeNote    = Database['public']['Tables']['gratitude_notes']['Row']
-export type MealPlan         = Database['public']['Tables']['meal_plan']['Row']
-export type MealIngredient   = Database['public']['Tables']['meal_ingredients']['Row']
-export type RecurrenceRule   = Database['public']['Tables']['recurrence_rules']['Row']
-
-// ─── Generic Aliases (tabelas sem definição completa na interface) ─────────────
-export type Recipe             = Database['public']['Tables']['recipes']['Row']
-export type PantryItem         = Database['public']['Tables']['pantry_items']['Row']
-export type Vehicle            = Database['public']['Tables']['vehicles']['Row']
-export type VehicleDocument    = Database['public']['Tables']['vehicle_documents']['Row']
-export type VehicleMaintenance = Database['public']['Tables']['vehicle_maintenance']['Row']
-export type VehicleCall        = Database['public']['Tables']['vehicle_calls']['Row']
-
-// Social aliases
-export type SocialEvent         = Database['public']['Tables']['social_events']['Row']
-export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
-export type SocialEventExpense  = Database['public']['Tables']['social_event_expenses']['Row']
-export type SocialEventShopping = Database['public']['Tables']['social_event_shopping']['Row']
-export type SocialEventTask     = Database['public']['Tables']['social_event_tasks']['Row']
-
-// School aliases
-export type SchoolCommunication = Database['public']['Tables']['school_communications']['Row']
-export type SchoolHomework      = Database['public']['Tables']['school_homework']['Row']
-export type SchoolSupply        = Database['public']['Tables']['school_supplies']['Row']
-
-// ─── Dashboard Types ──────────────────────────────────────────────────────────
-export type DailyFocusItem = {
-  source: 'bill' | 'shopping' | 'task' | 'maintenance' | 'event' | 'vaccine' | 'medication'
-  item_id: string
-  title: string
-  urgency: 'overdue' | 'running_out' | 'today' | 'tomorrow' | 'due_soon'
-  amount: number
-  due_date: string | null
-  emoji: string
-  subtitle: string | null
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
 }
 
-export type Radar90Item = {
-  source: string
-  item_id: string
-  title: string
-  due_date: string
-  days_until: number
-  urgency_score: number
-  amount: number
-  category: string
-  emoji: string
-}
-
-// ─── QuickRegister (Social/Emocional) ────────────────────────────────────────
-export type QuickRegisterType =
-  | 'gratidao'
-  | 'conquista'
-  | 'desafio'
-  | 'memoria'
-  | 'aprendizado'
-
-export const QUICK_REGISTER_ITEMS: Array<{
-  type: QuickRegisterType
-  label: string
-  emoji: string
-  wave: string
-  placeholder: string
-}> = [
-  { type: 'gratidao',    label: 'Gratidão',    emoji: '🙏', wave: 'text-amber-500',  placeholder: 'Pelo que você é grato hoje?' },
-  { type: 'conquista',   label: 'Conquista',   emoji: '🏆', wave: 'text-yellow-500', placeholder: 'O que você conquistou?' },
-  { type: 'desafio',     label: 'Desafio',     emoji: '💪', wave: 'text-blue-500',   placeholder: 'Qual desafio você enfrentou?' },
-  { type: 'memoria',     label: 'Memória',     emoji: '📸', wave: 'text-pink-500',   placeholder: 'Que memória especial quer guardar?' },
-  { type: 'aprendizado', label: 'Aprendizado', emoji: '📚', wave: 'text-green-500',  placeholder: 'O que você aprendeu?' },
-]
+export type LeisureCategory = 'passeio' | 'esporte' | 'cultura' | 'culinaria' | 'viagem' | 'jogo' | 'natureza' | 'outro'
+export type LeisureStatus = 'wishlist' | 'planned' | 'done' | 'skipped'
+export type LeisurePriority = 'low' | 'medium' | 'high'
+export type LeisurePlaceCategory = 'parque' | 'restaurante' | 'museu' | 'cinema' | 'praia' | 'shopping' | 'outro'
