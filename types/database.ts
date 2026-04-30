@@ -45,6 +45,7 @@ export interface Database {
           system_prompt: string | null
           provider: string | null
           api_key: string | null
+          max_history_messages: number
           updated_at: string | null
         }
         Insert: {
@@ -54,6 +55,7 @@ export interface Database {
           system_prompt?: string | null
           provider?: string | null
           api_key?: string | null
+          max_history_messages?: number
           updated_at?: string | null
         }
         Update: Partial<Database['public']['Tables']['ai_settings']['Insert']>
