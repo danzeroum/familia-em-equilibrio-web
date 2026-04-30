@@ -1037,10 +1037,23 @@ export interface ChecklistItem {
   done: boolean
 }
 
-export type LeisureCategory = 'passeio' | 'esporte' | 'cultura' | 'culinaria' | 'viagem' | 'jogo' | 'natureza' | 'outro'
-export type LeisureStatus = 'wishlist' | 'planned' | 'done' | 'skipped'
-export type LeisurePriority = 'low' | 'medium' | 'high'
-export type LeisurePlaceCategory = 'parque' | 'restaurante' | 'museu' | 'cinema' | 'praia' | 'shopping' | 'outro'
+export type LeisureCategory =
+  | 'passeio'
+  | 'viagem'
+  | 'esporte'
+  | 'cultura'
+  | 'entretenimento'
+  | 'natureza'
+  | 'social'
+  | 'educativo'
+  | 'culinaria'
+  | 'jogo'
+  | 'outros'
+  | 'outro'
+
+export type LeisureStatus = 'wishlist' | 'planejado' | 'realizado' | 'cancelado'
+export type LeisurePriority = 'low' | 'medium' | 'high' | 'alta' | 'media' | 'baixa'
+export type LeisurePlaceCategory = 'parque' | 'praia' | 'restaurante' | 'cinema' | 'teatro' | 'museu' | 'esporte' | 'viagem' | 'clube' | 'shopping' | 'outros' | 'outro'
 
 // ─── convenience aliases ──────────────────────────────────────────────────────
 export type ShoppingItem        = Database['public']['Tables']['shopping_items']['Row']
