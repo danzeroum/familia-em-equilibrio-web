@@ -1030,28 +1030,34 @@ export interface Database {
           family_id: string
           name: string
           event_type: string
-          status: 'planning' | 'confirmed' | 'done' | 'cancelled'
+          description: string | null
           event_date: string | null
           event_time: string | null
+          status: 'planning' | 'confirmed' | 'done' | 'cancelled' | string
+          honoree_id: string | null
           location_name: string | null
           address: string | null
-          cover_emoji: string | null
+          location_url: string | null
           budget_planned: number | null
+          cover_emoji: string
           notes: string | null
           created_by: string | null
-          created_at: string | null
+          created_at: string
         }
         Insert: {
           family_id: string
           name: string
-          event_type?: string
-          status?: 'planning' | 'confirmed' | 'done' | 'cancelled'
+          event_type: string
+          description?: string | null
           event_date?: string | null
           event_time?: string | null
+          status?: 'planning' | 'confirmed' | 'done' | 'cancelled' | string
+          honoree_id?: string | null
           location_name?: string | null
           address?: string | null
-          cover_emoji?: string | null
+          location_url?: string | null
           budget_planned?: number | null
+          cover_emoji?: string
           notes?: string | null
           created_by?: string | null
         }
@@ -1064,22 +1070,26 @@ export interface Database {
           family_id: string
           event_id: string
           title: string
-          status: 'pending' | 'done' | 'skipped'
-          priority: number
           due_date: string | null
+          due_time: string | null
           assigned_to: string | null
+          priority: number
+          status: 'pending' | 'done' | 'skipped' | string
           notes: string | null
-          created_at: string | null
+          created_by: string | null
+          created_at: string
         }
         Insert: {
           family_id: string
           event_id: string
           title: string
-          status?: 'pending' | 'done' | 'skipped'
-          priority?: number
           due_date?: string | null
+          due_time?: string | null
           assigned_to?: string | null
+          priority?: number
+          status?: 'pending' | 'done' | 'skipped' | string
           notes?: string | null
+          created_by?: string | null
         }
         Update: Partial<Database['public']['Tables']['social_event_tasks']['Insert']>
         Relationships: never[]
@@ -1090,28 +1100,32 @@ export interface Database {
           family_id: string
           event_id: string
           name: string
-          is_bought: boolean
+          category: string | null
           quantity: number | null
           unit: string | null
-          store: string | null
           estimated_price: number | null
           actual_price: number | null
+          store: string | null
+          is_bought: boolean
           assigned_to: string | null
           notes: string | null
-          created_at: string | null
+          created_by: string | null
+          created_at: string
         }
         Insert: {
           family_id: string
           event_id: string
           name: string
-          is_bought?: boolean
+          category?: string | null
           quantity?: number | null
           unit?: string | null
-          store?: string | null
           estimated_price?: number | null
           actual_price?: number | null
+          store?: string | null
+          is_bought?: boolean
           assigned_to?: string | null
           notes?: string | null
+          created_by?: string | null
         }
         Update: Partial<Database['public']['Tables']['social_event_shopping']['Insert']>
         Relationships: never[]
@@ -1122,26 +1136,28 @@ export interface Database {
           family_id: string
           event_id: string
           name: string
-          role: 'guest' | 'vendor' | 'helper' | 'other'
-          rsvp_status: 'pending' | 'confirmed' | 'declined' | 'maybe'
-          party_size: number
+          role: 'guest' | 'vendor' | 'helper' | 'other' | string
           phone: string | null
           email: string | null
+          rsvp_status: 'pending' | 'confirmed' | 'declined' | 'maybe' | string
+          party_size: number
           vendor_type: string | null
           notes: string | null
-          created_at: string | null
+          created_by: string | null
+          created_at: string
         }
         Insert: {
           family_id: string
           event_id: string
           name: string
-          role?: 'guest' | 'vendor' | 'helper' | 'other'
-          rsvp_status?: 'pending' | 'confirmed' | 'declined' | 'maybe'
-          party_size?: number
+          role?: 'guest' | 'vendor' | 'helper' | 'other' | string
           phone?: string | null
           email?: string | null
+          rsvp_status?: 'pending' | 'confirmed' | 'declined' | 'maybe' | string
+          party_size?: number
           vendor_type?: string | null
           notes?: string | null
+          created_by?: string | null
         }
         Update: Partial<Database['public']['Tables']['social_event_contacts']['Insert']>
         Relationships: never[]
@@ -1155,11 +1171,12 @@ export interface Database {
           category: string | null
           planned_amount: number | null
           actual_amount: number | null
-          payment_status: 'pending' | 'partial' | 'paid'
+          vendor_id: string | null
+          payment_status: 'pending' | 'partial' | 'paid' | string
           due_date: string | null
-          vendor_contact_id: string | null
           notes: string | null
-          created_at: string | null
+          created_by: string | null
+          created_at: string
         }
         Insert: {
           family_id: string
@@ -1168,10 +1185,11 @@ export interface Database {
           category?: string | null
           planned_amount?: number | null
           actual_amount?: number | null
-          payment_status?: 'pending' | 'partial' | 'paid'
+          vendor_id?: string | null
+          payment_status?: 'pending' | 'partial' | 'paid' | string
           due_date?: string | null
-          vendor_contact_id?: string | null
           notes?: string | null
+          created_by?: string | null
         }
         Update: Partial<Database['public']['Tables']['social_event_expenses']['Insert']>
         Relationships: never[]
