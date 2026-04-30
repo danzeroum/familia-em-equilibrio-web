@@ -14,6 +14,7 @@ export interface AISettings {
   system_prompt: string
   provider: LLMProvider
   api_key: string
+  max_history_messages: number
 }
 
 export function useAISettings(familyId: string | null) {
@@ -22,6 +23,7 @@ export function useAISettings(familyId: string | null) {
     system_prompt: DEFAULT_PROMPT,
     provider: 'ollama',
     api_key: '',
+    max_history_messages: 10,
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -31,7 +33,7 @@ export function useAISettings(familyId: string | null) {
     setIsLoading(true)
     const { data } = await supabase
       .from('ai_settings')
-      .select('model_id, system_prompt, provider, api_key')
+      .select('model_id, system_prompt, provider, api_key, max_history_messages')
       .eq('family_id', familyId)
       .maybeSingle()
     if (data) {
@@ -40,6 +42,7 @@ export function useAISettings(familyId: string | null) {
         system_prompt: data.system_prompt ?? DEFAULT_PROMPT,
         provider: (data.provider as LLMProvider) ?? 'ollama',
         api_key: data.api_key ?? '',
+        max_history_messages: data.max_history_messages ?? 10,
       })
     }
     setIsLoading(false)
@@ -57,6 +60,7 @@ export function useAISettings(familyId: string | null) {
       system_prompt: next.system_prompt,
       provider: next.provider,
       api_key: next.api_key || null,
+      max_history_messages: next.max_history_messages,
       updated_at: new Date().toISOString(),
     }
     await supabase.from('ai_settings').upsert(payload, { onConflict: 'family_id' })
