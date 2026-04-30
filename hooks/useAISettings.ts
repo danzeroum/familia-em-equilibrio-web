@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { AVAILABLE_MODELS, DEFAULT_MODEL, type LLMModelId } from '@/lib/llm-client'
+import { AVAILABLE_MODELS, DEFAULT_MODEL, type LLMModelId, type LLMProvider } from '@/lib/llm-client'
 
 export const DEFAULT_PROMPT = `Você é um assistente doméstico familiar inteligente e simpático.
 Responda perguntas sobre a organização da família de forma direta, clara e amigável em português brasileiro.
@@ -12,12 +12,16 @@ Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
 export interface AISettings {
   model_id: LLMModelId
   system_prompt: string
+  provider: LLMProvider
+  api_key: string
 }
 
 export function useAISettings(familyId: string | null) {
   const [settings, setSettings] = useState<AISettings>({
     model_id: DEFAULT_MODEL,
     system_prompt: DEFAULT_PROMPT,
+    provider: 'ollama',
+    api_key: '',
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -27,16 +31,17 @@ export function useAISettings(familyId: string | null) {
     setIsLoading(true)
     const { data } = await supabase
       .from('ai_settings')
-      .select('model_id, system_prompt')
+      .select('model_id, system_prompt, provider, api_key')
       .eq('family_id', familyId)
       .maybeSingle()
     if (data) {
       setSettings({
         model_id: (data.model_id as LLMModelId) ?? DEFAULT_MODEL,
         system_prompt: data.system_prompt ?? DEFAULT_PROMPT,
+        provider: (data.provider as LLMProvider) ?? 'ollama',
+        api_key: data.api_key ?? '',
       })
     }
-    // Se não há registro, mantém os defaults — isLoading termina de qualquer forma
     setIsLoading(false)
   }, [familyId])
 
@@ -50,6 +55,8 @@ export function useAISettings(familyId: string | null) {
       family_id: familyId,
       model_id: next.model_id,
       system_prompt: next.system_prompt,
+      provider: next.provider,
+      api_key: next.api_key || null,
       updated_at: new Date().toISOString(),
     }
     await supabase.from('ai_settings').upsert(payload, { onConflict: 'family_id' })

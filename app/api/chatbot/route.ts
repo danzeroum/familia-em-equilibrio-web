@@ -5,17 +5,19 @@ import { answerQuestion, isQuestion } from '@/lib/chatbot-query'
 import { LLMModelId, DEFAULT_MODEL } from '@/lib/llm-client'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-type AiSettingsRow = { model_id: string; system_prompt: string | null }
+type AiSettingsRow = { model_id: string; system_prompt: string | null; provider: string | null; api_key: string | null }
 
-async function getAISettings(familyId: string): Promise<{ model_id: LLMModelId; system_prompt: string | null }> {
+async function getAISettings(familyId: string) {
   const { data } = await supabaseAdmin
     .from('ai_settings')
-    .select('model_id, system_prompt')
+    .select('model_id, system_prompt, provider, api_key')
     .eq('family_id', familyId)
     .maybeSingle() as { data: AiSettingsRow | null }
   return {
     model_id: (data?.model_id as LLMModelId) ?? DEFAULT_MODEL,
     system_prompt: data?.system_prompt ?? null,
+    provider: data?.provider ?? 'ollama',
+    api_key: data?.api_key ?? null,
   }
 }
 
@@ -29,18 +31,17 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Busca configurações salvas pela família (model + prompt)
   const aiSettings = await getAISettings(familyId)
   const resolvedModelId: LLMModelId = (modelId as LLMModelId) ?? aiSettings.model_id
 
-  // ── Modo pergunta ──────────────────────────────────────────────────────────
   if (isQuestion(text) && !autoInsert) {
     try {
       const answer = await answerQuestion(
         text,
         familyId,
         resolvedModelId,
-        aiSettings.system_prompt ?? undefined
+        aiSettings.system_prompt ?? undefined,
+        aiSettings.api_key
       )
       return NextResponse.json({ answer, mode: 'query' })
     } catch (err: any) {
@@ -52,9 +53,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Modo inserção ──────────────────────────────────────────────────────────
   const llmBase = process.env.LLM_API_BASE
-  if (!llmBase) {
+  if (!llmBase && aiSettings.provider === 'ollama') {
     return NextResponse.json(
       { error: 'Configuração do LLM ausente. Defina LLM_API_BASE no .env' },
       { status: 500 }
