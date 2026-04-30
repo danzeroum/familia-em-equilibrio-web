@@ -30,6 +30,14 @@ const QUESTION_PATTERNS = [
   /\b(próxim[ao]s?|previsão|venc[ei]|atrasad[ao]s?|pendente[s]?)\b/i,
   /\b(resumo|balanço|situação|status|overview)\b/i,
   /\b(hoje|essa semana|este mês|semana que vem)\b/i,
+  // ── comandos imperativos que NÃO são inserção de dados ──────────────────────
+  /\b(busque?|busca[r]?|procure?|procura[r]?|pesquise?|pesquisa[r]?)\b/i,
+  /\b(d[êe]|dá|d[ãa]o)\s+(ideias?|sugest[õo]es?|dicas?|opç[õo]es?|exemplos?)\b/i,
+  /\b(sugira|sugere|recomende?|recomenda[r]?|indique?|indica[r]?)\b/i,
+  /\b(explique?|explica[r]?|conte?|conta[r]?)\b/i,
+  /\b(ajude?|ajuda[r]?|me ajude?)\b/i,
+  /\b(ideias?|dicas?|sugest[õo]es?)\b/i,
+  /\b(feriado[s]?|feriados? nacionais?|data[s]? comemorativa[s]?)\b/i,
 ]
 
 export function isQuestion(text: string): boolean {
@@ -312,7 +320,12 @@ Quando listar itens, use bullets ou numeração.
 Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
 
   const systemPrompt = `${basePrompt}\n\nHoje é ${today}.`
-  const userPrompt = `Com base nos dados abaixo, responda a pergunta do usuário.\n\n${contextText}\n\nPergunta: ${question}`
+
+  // Se há contexto do banco, inclui no prompt. Se não há (pergunta livre / conhecimento geral),
+  // deixa o LLM responder apenas com o system prompt — sem forçar JSON vazio como contexto.
+  const userPrompt = contextText.trim()
+    ? `Com base nos dados abaixo, responda a pergunta do usuário.\n\n${contextText}\n\nPergunta: ${question}`
+    : question
 
   const provider = modelId ? getModelProvider(modelId) : 'ollama'
   const client = createLLMClient(modelId, { provider, apiKey })
