@@ -907,6 +907,7 @@ export interface Database {
           instructions: string | null
           servings: number | null
           prep_time_min: number | null
+          prep_minutes: number | null
           tags: string[]
           source_url: string | null
           is_favorite: boolean
@@ -921,12 +922,43 @@ export interface Database {
           instructions?: string | null
           servings?: number | null
           prep_time_min?: number | null
+          prep_minutes?: number | null
           tags?: string[]
           source_url?: string | null
           is_favorite?: boolean
           created_by?: string | null
         }
         Update: Partial<Database['public']['Tables']['recipes']['Insert']>
+        Relationships: never[]
+      }
+      pantry_items: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          emoji: string | null
+          category: string | null
+          quantity: number | null
+          unit: string | null
+          minimum_quantity: number | null
+          expiry_date: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          name: string
+          emoji?: string | null
+          category?: string | null
+          quantity?: number | null
+          unit?: string | null
+          minimum_quantity?: number | null
+          expiry_date?: string | null
+          notes?: string | null
+          created_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['pantry_items']['Insert']>
         Relationships: never[]
       }
       subtasks: {
@@ -1009,3 +1041,29 @@ export type LeisureCategory = 'passeio' | 'esporte' | 'cultura' | 'culinaria' | 
 export type LeisureStatus = 'wishlist' | 'planned' | 'done' | 'skipped'
 export type LeisurePriority = 'low' | 'medium' | 'high'
 export type LeisurePlaceCategory = 'parque' | 'restaurante' | 'museu' | 'cinema' | 'praia' | 'shopping' | 'outro'
+
+// ─── convenience aliases ──────────────────────────────────────────────────────
+export type ShoppingItem = Database['public']['Tables']['shopping_items']['Row']
+export type MealPlan     = Database['public']['Tables']['meal_plans']['Row']
+export type Recipe       = Database['public']['Tables']['recipes']['Row']
+export type PantryItem   = Database['public']['Tables']['pantry_items']['Row']
+export type Task         = Database['public']['Tables']['tasks']['Row']
+export type Bill         = Database['public']['Tables']['bills']['Row']
+export type FamilyEvent  = Database['public']['Tables']['family_events']['Row']
+export type Profile      = Database['public']['Tables']['profiles']['Row']
+export type Medication   = Database['public']['Tables']['medications']['Row']
+export type Vaccine      = Database['public']['Tables']['vaccines']['Row']
+export type HomeMaintenance = Database['public']['Tables']['home_maintenance']['Row']
+export type WardrobeItem    = Database['public']['Tables']['wardrobe_items']['Row']
+export type EmergencyContact = Database['public']['Tables']['emergency_contacts']['Row']
+export type EmotionalCheckin = Database['public']['Tables']['emotional_checkins']['Row']
+export type CalendarEvent    = Database['public']['Tables']['calendar_events']['Row']
+export type Vehicle          = Database['public']['Tables']['vehicles']['Row']
+export type VehicleDocument  = Database['public']['Tables']['vehicle_documents']['Row']
+export type VehicleMaintenance = Database['public']['Tables']['vehicle_maintenance']['Row']
+export type LeisureActivity  = Database['public']['Tables']['leisure_activities']['Row']
+export type LeisureRecord    = Database['public']['Tables']['leisure_records']['Row']
+export type LeisurePlace     = Database['public']['Tables']['leisure_places']['Row']
+export type TaskCategory     = Database['public']['Tables']['task_categories']['Row']
+export type SavingsGoal      = Database['public']['Tables']['savings_goals']['Row']
+export type BudgetGoal       = Database['public']['Tables']['budget_goals']['Row']
