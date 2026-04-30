@@ -31,19 +31,26 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const aiSettings = await getAISettings(familyId)
-  const resolvedModelId: LLMModelId = (modelId as LLMModelId) ?? aiSettings.model_id
+  const aiSettingsPromise = getAISettings(familyId)
 
   if (isQuestion(text) && !autoInsert) {
     try {
-      const answer = await answerQuestion(
+      const aiSettings = await aiSettingsPromise
+      const resolvedModelId: LLMModelId = (modelId as LLMModelId) ?? aiSettings.model_id
+      const stream = await answerQuestion(
         text,
         familyId,
         resolvedModelId,
         aiSettings.system_prompt ?? undefined,
         aiSettings.api_key
       )
-      return NextResponse.json({ answer, mode: 'query' })
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Chatbot-Mode': 'query',
+          'Cache-Control': 'no-cache, no-transform',
+        },
+      })
     } catch (err: any) {
       console.error('[chatbot] Erro ao responder pergunta:', err?.message)
       return NextResponse.json(
@@ -52,6 +59,9 @@ export async function POST(req: NextRequest) {
       )
     }
   }
+
+  const aiSettings = await aiSettingsPromise
+  const resolvedModelId: LLMModelId = (modelId as LLMModelId) ?? aiSettings.model_id
 
   const llmBase = process.env.LLM_API_BASE
   if (!llmBase && aiSettings.provider === 'ollama') {
