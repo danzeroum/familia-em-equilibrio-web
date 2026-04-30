@@ -82,6 +82,33 @@ export function useChatbot() {
     })
   }
 
+  async function consumeAssistantStream(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+    if (typewriterRef.current) {
+      clearInterval(typewriterRef.current)
+      typewriterRef.current = null
+      setMessages(prev => prev.map(m => m.streaming ? { ...m, streaming: false } : m))
+    }
+
+    const id = genId()
+    setMessages(prev => [...prev, { id, role: 'assistant', content: '', streaming: true }])
+
+    const decoder = new TextDecoder()
+    let acc = ''
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        acc += decoder.decode(value, { stream: true })
+        setMessages(prev => prev.map(m => m.id === id ? { ...m, content: acc } : m))
+      }
+      acc += decoder.decode()
+    } finally {
+      setMessages(prev =>
+        prev.map(m => m.id === id ? { ...m, content: acc, streaming: false } : m)
+      )
+    }
+  }
+
   async function analyzeText(text: string) {
     setLoading(true)
     setRawText(text)
@@ -102,17 +129,19 @@ export function useChatbot() {
         }),
       })
 
-      const data = await res.json()
+      const ctype = res.headers.get('content-type') ?? ''
 
-      if (!res.ok) {
-        await addAssistantStreaming(`❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
+      // ── Modo pergunta: stream em tempo real ──
+      if (res.ok && ctype.startsWith('text/plain') && res.body) {
+        await consumeAssistantStream(res.body.getReader())
         setLoading(false)
         return
       }
 
-      // ── Modo pergunta: exibe resposta com typewriter ──
-      if (data.mode === 'query') {
-        await addAssistantStreaming(data.answer)
+      const data = await res.json()
+
+      if (!res.ok) {
+        await addAssistantStreaming(`❌ Erro: ${data.error ?? 'Falha desconhecida'}`)
         setLoading(false)
         return
       }
