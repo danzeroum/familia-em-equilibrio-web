@@ -1023,6 +1023,159 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['calendar_events']['Insert']>
         Relationships: never[]
       }
+      // ─── Social ─────────────────────────────────────────────────────────────
+      social_events: {
+        Row: {
+          id: string
+          family_id: string
+          name: string
+          event_type: string
+          status: 'planning' | 'confirmed' | 'done' | 'cancelled'
+          event_date: string | null
+          event_time: string | null
+          location_name: string | null
+          address: string | null
+          cover_emoji: string | null
+          budget_planned: number | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          name: string
+          event_type?: string
+          status?: 'planning' | 'confirmed' | 'done' | 'cancelled'
+          event_date?: string | null
+          event_time?: string | null
+          location_name?: string | null
+          address?: string | null
+          cover_emoji?: string | null
+          budget_planned?: number | null
+          notes?: string | null
+          created_by?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['social_events']['Insert']>
+        Relationships: never[]
+      }
+      social_event_tasks: {
+        Row: {
+          id: string
+          family_id: string
+          event_id: string
+          title: string
+          status: 'pending' | 'done' | 'skipped'
+          priority: number
+          due_date: string | null
+          assigned_to: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          event_id: string
+          title: string
+          status?: 'pending' | 'done' | 'skipped'
+          priority?: number
+          due_date?: string | null
+          assigned_to?: string | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['social_event_tasks']['Insert']>
+        Relationships: never[]
+      }
+      social_event_shopping: {
+        Row: {
+          id: string
+          family_id: string
+          event_id: string
+          name: string
+          is_bought: boolean
+          quantity: number | null
+          unit: string | null
+          store: string | null
+          estimated_price: number | null
+          actual_price: number | null
+          assigned_to: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          event_id: string
+          name: string
+          is_bought?: boolean
+          quantity?: number | null
+          unit?: string | null
+          store?: string | null
+          estimated_price?: number | null
+          actual_price?: number | null
+          assigned_to?: string | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['social_event_shopping']['Insert']>
+        Relationships: never[]
+      }
+      social_event_contacts: {
+        Row: {
+          id: string
+          family_id: string
+          event_id: string
+          name: string
+          role: 'guest' | 'vendor' | 'helper' | 'other'
+          rsvp_status: 'pending' | 'confirmed' | 'declined' | 'maybe'
+          party_size: number
+          phone: string | null
+          email: string | null
+          vendor_type: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          event_id: string
+          name: string
+          role?: 'guest' | 'vendor' | 'helper' | 'other'
+          rsvp_status?: 'pending' | 'confirmed' | 'declined' | 'maybe'
+          party_size?: number
+          phone?: string | null
+          email?: string | null
+          vendor_type?: string | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['social_event_contacts']['Insert']>
+        Relationships: never[]
+      }
+      social_event_expenses: {
+        Row: {
+          id: string
+          family_id: string
+          event_id: string
+          description: string
+          category: string | null
+          planned_amount: number | null
+          actual_amount: number | null
+          payment_status: 'pending' | 'partial' | 'paid'
+          due_date: string | null
+          vendor_contact_id: string | null
+          notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          family_id: string
+          event_id: string
+          description: string
+          category?: string | null
+          planned_amount?: number | null
+          actual_amount?: number | null
+          payment_status?: 'pending' | 'partial' | 'paid'
+          due_date?: string | null
+          vendor_contact_id?: string | null
+          notes?: string | null
+        }
+        Update: Partial<Database['public']['Tables']['social_event_expenses']['Insert']>
+        Relationships: never[]
+      }
     }
     Views: {}
     Functions: {}
@@ -1084,3 +1237,9 @@ export type BudgetGoal          = Database['public']['Tables']['budget_goals']['
 export type SchoolCommunication = Database['public']['Tables']['school_communications']['Row']
 export type SchoolHomework      = Database['public']['Tables']['school_homework']['Row']
 export type SchoolSupply        = Database['public']['Tables']['school_supplies']['Row']
+// ─── social aliases ───────────────────────────────────────────────────────────
+export type SocialEvent         = Database['public']['Tables']['social_events']['Row']
+export type SocialEventTask     = Database['public']['Tables']['social_event_tasks']['Row']
+export type SocialEventShopping = Database['public']['Tables']['social_event_shopping']['Row']
+export type SocialEventContact  = Database['public']['Tables']['social_event_contacts']['Row']
+export type SocialEventExpense  = Database['public']['Tables']['social_event_expenses']['Row']
