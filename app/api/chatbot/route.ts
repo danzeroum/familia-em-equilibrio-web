@@ -89,6 +89,24 @@ export async function POST(req: NextRequest) {
     const parseResult = await parseUserInput(text, resolvedModelId)
 
     if (!autoInsert) {
+      // Parser não achou itens estruturáveis → não é uma lista para salvar.
+      // Trata como pergunta livre e deixa o LLM responder em streaming.
+      if (!parseResult.items || parseResult.items.length === 0) {
+        const stream = await answerQuestion(
+          text,
+          familyId,
+          resolvedModelId,
+          aiSettings.system_prompt ?? undefined,
+          aiSettings.api_key
+        )
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'X-Chatbot-Mode': 'query',
+            'Cache-Control': 'no-cache, no-transform',
+          },
+        })
+      }
       return NextResponse.json({ preview: parseResult.items, mode: 'insert' })
     }
 
