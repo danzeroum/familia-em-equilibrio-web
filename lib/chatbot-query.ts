@@ -49,9 +49,11 @@ function safeIds(ids: string[]): string[] {
   return ids.length > 0 ? ids : [EMPTY_UUID]
 }
 
+interface ContextResult { label: string; data: any }
+
 interface ContextFetcher {
   pattern: RegExp
-  fetch: (familyId: string) => Promise<{ label: string; data: any[] }>
+  fetch: (familyId: string, memberIds: string[]) => Promise<ContextResult>
 }
 
 const CONTEXT_FETCHERS: ContextFetcher[] = [
@@ -103,8 +105,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
   },
   {
     pattern: /\b(tarefa[s]?|afazere[s]?|pendência[s]?|to.?do|fazer|incumbência[s]?|dever[s]?|obrigaç[aã]o|atividade[s]?)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
+    fetch: async (_fid, memberIds) => {
       const { data } = await supabaseAdmin
         .from('tasks')
         .select('title, status, due_date, due_time, assigned_to, priority, notes')
@@ -117,11 +118,10 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
   },
   {
     pattern: /\b(lição|dever de casa|homework|escol[a]?|matéria|prova[s]?|trabalho escolar|boletim)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
+    fetch: async (fid, memberIds) => {
       const [hw, shw] = await Promise.all([
-        supabaseAdmin.from('homework').select('title, subject, due_date, status, notes').in('profile_id', safeIds(memberIds)).order('due_date', { ascending: true }),
-        supabaseAdmin.from('school_homework').select('title, subject, due_date, status, notes').eq('family_id', fid).order('due_date', { ascending: true }),
+        supabaseAdmin.from('homework').select('title, subject, due_date, status, notes').in('profile_id', safeIds(memberIds)).order('due_date', { ascending: true }).limit(20),
+        supabaseAdmin.from('school_homework').select('title, subject, due_date, status, notes').eq('family_id', fid).order('due_date', { ascending: true }).limit(20),
       ])
       return { label: 'Lições e tarefas escolares', data: [...(hw.data ?? []), ...(shw.data ?? [])] }
     },
@@ -130,7 +130,7 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     pattern: /\b(material escolar|mochila|caderno[s]?|lápis|uniforme|comunicado|recado da escola|lista de material)\b/i,
     fetch: async (fid) => {
       const [supplies, comms] = await Promise.all([
-        supabaseAdmin.from('school_supplies').select('name, quantity, is_bought, notes').eq('family_id', fid),
+        supabaseAdmin.from('school_supplies').select('name, quantity, is_bought, notes').eq('family_id', fid).limit(30),
         supabaseAdmin.from('school_communications').select('title, content, received_at, is_read').eq('family_id', fid).order('received_at', { ascending: false }).limit(10),
       ])
       return { label: 'Materiais e comunicados escolares', data: [...(supplies.data ?? []), ...(comms.data ?? [])] }
@@ -140,32 +140,32 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     pattern: /\b(carro[s]?|veículo[s]?|óleo|pneu[s]?|moto|combustível|mecânico|borracharia|ipva|licenciamento|seguro do carro|revisão|quilometragem|km|versa|frota|documento[s]? do carro)\b/i,
     fetch: async (fid) => {
       const [vehicles, maintenance, docs, calls] = await Promise.all([
-        supabaseAdmin.from('vehicles').select('nickname, type, brand, model, year, plate, fuel_type, current_km, is_active, notes').eq('family_id', fid).eq('is_active', true),
-        supabaseAdmin.from('vehicle_maintenance').select('title, status, next_due_at, last_done_at, frequency_label, next_due_km, notes').eq('family_id', fid).order('next_due_at', { ascending: true, nullsFirst: false }),
-        supabaseAdmin.from('vehicle_documents').select('title, expiry_date, status, notes').eq('family_id', fid).order('expiry_date', { ascending: true }),
-        supabaseAdmin.from('vehicle_calls').select('title, status, scheduled_date, estimated_cost, notes').eq('family_id', fid).neq('status', 'done'),
+        supabaseAdmin.from('vehicles').select('nickname, type, brand, model, year, plate, fuel_type, current_km, is_active, notes').eq('family_id', fid).eq('is_active', true).limit(20),
+        supabaseAdmin.from('vehicle_maintenance').select('title, status, next_due_at, last_done_at, frequency_label, next_due_km, notes').eq('family_id', fid).order('next_due_at', { ascending: true, nullsFirst: false }).limit(20),
+        supabaseAdmin.from('vehicle_documents').select('title, expiry_date, status, notes').eq('family_id', fid).order('expiry_date', { ascending: true }).limit(20),
+        supabaseAdmin.from('vehicle_calls').select('title, status, scheduled_date, estimated_cost, notes').eq('family_id', fid).neq('status', 'done').limit(20),
       ])
-      return { label: 'Veículos — manutenção, documentos e chamados', data: { veiculos: vehicles.data ?? [], manutencoes: maintenance.data ?? [], documentos: docs.data ?? [], chamados: calls.data ?? [] } as any }
+      return { label: 'Veículos — manutenção, documentos e chamados', data: { veiculos: vehicles.data ?? [], manutencoes: maintenance.data ?? [], documentos: docs.data ?? [], chamados: calls.data ?? [] } }
     },
   },
   {
     pattern: /\b(manutenç[aã]o da casa|rotina da casa|conservaç[aã]o|limpeza peri[oó]dic|vistoria|inspeç[aã]o|manutenções)\b/i,
     fetch: async (fid) => {
-      const { data } = await supabaseAdmin.from('home_maintenance').select('title, status, next_due_at, frequency_label, category, notes').eq('family_id', fid).order('next_due_at', { ascending: true, nullsFirst: false })
+      const { data } = await supabaseAdmin.from('home_maintenance').select('title, status, next_due_at, frequency_label, category, notes').eq('family_id', fid).order('next_due_at', { ascending: true, nullsFirst: false }).limit(30)
       return { label: 'Manutenções da casa', data: data ?? [] }
     },
   },
   {
     pattern: /\b(chamado[s]?|reparo[s]?|conserto[s]?|quebrad[oa]s?|urgente[s]?|serviço[s]?|profissional|encanador|eletricista|pedreiro|técnico)\b/i,
     fetch: async (fid) => {
-      const { data } = await supabaseAdmin.from('maintenance_calls').select('title, status, priority, scheduled_date, professional_name, estimated_cost, description').eq('family_id', fid).neq('status', 'done').order('priority', { ascending: false })
+      const { data } = await supabaseAdmin.from('maintenance_calls').select('title, status, priority, scheduled_date, professional_name, estimated_cost, description').eq('family_id', fid).neq('status', 'done').order('priority', { ascending: false }).limit(30)
       return { label: 'Chamados de manutenção abertos', data: data ?? [] }
     },
   },
   {
     pattern: /\b(conta[s]?|financeiro|despesa[s]?|fatura[s]?|pagament[oa]s?|gasto[s]?|boleto[s]?|parcela[s]?|venciment[oa]s?|divida[s]?|mensalidade[s]?|aluguel|luz|água|internet|telefone|streaming|plano)\b/i,
     fetch: async (fid) => {
-      const { data } = await supabaseAdmin.from('bills').select('title, amount, due_day, due_date, status, category, is_recurring, payment_method').eq('family_id', fid).order('due_day', { ascending: true, nullsFirst: false })
+      const { data } = await supabaseAdmin.from('bills').select('title, amount, due_day, due_date, status, category, is_recurring, payment_method').eq('family_id', fid).order('due_day', { ascending: true, nullsFirst: false }).limit(40)
       return { label: 'Contas e despesas', data: data ?? [] }
     },
   },
@@ -173,34 +173,32 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     pattern: /\b(meta[s]? de economia|poupança|economizar|reserva|orçamento|budget|meta financeira|objetivo financeiro)\b/i,
     fetch: async (fid) => {
       const [savings, budget] = await Promise.all([
-        supabaseAdmin.from('savings_goals').select('title, target_amount, current_amount, deadline, status, notes').eq('family_id', fid),
-        supabaseAdmin.from('budget_goals').select('category, limit_amount, spent_amount, period, notes').eq('family_id', fid),
+        supabaseAdmin.from('savings_goals').select('title, target_amount, current_amount, deadline, status, notes').eq('family_id', fid).limit(20),
+        supabaseAdmin.from('budget_goals').select('category, limit_amount, spent_amount, period, notes').eq('family_id', fid).limit(20),
       ])
-      return { label: 'Metas financeiras e orçamento', data: { metas: savings.data ?? [], orcamento: budget.data ?? [] } as any }
+      return { label: 'Metas financeiras e orçamento', data: { metas: savings.data ?? [], orcamento: budget.data ?? [] } }
     },
   },
   {
     pattern: /\b(remédio[s]?|medicament[oa]s?|medicaç[aã]o|estoque|comprimido[s]?|cápsula[s]?|xarope[s]?|pomada[s]?|dose[s]?|posologia|receita médica)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
-      const { data } = await supabaseAdmin.from('medications').select('name, dosage, form, is_active, stock_quantity, minimum_stock, expiry_date, notes').in('profile_id', safeIds(memberIds)).eq('is_active', true).order('name')
+    fetch: async (_fid, memberIds) => {
+      const { data } = await supabaseAdmin.from('medications').select('name, dosage, form, is_active, stock_quantity, minimum_stock, expiry_date, notes').in('profile_id', safeIds(memberIds)).eq('is_active', true).order('name').limit(30)
       return { label: 'Medicamentos ativos', data: data ?? [] }
     },
   },
   {
     pattern: /\b(vacina[s]?|imunizaç[aã]o|dose[s]? da vacina|carteira de vacina|reforço|vacinação)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
-      const { data } = await supabaseAdmin.from('vaccines').select('name, applied_at, next_due, notes').in('profile_id', safeIds(memberIds)).order('next_due', { ascending: true, nullsFirst: false })
+    fetch: async (_fid, memberIds) => {
+      const { data } = await supabaseAdmin.from('vaccines').select('name, applied_at, next_due, notes').in('profile_id', safeIds(memberIds)).order('next_due', { ascending: true, nullsFirst: false }).limit(30)
       return { label: 'Vacinas', data: data ?? [] }
     },
   },
   {
     pattern: /\b(saúde|médico[s]?|exame[s]?|resultado[s]?|peso|pressão|glicemia|acompanhament[oa] de saúde|protocolo de saúde)\b/i,
-    fetch: async (fid) => {
+    fetch: async (fid, memberIds) => {
       const [tracking, protocols] = await Promise.all([
         supabaseAdmin.from('health_tracking').select('title, category, status, next_due_at, frequency_label, profile_id, notes').eq('family_id', fid).order('next_due_at', { ascending: true, nullsFirst: false }).limit(20),
-        supabaseAdmin.from('health_protocols').select('title, trigger_condition, action_text, priority, is_active').in('profile_id', safeIds(await getMemberIds(fid))).eq('is_active', true).limit(10),
+        supabaseAdmin.from('health_protocols').select('title, trigger_condition, action_text, priority, is_active').in('profile_id', safeIds(memberIds)).eq('is_active', true).limit(10),
       ])
       return { label: 'Acompanhamentos e protocolos de saúde', data: [...(tracking.data ?? []), ...(protocols.data ?? [])] }
     },
@@ -217,80 +215,76 @@ const CONTEXT_FETCHERS: ContextFetcher[] = [
     pattern: /\b(festa[s]?|churrasco[s]?|comemoração|celebração|convidado[s]?|evento social|aniversário de)\b/i,
     fetch: async (fid) => {
       const [events, tasks, shopping, expenses] = await Promise.all([
-        supabaseAdmin.from('social_events').select('title, event_date, location, status, notes').eq('family_id', fid).order('event_date', { ascending: true }),
-        supabaseAdmin.from('social_event_tasks').select('title, status, assigned_to, due_date').eq('family_id', fid),
-        supabaseAdmin.from('social_event_shopping').select('name, quantity, is_bought, estimated_cost').eq('family_id', fid),
-        supabaseAdmin.from('social_event_expenses').select('title, amount, category, notes').eq('family_id', fid),
+        supabaseAdmin.from('social_events').select('title, event_date, location, status, notes').eq('family_id', fid).order('event_date', { ascending: true }).limit(20),
+        supabaseAdmin.from('social_event_tasks').select('title, status, assigned_to, due_date').eq('family_id', fid).limit(20),
+        supabaseAdmin.from('social_event_shopping').select('name, quantity, is_bought, estimated_cost').eq('family_id', fid).limit(20),
+        supabaseAdmin.from('social_event_expenses').select('title, amount, category, notes').eq('family_id', fid).limit(20),
       ])
-      return { label: 'Eventos sociais (festas, celebrações)', data: { eventos: events.data ?? [], tarefas: tasks.data ?? [], compras: shopping.data ?? [], despesas: expenses.data ?? [] } as any }
+      return { label: 'Eventos sociais (festas, celebrações)', data: { eventos: events.data ?? [], tarefas: tasks.data ?? [], compras: shopping.data ?? [], despesas: expenses.data ?? [] } }
     },
   },
   {
     pattern: /\b(roupa[s]?|guarda.?roupa|vestuário|armário de roupa|peça[s]? de roupa|uniforme[s]?|calçado[s]?|tênis|sapato[s]?)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
-      const { data } = await supabaseAdmin.from('wardrobe_items').select('name, category, color, size, season, notes').in('profile_id', safeIds(memberIds)).order('name')
+    fetch: async (_fid, memberIds) => {
+      const { data } = await supabaseAdmin.from('wardrobe_items').select('name, category, color, size, season, notes').in('profile_id', safeIds(memberIds)).order('name').limit(30)
       return { label: 'Guarda-roupa', data: data ?? [] }
     },
   },
   {
     pattern: /\b(emergência|contato[s]? de emergência|socorro|urgência|bombeiro|samu|polícia|vizinho[s]?|prestador[s]?)\b/i,
     fetch: async (fid) => {
-      const { data } = await supabaseAdmin.from('emergency_contacts').select('name, phone, relationship, notes').eq('family_id', fid).order('name')
+      const { data } = await supabaseAdmin.from('emergency_contacts').select('name, phone, relationship, notes').eq('family_id', fid).order('name').limit(30)
       return { label: 'Contatos de emergência', data: data ?? [] }
     },
   },
   {
     pattern: /\b(emocional|humor|sentimento[s]?|checkin|bem.?estar|ansiedade|estresse|feliz|triste|cansado)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
+    fetch: async (_fid, memberIds) => {
       const { data } = await supabaseAdmin.from('emotional_checkins').select('mood, notes, created_at, profile_id').in('profile_id', safeIds(memberIds)).order('created_at', { ascending: false }).limit(10)
       return { label: 'Últimos check-ins emocionais', data: data ?? [] }
     },
   },
   {
     pattern: /\b(gratidão|grato|agradecer|nota[s]? de gratidão|diário)\b/i,
-    fetch: async (fid) => {
-      const memberIds = await getMemberIds(fid)
+    fetch: async (_fid, memberIds) => {
       const { data } = await supabaseAdmin.from('gratitude_notes').select('content, created_at, profile_id').in('profile_id', safeIds(memberIds)).order('created_at', { ascending: false }).limit(10)
       return { label: 'Notas de gratidão', data: data ?? [] }
     },
   },
 ]
 
-async function fetchContext(question: string, familyId: string) {
-  const matched: { label: string; data: any[] }[] = []
-  for (const fetcher of CONTEXT_FETCHERS) {
-    if (fetcher.pattern.test(question)) {
-      try {
-        const result = await fetcher.fetch(familyId)
-        matched.push(result)
-      } catch (err: any) {
-        console.error(`[chatbot-query] erro ao buscar contexto:`, err?.message)
-      }
-    }
+async function fetchContext(question: string, familyId: string, memberIds: string[]): Promise<ContextResult[]> {
+  const matches = CONTEXT_FETCHERS.filter(f => f.pattern.test(question))
+
+  if (matches.length > 0) {
+    const settled = await Promise.all(
+      matches.map(f =>
+        f.fetch(familyId, memberIds).catch((err: any) => {
+          console.error('[chatbot-query] fetcher error:', err?.message)
+          return null
+        })
+      )
+    )
+    return settled.filter((r): r is ContextResult => r !== null)
   }
-  if (matched.length === 0) {
-    const memberIds = await getMemberIds(familyId)
-    const [shopping, tasks, bills, events, vehicles] = await Promise.all([
-      supabaseAdmin.from('shopping_items').select('name, is_bought').eq('family_id', familyId).eq('is_bought', false),
-      supabaseAdmin.from('tasks').select('title, status').in('assigned_to', safeIds(memberIds)).neq('status', 'done'),
-      supabaseAdmin.from('bills').select('title, amount, status').eq('family_id', familyId),
-      supabaseAdmin.from('family_events').select('title, event_date').eq('family_id', familyId).gte('event_date', new Date().toISOString().split('T')[0]).limit(5),
-      supabaseAdmin.from('vehicle_maintenance').select('title, status, next_due_at').eq('family_id', familyId).limit(5),
-    ])
-    matched.push({
-      label: 'Resumo geral da família',
-      data: [
-        { compras_pendentes: (shopping.data ?? []).length },
-        { tarefas_pendentes: (tasks.data ?? []).length },
-        { contas_cadastradas: (bills.data ?? []).length },
-        { proximos_eventos: events.data ?? [] },
-        { manutencoes_veiculo: vehicles.data ?? [] },
-      ],
-    })
-  }
-  return matched
+
+  const [shopping, tasks, bills, events, vehicles] = await Promise.all([
+    supabaseAdmin.from('shopping_items').select('name, is_bought').eq('family_id', familyId).eq('is_bought', false),
+    supabaseAdmin.from('tasks').select('title, status').in('assigned_to', safeIds(memberIds)).neq('status', 'done'),
+    supabaseAdmin.from('bills').select('title, amount, status').eq('family_id', familyId),
+    supabaseAdmin.from('family_events').select('title, event_date').eq('family_id', familyId).gte('event_date', new Date().toISOString().split('T')[0]).limit(5),
+    supabaseAdmin.from('vehicle_maintenance').select('title, status, next_due_at').eq('family_id', familyId).limit(5),
+  ])
+  return [{
+    label: 'Resumo geral da família',
+    data: [
+      { compras_pendentes: (shopping.data ?? []).length },
+      { tarefas_pendentes: (tasks.data ?? []).length },
+      { contas_cadastradas: (bills.data ?? []).length },
+      { proximos_eventos: events.data ?? [] },
+      { manutencoes_veiculo: vehicles.data ?? [] },
+    ],
+  }]
 }
 
 export async function answerQuestion(
@@ -299,51 +293,97 @@ export async function answerQuestion(
   modelId?: LLMModelId,
   customSystemPrompt?: string,
   apiKey?: string | null
-): Promise<string> {
-  const context = await fetchContext(question, familyId)
+): Promise<ReadableStream<Uint8Array>> {
+  const memberIds = await getMemberIds(familyId)
+  const context = await fetchContext(question, familyId, memberIds)
+
   const today = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
   const contextText = context
-    .map(c => `### ${c.label}\n${JSON.stringify(c.data, null, 2)}`)
+    .map(c => `### ${c.label}\n${JSON.stringify(c.data)}`)
     .join('\n\n')
 
-  const basePrompt = customSystemPrompt ?? `Você é um assistente doméstico familiar inteligente e simpático.\nResponda perguntas sobre a organização da família de forma direta, clara e amigável em português brasileiro.\nUse emojis quando apropriado. Seja conciso mas completo.\nQuando listar itens, use bullets ou numeração.\nSe os dados estiverem vazios, diga que não há registros e sugira adicionar.`
+  const basePrompt = customSystemPrompt ?? `Você é um assistente doméstico familiar inteligente e simpático.
+Responda perguntas sobre a organização da família de forma direta, clara e amigável em português brasileiro.
+Use emojis quando apropriado. Seja conciso mas completo.
+Quando listar itens, use bullets ou numeração.
+Se os dados estiverem vazios, diga que não há registros e sugira adicionar.`
 
   const systemPrompt = `${basePrompt}\n\nHoje é ${today}.`
   const userPrompt = `Com base nos dados abaixo, responda a pergunta do usuário.\n\n${contextText}\n\nPergunta: ${question}`
 
   const provider = modelId ? getModelProvider(modelId) : 'ollama'
+  const client = createLLMClient(modelId, { provider, apiKey })
+  const model = modelId ?? DEFAULT_MODEL
+  const encoder = new TextEncoder()
 
+  let llmStream: AsyncIterable<any> | null = null
+  let openErr: any = null
   try {
-    const client = createLLMClient(modelId, { provider, apiKey })
-    const model = modelId ?? DEFAULT_MODEL
-    const response = await client.chat.completions.create({
+    llmStream = await client.chat.completions.create({
       model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user',   content: userPrompt },
       ],
       temperature: 0.3,
-    })
-    return response.choices[0].message.content ?? 'Não consegui gerar uma resposta.'
+      max_tokens: 600,
+      stream: true,
+    }) as any
   } catch (err: any) {
+    openErr = err
     console.error('[chatbot-query] erro LLM:', err?.message)
-    return formatFallbackAnswer(question, context)
   }
+
+  if (!llmStream) {
+    const fallback = formatFallbackAnswer(question, context, openErr)
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(fallback))
+        controller.close()
+      },
+    })
+  }
+
+  const stream = llmStream
+  return new ReadableStream({
+    async start(controller) {
+      let emitted = false
+      try {
+        for await (const chunk of stream) {
+          const delta = chunk?.choices?.[0]?.delta?.content
+          if (delta) {
+            controller.enqueue(encoder.encode(delta))
+            emitted = true
+          }
+        }
+      } catch (err: any) {
+        console.error('[chatbot-query] erro durante stream:', err?.message)
+        if (!emitted) {
+          controller.enqueue(encoder.encode(formatFallbackAnswer(question, context, err)))
+        } else {
+          controller.enqueue(encoder.encode('\n\n_⚠️ Conexão interrompida._'))
+        }
+      } finally {
+        controller.close()
+      }
+    },
+  })
 }
 
-function formatFallbackAnswer(question: string, context: { label: string; data: any[] }[]): string {
+function formatFallbackAnswer(question: string, context: ContextResult[], _err?: any): string {
   if (context.length === 0) return 'Não encontrei dados relacionados à sua pergunta.'
   const lines: string[] = []
   for (const ctx of context) {
-    lines.push(`**${ctx.label}** (${ctx.data.length} registros)`)
-    ctx.data.slice(0, 10).forEach((item: any) => {
+    const arr = Array.isArray(ctx.data) ? ctx.data : []
+    lines.push(`**${ctx.label}** (${arr.length} registros)`)
+    arr.slice(0, 10).forEach((item: any) => {
       const name = item.name ?? item.title ?? item.summary ?? JSON.stringify(item)
       lines.push(`• ${name}`)
     })
-    if (ctx.data.length > 10) lines.push(`  _...e mais ${ctx.data.length - 10} itens_`)
+    if (arr.length > 10) lines.push(`  _...e mais ${arr.length - 10} itens_`)
   }
   return lines.join('\n')
 }
