@@ -22,14 +22,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Pega sessão existente
     supabase.auth.getSession().then(({ data }) => {
-      console.log('[AuthProvider] sessão inicial:', data.session?.user?.id ?? 'nenhuma')
       setSession(data.session)
       setLoading(false)
     })
 
     // Escuta mudanças de auth (login, logout, refresh)
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('[AuthProvider] auth mudou:', _event, session?.user?.id ?? 'sem sessão')
       setSession(session)
     })
 

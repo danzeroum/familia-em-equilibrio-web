@@ -114,16 +114,20 @@ export function useChatbot() {
     setRawText(text)
     addMessage('user', text)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token ?? ''
 
     try {
       const res = await fetch('/api/chatbot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           text,
           familyId,
-          createdBy: user?.id ?? currentUser?.id,
+          createdBy: session?.user?.id ?? currentUser?.id,
           autoInsert: false,
           modelId,
         }),
@@ -168,16 +172,20 @@ export function useChatbot() {
   async function confirmInsert(items: ParsedItem[]) {
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token ?? ''
 
     try {
       const res = await fetch('/api/chatbot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           text: rawText,
           familyId,
-          createdBy: user?.id ?? currentUser?.id,
+          createdBy: session?.user?.id ?? currentUser?.id,
           autoInsert: true,
           modelId,
           items,

@@ -1,5 +1,6 @@
 'use client'
 
+import DOMPurify from 'dompurify'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useChatbot } from '@/hooks/useChatbot'
 import { TYPE_CONFIG, ParsedItem, ParsedItemType } from '@/types/chatbot'
@@ -168,13 +169,14 @@ export function ChatbotModal() {
                 >
                   <span
                     dangerouslySetInnerHTML={{
-                      __html:
+                      __html: DOMPurify.sanitize(
                         msg.content
                           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                           .replace(/\n/g, '<br/>') +
                         (msg.streaming
                           ? '<span style="display:inline-block;width:8px;height:13px;background:currentColor;margin-left:2px;border-radius:1px;animation:blink 1s step-end infinite;vertical-align:text-bottom;opacity:0.7"></span>'
-                          : ''),
+                          : '')
+                      ),
                     }}
                   />
                 </div>
