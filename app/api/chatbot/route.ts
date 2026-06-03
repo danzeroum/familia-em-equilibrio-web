@@ -29,6 +29,16 @@ async function getAISettings(familyId: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '')
+  if (!token) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
+  const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token)
+  if (authError || !authUser) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   const { text, familyId, createdBy, autoInsert, modelId, items, history } = await req.json()
 
   if (!text || !familyId || !createdBy) {
@@ -36,6 +46,17 @@ export async function POST(req: NextRequest) {
       { error: 'text, familyId e createdBy são obrigatórios' },
       { status: 400 }
     )
+  }
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('id', authUser.id)
+    .eq('family_id', familyId)
+    .maybeSingle()
+
+  if (!profile) {
+    return NextResponse.json({ error: 'Acesso negado à família' }, { status: 403 })
   }
 
   const aiSettingsPromise = getAISettings(familyId)
@@ -114,9 +135,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...parseResult, insertResult })
   } catch (err: any) {
     console.error('[chatbot] Erro na pipeline:', err?.message ?? err)
-    return NextResponse.json(
-      { error: err?.message ?? 'Erro interno', detail: err?.cause ?? null },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }
 }
