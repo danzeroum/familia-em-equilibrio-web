@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  # ─── Supabase Stack ────────────────────────────────────────
+  # ─── Supabase Stack ────────────────────────────────────────────────────────
   db:
     image: supabase/postgres:15.1.0.147
     container_name: supabase-db
@@ -16,37 +16,19 @@ services:
       - ./supabase/migrations:/docker-entrypoint-initdb.d
     networks:
       - internal
-
-  studio:
-    image: supabase/studio:latest
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    environment:
-      SUPABASE_URL: http://kong:8000
-      STUDIO_PG_META_URL: http://meta:8080
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
-    networks:
-      - internal
-
-  kong:
-    image: kong:2.8.1
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
-      KONG_PLUGINS: request-transformer,cors,key-auth,acl
-    volumes:
-      - ./supabase/kong.yml:/var/lib/kong/kong.yml
-    networks:
-      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   auth:
     image: supabase/gotrue:v2.157.0
+    container_name: supabase-auth
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
@@ -57,14 +39,18 @@ services:
       GOTRUE_JWT_EXP: 3600
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       API_EXTERNAL_URL: ${API_EXTERNAL_URL}
-      # Para self-hosted sem SMTP configurado — desabilitar confirmação por e-mail
+      # Para uso doméstico: confirma e-mail automaticamente (sem SMTP)
       GOTRUE_MAILER_AUTOCONFIRM: "true"
     networks:
       - internal
 
   rest:
     image: postgrest/postgrest:v12.2.0
+    container_name: supabase-rest
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
       PGRST_DB_SCHEMAS: public
@@ -76,7 +62,11 @@ services:
 
   meta:
     image: supabase/postgres-meta:v0.84.2
+    container_name: supabase-meta
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       PG_META_PORT: 8080
       PG_META_DB_HOST: db
@@ -84,7 +74,45 @@ services:
     networks:
       - internal
 
-  # ─── App Next.js ───────────────────────────────────────────
+  kong:
+    image: kong:2.8.1
+    container_name: supabase-kong
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_ACCESS_LOG: /dev/stdout
+      KONG_ERROR_LOG: /dev/stderr
+    volumes:
+      - ./supabase/kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      - auth
+      - rest
+    networks:
+      - internal
+
+  studio:
+    image: supabase/studio:latest
+    container_name: supabase-studio
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      SUPABASE_URL: http://kong:8000
+      STUDIO_PG_META_URL: http://meta:8080
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+    depends_on:
+      - kong
+      - meta
+    networks:
+      - internal
+
+  # ─── App Next.js ───────────────────────────────────────────────────────────
   familia-web:
     build:
       context: .
@@ -99,7 +127,7 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      - kong
       - auth
       - rest
     networks:
